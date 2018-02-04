@@ -1,0 +1,3933 @@
+<!DOCTYPE html>
+<!--
+	Flight simulator written in javascript
+	https://github.com/xyzzy/jsFractalZoom
+
+	Copyright 2018 https://github.com/xyzzy
+
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Affero General Public License as published
+	by the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Affero General Public License for more details.
+
+	You should have received a copy of the GNU Affero General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<html>
+<head>
+	<title>jsFractalZoom-navigation</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<style type="text/css">
+<!--
+body {
+	font-family: Verdana, Geneva, sans-serif;
+}
+div {
+	position: relative;
+}
+#fsim {
+	position: relative;
+	border:1px solid #000;
+	background-color:#FFF;
+	padding: 0px;
+	margin: 0px;
+}
+#panel {
+	/* disable selection FF */
+	user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+}
+.keytag {
+	font-family: Verdana, Geneva, sans-serif;
+	font-size: 9px;
+}
+/***/
+
+.button {
+	text-decoration: none;
+	outline: none;
+	background-color: #ccc;
+	width: 112px;
+	height: 17px;
+	font-size: small;
+	text-indent: 6px;
+	border: 3px outset #ccc;
+	cursor: pointer;
+}
+.buttonled {
+	position: absolute;
+	width: 16px;
+	height: 6px;
+	top: 3px;
+	right: 3px;
+	border: 3px inset #ddd;
+	background-color: #000;
+}
+.buttonon {
+	background-color: #0f0;
+}
+.buttondown {
+	border: 3px inset #ccc;
+	text-indent: 7px;
+}
+.slider {
+	background: #ccc;
+	height: 16px;
+	margin: 0;
+	width: 200px;
+	position: relative;
+	border: 3px inset #aaa;
+	cursor: pointer;
+}
+.slidergem {
+	border-radius: 16px;
+	cursor: pointer;
+	background: #000;
+	height: 16px;
+	width: 16px;
+}
+.sliderpit {
+	border-radius: 10px;
+	cursor: pointer;
+	background: #0f0;
+	height: 10px;
+	width: 10px;
+	left: 3px;
+	top: 3px;
+}
+.dropdown {
+	width: 196px;
+	height: 18px;
+	border: 2px inset #ccc;
+	text-indent: 4px;
+	font-family: Tahoma, Geneva, sans-serif;
+	font-size: 13px;
+	cursor: pointer;
+}
+.dropdownmark {
+	position: absolute;
+	right: 0px;
+	width: 16px;
+	height: 18px;
+}
+.dropdowntext {
+}
+.dropdownlist {
+	border: 2px outset #ccc;
+	background-color: #fff;
+	position: absolute;
+	top: 21px;
+	left: -1px;
+	width: 194px;
+	text-indent: 4px;
+	font-family: Tahoma, Geneva, sans-serif;
+	font-size: 13px;
+	cursor: pointer;
+	z-index: 1;
+}
+.dropdownline {
+	width: 194px;
+	height: 18px;
+}
+.dropdownhighlight {
+	width: 194px;
+	height: 18px;
+	background-color: #0A246A;
+	color: #fff;
+}
+-->
+</style>
+</head>
+<body>
+
+<!--
+<div id="fsim" style="width:400px; height:200px;">
+<div id="fdiv" style="width:400px; height:200px;"></div>
+</div>
+<img id="fimg" width="400" height="200" border="1" style="float:right"/>
+-->
+
+<div id="fstat" style="width:400px; height:50px;"></div>
+<div>quality: <span id="qualtxt"></span> load: <span id="loadtxt"></span> x: <span id="xtxt"></span> y: <span id="ytxt"></span></div>
+</td>
+<table id="panel" border="0" cellpadding="2" cellspacing="0">
+	<tr>
+		<td valign="top"><div> <img id="mainimg" width="600" height="600"/> <img id="resizer" src="data:image/gif;base64,R0lGODlhEgASAJEAAP///729vf8AAAAAACH5BAEHAAIALAAAAAASABIAAAIylI9poH3AnIJRPmovznRLGgSQ1YWj06Vo2jWgCJiVFsNywuZIri+QDIT5frbiiIdM8goAOw==" width="18" height="18" style="position: absolute; right: 0px; bottom:0px; pointer-events: none;"/> </div>
+		<td valign="top"><table border="0" cellpadding="2" cellspacing="0">
+				<tr>
+					<td width="150" height="40" colspan="2" valign="middle"><hr /></td>
+					<td width="130" align="center" valign="middle"><strong>Algorithm</strong></td>
+					<td width="150" valign="middle"><hr /></td>
+				</tr>
+				<tr>
+					<td colspan="2" valign="middle">Formula:</td>
+					<td colspan="2" align="left" valign="middle" nowrap="nowrap"><table border="0" cellpadding="2" cellspacing="0">
+							<tr valign="middle">
+								<td><div><div id="formula" class="dropdown"></div></div></td>
+								<td><span class="keytag">[F]</span></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td colspan="2" valign="middle">Incoloring:</td>
+					<td colspan="2" align="left" valign="middle" nowrap="nowrap"><table border="0" cellpadding="2" cellspacing="0">
+							<tr valign="middle">
+								<td><div><div id="incoloring" class="dropdown"></div></div></td>
+								<td><span class="keytag">[I]</span></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td colspan="2" valign="middle">Outcoloring:</td>
+					<td colspan="2" align="left" valign="middle" nowrap="nowrap"><table border="0" cellpadding="2" cellspacing="0">
+							<tr valign="middle">
+								<td><div><div id="outcoloring" class="dropdown"></div></div></td>
+								<td><span class="keytag">[O]</span></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td colspan="2" valign="middle">Plane:</td>
+					<td colspan="2" align="left" valign="middle" nowrap="nowrap"><table border="0" cellpadding="2" cellspacing="0">
+							<tr valign="middle">
+								<td><div><div id="plane" class="dropdown"></div></div></td>
+								<td><span class="keytag">[P]</span></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td height="40" colspan="2" valign="middle"><hr /></td>
+					<td align="center" valign="middle"><strong>Animation</strong></td>
+					<td valign="middle"><hr /></td>
+				</tr>
+				<tr>
+					<td valign="middle">Speed:</td>
+					<td valign="middle"><span id="speedtxt">0</span></td>					
+					<td colspan="2" valign="middle" nowrap="nowrap"><table border="0" cellpadding="2" cellspacing="0">
+							<tr valign="middle">
+								<td><div><div class="slider" id="zoomspeed"></div></div></td>
+								<td><span class="keytag">[DOWN/UP]</span></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td valign="middle">Rotate:</td>
+					<td valign="middle"><span id="rotatetxt">0</span></td>
+					<td colspan="2" valign="middle" nowrap="nowrap"><table border="0" cellpadding="2" cellspacing="0">
+							<tr valign="middle">
+								<td><div><div class="slider" id="rotatespeed"></div></div></td>
+								<td><span class="keytag">[LEFT/RIGHT]</span></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td valign="middle"></td>
+					<td valign="middle"></td>
+					<td colspan="2" valign="middle" nowrap="nowrap"><table border="0" cellpadding="2" cellspacing="0">
+							<tr valign="middle">
+								<td><div class="button" id="autopilot" style="width:110px">Autopilot</div></td>
+								<td class="keytag">[A]</td>
+								<td></td>
+								<td class="keytag"></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td height="40" colspan="2" valign="middle" nowrap="nowrap" ><hr /></td>
+					<td align="center" valign="middle"><strong>Colors</strong></td>
+					<td valign="middle"><hr /></td>
+				</tr>
+				<tr>
+					<td valign="middle">Color cycle:</td>
+					<td valign="middle"><span id="cyclingtxt">0</span></td>
+					<td colspan="2" valign="middle" nowrap="nowrap"><table border="0" cellpadding="2" cellspacing="0">
+							<tr valign="middle">
+								<td><div><div class="slider" id="cyclingspeed"></div></div></td>
+								<td><span class="keytag">[PAGEDN/PAGEUP]</span></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td valign="middle">Palette</td>
+					<td valign="middle"></td>
+					<td colspan="2" valign="middle" nowrap="nowrap"><table border="0" cellpadding="2" cellspacing="0">
+							<tr valign="middle">
+								<td><div class="button" id="randompalette" style="width:85px">Random</div></td>
+								<td class="keytag">[R]</td>
+								<td><div class="button" id="defaultpalette" style="width:85px">Default</div></td>
+								<td class="keytag">[D]</td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td height="40" colspan="2" valign="middle" nowrap="nowrap" ><hr /></td>
+					<td align="center" valign="middle"><strong>Performance</strong></td>
+					<td valign="middle"><hr /></td>
+				</tr>
+				<tr>
+					<td valign="middle">Max iterations:</td>
+					<td width="60" valign="middle"><span id="maxitertxt">0</span></td>
+					<td colspan="2" valign="middle"><table border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td colspan="3"><div><div class="slider" id="maxiter"></div></div></td>
+							</tr>
+
+						</table></td>
+				</tr>
+				<tr>
+					<td valign="middle">Framerate:</td>
+					<td valign="middle"><span id="fpstxt">0</span></td>
+					<td colspan="2" valign="middle"><table border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td colspan="3"><div><div class="slider" id="fps"></div></div></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td colspan="4" valign="top"><table>
+							<tr>
+								<td><div class="button" id="power" style="width:140px">Power</div></td>
+								<td class="keytag"></td>
+								<td></td>
+								<td class="keytag"></td>
+							</tr>
+						</table></td>
+				</tr>
+				<tr>
+					<td colspan="4" valign="top">&nbsp;</td>
+				</tr>
+			</table></td>
+	</tr>
+</table>
+<div id="flog"></div>
+<script type="text/javascript">
+
+var fstat = document.getElementById('fstat');
+
+function $(id) { return document.getElementById(id); }
+function getTime() { return new Date().valueOf() }
+function rrandom(i) { return Math.floor(Math.random()*i); }
+
+config = {
+	viewwidth: 480, // default viewport (screen) width
+	viewheight: 360, // default viewport (screen) height
+
+	// UI values
+	formula: 0,
+	incoloring: 0,
+	outcoloring: 0,
+	plane: 0,
+	zoomspeed: (0.0006*3),
+	rotatespeed: 0,
+	autopilot: false,
+	cyclingspeed: 0,
+	maxiter: 160, // 1048, // default max iterations (multiple of 4)
+	frametime: Math.round(1000/12),
+	
+	// what are we looking at. read-only. to change use navEngine.setview()/setangle()
+	xcenter: 0,
+	ycenter: 0,
+	radius: 0,
+	angle: 0,
+	cycle: 0,
+	sin: 0, // Math.sin(angle * Math.PI / 180)
+	cos: 1, // Math.cos(angle * Math.PI / 180)
+	
+	maxcolor: 255, // colors in palette
+	rotateinc: 0.2, // angle increment
+	cyclinginc: 0.1, // color cycling increment
+
+	gifcomment: true, // add navigation comment to gif
+	keyrepeatdelay: 500, // delay before keyboard autorepeat kicks in
+	keyrepeatrate: 80, // time between keyboard autorepeats
+	bpp: 8, // GIF pixel size in bits
+	autopilotmaxtime: 10, // max number of frames before autopilot refocuses
+	autopilotwatchdog: 5, // reset on no progress
+	maxgrainsize: 32, // do not zoom further than this grain size
+};
+
+// keyboard/mouse constants
+var BUTTON1=1, BUTTON2=2, BUTTON3=4;
+var ENTER=13,ESC=27,PAGEUP=33,PAGEDN=34,END=25,HOME=36,LEFT=37,UP=38,RIGHT=39,DOWN=40;
+
+//-------------------
+//-------------------
+//-------------------
+//-------------------
+
+function GifEngine(width, height, bpp) {
+	var _ = this;
+
+	// uncompressed GIF has 24 words header, 256 words color table, chunks of 3839 pixels requiring 1810 24bit words, 256 bytes comment, 3 words terminator
+	var gifdata = new Array(24+256+1810*Math.ceil(width*height/3839)+256+3);
+	var giflen = 0;
+
+	var base64 = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
+				  'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+				  '0','1','2','3','4','5','6','7','8','9','+','/' ];
+
+	// hash table. Index: <code.8><string.12>  hashval: <framenr.20><string.12>
+	var hash = new Array(4096*256);
+	var hashver = 0;
+
+	for (var i=0; i<gifdata.length; i++) gifdata[i] = 0;
+	for (var i=0; i<hash.length; i++) hash[i] = 0;
+	
+	_.encode = function(red, green, blue, pixels, viewwidth)
+	{
+		var CLRcode = 1 << bpp;
+		var EOFcode = CLRcode + 1;
+		var curcode = CLRcode + 2; // current code
+		var codesiz = bpp + 1; // code size on bits
+		var maxcode = (1 << codesiz) - 1; // code when its size increases
+		var word = 0; // current 24 bit word. 24 bits because of later base64 encoding
+		var wbits = 0; // token offset in word
+
+		var putB = function(v) {
+			word |= v << wbits;
+			if ((wbits+=8) >= 24) {
+				gifdata[giflen++] = word;
+				word = v >> (8-(wbits-=24));
+			}
+		};
+		var putW = function(v) { putB(v&255); putB(v>>8); };
+
+		giflen = 0;
+		
+		// Write the Magic header
+		putB(71); putB(73); putB(70); putB(56); putB(57); putB(97);
+		// Write out the screen width and height
+		putW(width);
+		putW(height);
+		// global color map | color resolution | Bits per Pixel
+		putB(128|(bpp-1)<<4|(bpp-1));
+		// Write out the Background color
+		putB(0);
+		// Byte of 0's (future expansion)
+		putB(0);
+
+		// Write out the Global Color Map
+		var maxcolor = config.maxcolor;
+		var cycle = Math.floor(config.cycle);
+		if (cycle < 0)
+			cycle = maxcolor-1-(maxcolor-1-j)%maxcolor;
+		for (var i=0; i<CLRcode; ++i) {
+			var k = (cycle+i)%maxcolor;
+			putB(red[k]);
+			putB(green[k]);
+			putB(blue[k]);
+		}
+
+		// comment extension
+		var c = config;
+		if (c.gifcomment) {
+			var comment = 'Created by jsFractalViewer. x:'+c.xcenter+',y:'+c.ycenter+',radius:'+c.radius+',angle:'+c.angle;
+			while (comment.length%3 != 2)
+				comment += ' ';
+			var len = comment.length;
+			putB(0x21); putB(0xFE); putB(len);
+			for (var i=0; i<len; i++)
+				putB(comment.charCodeAt(i));
+			putB(0);
+		}
+		
+		// Write an Image separator
+		putB(44);
+		// Write the Image header
+		putW(0); // left
+		putW(0); // top
+		putW(width);
+		putW(height);
+		// Write out whether or not the image is interlaced
+		putB(0);
+		// Write out the initial code size
+		putB(bpp);
+
+		// Mark position of chunk header. It is always 24bit aligned.
+		// Optimistic algorithm, Assume all chunks 85*3 bytes.
+		var mark = giflen+85;
+		word |= 254;
+		wbits += 8;
+
+		// place CLR in head of compressed stream
+		var str = CLRcode;
+		curcode--; // compensate for lack of previous symbol
+		hashver++;
+
+		// viewport rotation
+		var sin = config.sin;
+		var cos = config.cos;
+		var xstart = Math.floor((viewwidth-height*sin-width*cos)*32768);
+		var ystart = Math.floor((viewwidth-height*cos+width*sin)*32768);
+		var ixstep = Math.floor(cos*65536);
+		var iystep = Math.floor(sin*-65536);
+		var jxstep = Math.floor(sin*65536);
+		var jystep = Math.floor(cos*65536);
+
+		for (var j=0,x=xstart,y=ystart; j<height; j++,x+=jxstep,y+=jystep) 
+		for (var i=0,ix=x,iy=y; i<width; i++,ix+=ixstep,iy+=iystep) {
+			c = pixels[(iy >> 16)*viewwidth+(ix >> 16)];
+		
+			var fcode = (c << 12) | str;
+			var v = hash[fcode];
+			if ( (v>>12) == hashver) {
+				str = v&4095;
+			} else {
+				var v = str;
+				word |= v << wbits;
+				if ((wbits+=codesiz) >= 24) {
+					gifdata[giflen++] = word;
+					word = v >> (codesiz-(wbits-=24));
+	
+					if (giflen >= mark) {
+						mark = giflen+85;
+						word = (word<<8)|254;
+						wbits += 8;
+					}
+				}
+	
+				str = c;
+				
+				if (curcode < 4096) {
+					hash[fcode] = curcode | hashver<<12;
+					if (curcode++ > maxcode)
+						maxcode = (1 << ++codesiz) - 1;
+				} else {
+					// CLEAR
+					var v = CLRcode;
+					word |= v << wbits;
+					if ((wbits+=codesiz) >= 24) {
+						gifdata[giflen++] = word;
+						word = v >> (codesiz-(wbits-=24));
+		
+						if (giflen >= mark) {
+							mark = giflen+85;
+							word = (word<<8)|254;
+							wbits += 8;
+						}
+					}
+		
+					// reset codes
+					codesiz = bpp + 1;
+					maxcode = (1 << codesiz) - 1;
+					curcode = CLRcode + 2;
+					hashver++;
+				}
+			}
+		}
+
+		// last code		
+		var v = str;
+		word |= v << wbits;
+		if ((wbits+=codesiz) >= 24) {
+			gifdata[giflen++] = word;
+			word = v >> (codesiz-(wbits-=24));
+
+			if (giflen >= mark) {
+				mark = giflen+85;
+				word = (word<<8)|254;
+				wbits += 8;
+			}
+		}
+
+		// EOF
+		var v = EOFcode;
+		word |= v << wbits;
+		if ((wbits+=codesiz) >= 24) {
+			gifdata[giflen++] = word;
+			word = v >> (codesiz-(wbits-=24));
+
+			if (giflen >= mark) {
+				mark = giflen+85;
+				word <<= 8;
+				word |= 254;
+				wbits += 8;
+			}
+		}
+
+		// correct last chunk size
+		if (mark == wbits+85 && wbits == 8) {
+			// undo mark
+			word >>= 8;
+			wbits -= 8;
+		} else {
+			// FLUSH
+			var v = (giflen-mark+85)*3-1;
+			if (wbits > 16) {
+				wbits = 24; v+=3;
+				gifdata[giflen++] = word;
+				wbits = word = 0;
+			} else if (wbits > 8) {
+				wbits = 16; v+=2;
+			} else if (wbits > 0) {
+				wbits = 8; v+=1;
+			}
+			gifdata[mark-85] &= ~255;
+			gifdata[mark-85] |= v;
+		}
+
+		// Write out a Zero-length packet (to end the series)
+		putB(0);
+		// Write the GIF file terminator
+		putB(59);
+		// fast flush
+		putB(0);putB(0);putB(0);
+	}
+
+	_.base64 = function()
+	{
+		var data = gifdata;
+		var len = giflen;
+
+		var j=0, s="data:image/gif;base64,";
+		var r = new Array(s.length+len*4);
+		
+		for (var i=0; i<s.length;)
+			r[j++] = s[i++];
+		for (var i=0; i<len;) {
+			var v = data[i++];
+			v = (v<<16) | (v&0x00ff00) | ((v&0xff0000)>>16)
+			r[j++] = base64[v>>18&63];
+			r[j++] = base64[v>>12&63];
+			r[j++] = base64[v>>6&63];
+			r[j++] = base64[v&63];
+		}
+//		$('ytxt').innerHTML = j;
+		return 	r.join('');
+	}
+}
+
+var gifEngine = new GifEngine(config.viewwidth, config.viewheight, config.bpp);
+
+//----
+//----
+//----
+//----
+
+function PaletteEngine()
+{
+	var _ = this;
+	_.size = 0;
+	_.red = new Array(256);
+	_.green = new Array(256);
+	_.blue = new Array(256);
+
+	_.get = function(ob)
+	{
+		ob.palettesize = _.size;
+		return ob;
+	}
+
+	function mksmooth(nsegments, segmentsize, R, G, B) 
+	{
+		_.size = 0;
+		for (var i = 0; i<nsegments; i++) {
+	
+			var r = R[i % nsegments];
+			var g = G[i % nsegments];
+			var b = B[i % nsegments];
+			var rs = (R[(i + 1) % nsegments] - r) / segmentsize;
+			var gs = (G[(i + 1) % nsegments] - g) / segmentsize;
+			var bs = (B[(i + 1) % nsegments] - b) / segmentsize;
+
+			for (var j = 0; j < segmentsize; j++) {
+	
+				_.red[_.size] = Math.floor(r);
+				_.green[_.size] = Math.floor(g);
+				_.blue[_.size] = Math.floor(b);
+				_.size++;
+	
+				r += rs;
+				g += gs;
+				b += bs;
+			}
+		}
+		config.maxcolor = _.size;
+	}
+
+	function randomize_segments1(whitemode, nsegments, R, G, B)
+	{
+		if (whitemode) {
+			R[0] = 255, G[0] = 255, B[0] = 255;
+			for (var i = 0; i < nsegments; i += 2) {
+				if (i != 0) {
+					R[i] = rrandom(256), G[i] = rrandom(256), B[i] = rrandom(256);
+				}
+				if (i + 1 < nsegments) {
+					R[i + 1] = rrandom(35), G[i + 1] = rrandom(35), B[i + 1] = rrandom(35);
+				}
+			}
+		} else {
+			for (var i = 0; i < nsegments; i += 2) {
+				R[i] = rrandom(35), G[i] = rrandom(35), B[i] = rrandom(35);
+				if (i + 1 < nsegments) {
+					R[i + 1] = rrandom(256), G[i + 1] = rrandom(256), B[i + 1] = rrandom(256);
+				}
+			}
+		}
+	}
+
+	function randomize_segments2(whitemode, nsegments, R, G, B)
+	{
+		for (var i=0; i<nsegments; i++) {
+			R[i] = (!whitemode) * 255, G[i] = (!whitemode) * 255, B[i] = (!whitemode) * 255;
+			if (++i >= nsegments) break;
+			R[i] = rrandom(256), G[i] = rrandom(256), B[i] = rrandom(256);
+			if (++i >= nsegments) break;
+			R[i] = whitemode * 255, G[i] = whitemode * 255, B[i] = whitemode * 255;
+		}
+	}
+
+	function randomize_segments3(whitemode, nsegments, R, G, B)
+	{
+		var h, s, v;
+	
+		for (var i = 0; i < nsegments; i++) {
+			if (i % 6 == 0) {
+				R[i] = 0, G[i] = 0, B[i] = 0;
+			} else if (i % 3 == 0) {
+				R[i] = 255, G[i] = 255, B[i] = 255;
+			} else {
+				s = rrandom(256);
+				h = rrandom(128 - 32);
+				v = rrandom(128);
+				if ((i % 6 > 3) ^ (i % 3 == 1))
+					h += 42 + 16;
+				else
+					h += 42 + 128 + 16, v += 128 + 64;
+				h %= 256;
+				v %= 256;
+
+				// hsv to rgb
+				if (s == 0) {
+					R[i] = G[i] = B[i] = v;
+				} else {
+					var hue = h * 6;
+			
+					var f = hue & 255;
+					var p = v * (256 - s) >> 8;
+					var q = v * (256 - ((s * f) >> 8)) >> 8;
+					var t = v * (256 * 256 - (s * (256 - f))) >> 16;
+					switch (Math.floor(hue / 256)) {
+					case 0: R[i] = v; G[i] = t; B[i] = p; break;
+					case 1: R[i] = q; G[i] = v; B[i] = p; break;
+					case 2: R[i] = p; G[i] = v; B[i] = t; break;
+					case 3: R[i] = p; G[i] = q; B[i] = v; break;
+					case 4: R[i] = t; G[i] = p; B[i] = v; break;
+					case 5: R[i] = v; G[i] = p; B[i] = q; break;
+					}
+				}
+
+			}
+		}
+	}
+
+	_.mkrandom = function()
+	{
+		// 85 = 255 / 3
+		var segmentsize, nsegments;
+		var whitemode = rrandom(2);
+
+		segmentsize  = rrandom(85 + 4);
+		segmentsize += rrandom(85 + 4);
+		segmentsize += rrandom(85 + 4);
+		segmentsize += rrandom(85 + 4);	/* Make smaller segments with higher probability */
+
+		segmentsize = Math.abs(segmentsize >> 1 - 85 + 3);
+		if (segmentsize < 8)
+			segmentsize = 8;
+		if (segmentsize > 85)
+			segmentsize = 85;
+
+		var R = new Array(256);
+		var G = new Array(256);
+		var B = new Array(256);
+		switch (Math.floor(Math.random()*3)) {
+		case 0:
+			segmentsize = Math.floor(segmentsize/2)*2;
+			nsegments = Math.floor(256 / segmentsize);
+			randomize_segments1(whitemode, nsegments, R, G, B);
+			break;
+		case 1:
+			segmentsize = Math.floor(segmentsize/3)*3;
+			nsegments = Math.floor(256 / segmentsize);
+			randomize_segments2(whitemode, nsegments, R, G, B);
+			break;
+		case 2:
+			segmentsize = Math.floor(segmentsize/6)*6;
+			nsegments = Math.floor(256 / segmentsize);
+			randomize_segments3(whitemode, nsegments, R, G, B);
+			break;
+		}
+		mksmooth(nsegments, segmentsize, R, G, B);
+	}
+
+	_.mkdefault = function()
+	{
+		var R = [0, 120,24,197,29,135,24,241,17,240,11,106,29, 12,10, 50,22,148, 4,231,10,184,13,169, 4,62, 7,152, 8,247,31];
+		var G = [0, 119, 7, 66,18, 46,27,230,31,162, 4, 87,21,140, 6,144, 0,188,32,146,13,147,28,248, 0,83,21, 97, 3, 92,32];
+		var B = [0, 238,25, 28,11, 71,13,128,24,139,30,189,14,118,29, 77,24,243, 7, 14,20, 68, 3,152,34,48,22,184,12,235,16];
+		mksmooth(30, 8, R, G, B);
+	}
+
+}
+
+var paletteEngine = new PaletteEngine();
+paletteEngine.mkdefault();
+
+//----
+//----
+//----
+//----
+
+function FormulaEngine(formula,incolor,outcolor,plane,maxiter,palettesize)
+{
+	var _ = this;
+	
+	_.get = function(ob)
+	{
+		ob.formula = formula;
+		ob.incolor = incolor;
+		ob.outcolor = outcolor;
+		ob.plane = plane;
+		ob.maxiter = maxiter;
+		switch (formula) {
+		case 0: ob.initialx=-0.75; ob.initialy=0.0; ob.initialradius=2.5; break;
+		case 1: ob.initialx=0.0; ob.initialy=0.0; ob.initialradius=2.5; break;
+		case 2: ob.initialx=0.0; ob.initialy=0.0; ob.initialradius=2.5; break;
+		case 3: ob.initialx=0.0; ob.initialy=0.0; ob.initialradius=2.5; break;
+		case 4: ob.initialx=0.0; ob.initialy=0.0; ob.initialradius=2.5; break;
+		case 5: ob.initialx=0.0; ob.initialy=0.0; ob.initialradius=2.5; break;
+		case 6: ob.initialx=0.0; ob.initialy=0.0; ob.initialradius=2.5; break;
+		case 7: ob.initialx=0.0; ob.initialy=0.0; ob.initialradius=2.5; break;
+		case 8: ob.initialx=0.0; ob.initialy=0.0; ob.initialradius=2.5; break;
+		case 9: ob.initialx=1.5; ob.initialy=0.0; ob.initialradius=3.0; break;
+		}
+		return ob;
+	}
+
+	var INT_MAX = 999999999;
+	var SMUL = 256;
+	var SHIFT = 8;
+	var XMAX = (palettesize - 1) * SMUL;
+
+	function color_output(zre, zim, pre, pim, iter)
+	{
+		iter <<= SHIFT;
+	
+		switch (outcolor) {
+		case 1:		/* real */
+			iter = (iter + zre * SMUL);
+			break;
+		case 2:		/* imag */
+			iter = (iter + zim * SMUL);
+			break;
+		case 3:		/* real / imag */
+			iter = (iter + (zre / zim) * SMUL);
+			break;
+		case 4:		/* all of the above */
+			iter = (iter + (zre + zim + zre / zim) * SMUL);
+			break;
+		case 5:
+			if (zim > 0)
+				iter = ((maxiter << SHIFT) - iter);
+			break;
+		case 6:
+			if (Math.abs(zim) < 2.0 || Math.abs(zre) < 2.0)
+				iter = ((maxiter << SHIFT) - iter);
+			break;
+		case 7:
+			zre = zre * zre + zim * zim;
+			iter = (Math.sqrt(Math.log(zre) / iter) * 256 * 256);
+			break;
+		case 8:
+			iter = ((Math.atan2(zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000);
+			break;
+		}
+	
+		if (iter < 0) {
+			iter = ((palettesize - 1) << 8) - ((-iter) % ((palettesize - 1) << 8)) - 1;
+			if (iter < 0)
+				iter = 0;
+		}
+		iter %= (palettesize - 1) << 8;
+		return 1 + (iter >> 8);
+	}
+
+var pm1 = palettesize-1;
+	function incolor7(zre, zim, pre, pim, iter) { 
+		iter = Math.floor(Math.sin(zre*zre - zim*zim) * 256);
+		return (iter < 0) ? pm1-(-iter)%pm1-1 : iter%pm1+1;
+	}
+	
+	function incolor_output(zre, zim, pre, pim, iter)
+	{
+		switch (incolor) {
+		case 1:
+			iter = ((zre * zre + zim * zim) * (maxiter >> 1) * SMUL + SMUL);
+			break;
+		case 2:
+			iter = ((Math.atan2(zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000);
+			break;
+		case 3:
+			iter = (100 + (zre / zim) * SMUL * 10);
+			break;
+		case 4:
+			zre = Math.abs(zre);
+			zim = Math.abs(zim);
+			pre = Math.abs(pre);
+			pre = Math.abs(pim);
+			iter += Math.abs(pre - zre) * 256 * 64;
+			iter += Math.abs(pim - zim) * 256 * 64;
+			break;
+		case 5:
+			if ((Math.floor ((zre * zre + zim * zim) * 10)) % 2)
+				iter = Math.cos(zre * zim * pre * pim) * 256 * 256;
+			else
+				iter = Math.sin(zre * zim * pre * pim) * 256 * 256;
+			break;
+		case 6:
+			iter = (zre * zre + zim * zim) * Math.cos(zre * zre) * 256 * 256;
+			break;
+		case 7:
+			iter = Math.floor(Math.sin(zre*zre - zim*zim) * 256);
+			return (iter < 0) ? pm1-(-iter)%pm1-1 : iter%pm1+1;
+			break;
+		case 8:
+			iter = Math.atan(zre * zim * pre * pim) * 256 * 64;
+			break;
+		case 9:
+			if ((Math.abs(Math.floor (zre * 40)) % 2) ^ (Math.abs(Math.floor (zim * 40)) % 2))
+				iter = ((Math.atan2(zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000);
+			else
+				iter = ((Math.atan2(zim, zre) / (Math.PI + Math.PI) + 0.75) * 20000);
+			break;
+		};
+	
+		if (iter < 0) {
+			iter = ((palettesize - 1) << 8) - ((-iter) % ((palettesize - 1) << 8)) - 1;
+			if (iter < 0)
+				iter = 0;
+		}
+		iter %= (palettesize - 1) << 8;
+		return 1 + (iter >> 8);
+	}
+
+	function mand_calc(zre,  zim,  pre,  pim)
+	{
+maxiter=160;
+incolor=7;
+		if (1 || iter < 16) {
+			var iter = maxiter>>2;
+			do {
+				var rp = zre*zre, ip = zim*zim;
+				var zre3 = rp -ip +pre; var rp3 = zre3*zre3; var zim3 = zim *zre *2+pim; var ip3 = zim3*zim3;
+				var zre2 = rp3-ip3+pre; var rp2 = zre2*zre2; var zim2 = zim3*zre3*2+pim; var ip2 = zim2*zim2;
+				var zre1 = rp2-ip2+pre; var rp1 = zre1*zre1; var zim1 = zim2*zre2*2+pim; var ip1 = zim1*zim1;
+				var zre  = rp1-ip1+pre;                      var zim  = zim1*zre1*2+pim;
+			} while (--iter > 0 && rp1+ip1 < 4);
+
+			if (rp +ip  >= 4) { iter=maxiter-iter*4-4; return outcolor ? color_output(zre3, zim3, pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+			if (rp3+ip3 >= 4) { iter=maxiter-iter*4-3; return outcolor ? color_output(zre2, zim2, pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+			if (rp2+ip2 >= 4) { iter=maxiter-iter*4-2; return outcolor ? color_output(zre1, zim1, pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+			if (rp1+ip1 >= 4) { iter=maxiter-iter*4-1; return outcolor ? color_output(zre , zim , pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+			return incolor ? incolor_output(zre, zim, pre, pim, maxiter-iter*4) : 0;
+		} else {
+			var  iter = maxiter;
+			var szre = 0, szim = 0;
+			var rp = 0, ip;
+			rp = zre * zre;
+			ip = zim * zim;
+			iter = 8 + (maxiter & 7);
+
+			while (iter && (rp + ip < 4)) {
+				zim = (zim * zre) * 2 + pim;
+				zre = rp - ip + pre;
+				ip = zim * zim;
+				rp = zre * zre;;
+				iter--;
+			}
+			if ((rp + ip < 4)) {
+				iter = (maxiter - 8) & (~7);
+				iter >>= 3;
+				do {
+					szre = zre;
+					szim = zim;
+					zim = (zim * zre) * 2 + pim;
+					zre = rp - ip + pre;
+					ip = zim * zim;
+					rp = zre * zre;
+					zim = (zim * zre) * 2 + pim;
+					zre = rp - ip + pre;
+					ip = zim * zim;
+					rp = zre * zre;
+					zim = (zim * zre) * 2 + pim;
+					zre = rp - ip + pre;
+					ip = zim * zim;
+					rp = zre * zre;;
+					zim = (zim * zre) * 2 + pim;
+					zre = rp - ip + pre;
+					ip = zim * zim;
+					rp = zre * zre;
+					zim = (zim * zre) * 2 + pim;
+					zre = rp - ip + pre;
+					ip = zim * zim;
+					rp = zre * zre;
+					zim = (zim * zre) * 2 + pim;
+					zre = rp - ip + pre;
+					ip = zim * zim;
+					rp = zre * zre;
+					zim = (zim * zre) * 2 + pim;
+					zre = rp - ip + pre;
+					ip = zim * zim;
+					rp = zre * zre;
+					zim = (zim * zre) * 2 + pim;
+					zre = rp - ip + pre;
+					ip = zim * zim;
+					rp = zre * zre;
+					;
+					iter--;
+				}
+				while (iter && (rp + ip < 4));
+				if (!((rp + ip < 4))) {
+					iter <<= 3;
+					iter += 8;
+					zre = szre;
+					zim = szim;
+					rp = zre * zre;
+					ip = zim * zim;
+					do {	
+						zim = (zim * zre) * 2 + pim;
+						zre = rp - ip + pre;
+						ip = zim * zim;
+						rp = zre * zre;
+						iter--;
+					}
+					while ((iter) && (rp + ip < 4));
+				}
+			} else
+				iter += maxiter - 8 - (maxiter & 7);
+		}
+		iter = maxiter - iter;
+		if (iter >= maxiter) {
+			return incolor ? incolor_output(zre, zim, pre, pim, iter) : 0;
+		} else {
+			return outcolor ? color_output(zre, zim, pre, pim, iter) : (iter % (palettesize - 1)) + 1;
+		}
+	}
+/*
+	static int mand3_calc( number_t zre,  number_t zim,  number_t pre,  number_t pim)
+	{
+		 int iter = cfractalc.maxiter;
+		number_t szre = 0, szim = 0;
+		 number_t rp = 0, ip;
+	
+		;
+		;
+		if (0)
+			iter = 0;
+		else {
+			rp = zre * zre;
+			ip = zim * zim;
+			if (iter < 16) {
+				while (iter && (rp + ip < 4)) {
+					rp = zre * (rp - 3 * ip);
+					zim = zim * (3 * zre * zre - ip) + pim;
+					zre = rp + pre;
+					rp = zre * zre;
+					ip = zim * zim;;
+					iter--;
+				}
+			} else {
+				iter = 8 + (cfractalc.maxiter & 7);
+				while (iter && (rp + ip < 4)) {
+					;
+					rp = zre * (rp - 3 * ip);
+					zim = zim * (3 * zre * zre - ip) + pim;
+					zre = rp + pre;
+					rp = zre * zre;
+					ip = zim * zim;;
+					iter--;
+				}
+				if ((rp + ip < 4)) {
+					iter = (cfractalc.maxiter - 8) & (~7);
+					iter >>= 3;
+					do {
+						szre = zre;
+						szim = zim;
+						rp = zre * (rp - 3 * ip);
+						zim = zim * (3 * zre * zre - ip) + pim;
+						zre = rp + pre;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = zre * (rp - 3 * ip);
+						zim = zim * (3 * zre * zre - ip) + pim;
+						zre = rp + pre;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = zre * (rp - 3 * ip);
+						zim = zim * (3 * zre * zre - ip) + pim;
+						zre = rp + pre;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = zre * (rp - 3 * ip);
+						zim = zim * (3 * zre * zre - ip) + pim;
+						zre = rp + pre;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = zre * (rp - 3 * ip);
+						zim = zim * (3 * zre * zre - ip) + pim;
+						zre = rp + pre;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = zre * (rp - 3 * ip);
+						zim = zim * (3 * zre * zre - ip) + pim;
+						zre = rp + pre;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = zre * (rp - 3 * ip);
+						zim = zim * (3 * zre * zre - ip) + pim;
+						zre = rp + pre;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = zre * (rp - 3 * ip);
+						zim = zim * (3 * zre * zre - ip) + pim;
+						zre = rp + pre;
+						rp = zre * zre;
+						ip = zim * zim;;
+						;
+						iter--;
+					}
+					while (iter && (rp + ip < 4));
+					if (!((rp + ip < 4))) {
+						iter <<= 3;
+						iter += 8;
+						zre = szre;
+						zim = szim;
+						rp = zre * zre;
+						ip = zim * zim;
+						do {	
+							rp = zre * (rp - 3 * ip);
+							zim = zim * (3 * zre * zre - ip) + pim;
+							zre = rp + pre;
+							rp = zre * zre;
+							ip = zim * zim;;
+							iter--;
+						}
+						while ((iter) && (rp + ip < 4));
+					}
+				} else
+					iter += cfractalc.maxiter - 8 - (cfractalc.maxiter & 7);
+			}
+		}
+		;
+		iter = cfractalc.maxiter - iter;
+		if (iter >= (int) cfractalc.maxiter) {
+			return (cfractalc.incoloringmode ? incolor_output(zre, zim, pre, pim, iter) : cpalette.pixels[0]);
+		} else {
+			return (!cfractalc.coloringmode ? cpalette.pixels[(iter % (cpalette.size - 1)) + 1] : color_output(zre, zim, pre, pim, iter));
+		};
+	}
+	
+	static int magnet_calc( number_t zre,  number_t zim,  number_t pre,  number_t pim)
+	{
+		 int iter = cfractalc.maxiter;
+		number_t szre = 0, szim = 0;
+		 number_t rp = 0, ip;
+	
+		number_t br, tmp;;
+		;
+		if (0)
+			iter = 0;
+		else {
+			rp = zre * zre;
+			ip = zim * zim;
+			if (iter < 16) {
+				while (iter && (rp + ip < 100 * 100 && (rp - 2 * zre + ip) > -0.99)) {
+					br = zre + zre + pre - 2;
+					tmp = zre * zim;
+					zre = rp - ip + pre - 1;
+					ip = zim + zim + pim;
+					zim = tmp + tmp + pim;
+					tmp = 1 / (br * br + ip * ip);
+					rp = (zre * br + zim * ip) * tmp;
+					ip = (zim * br - zre * ip) * tmp;
+					zre = (rp + ip) * (rp - ip);
+					zim = rp * ip;
+					zim += zim;
+					rp = zre - 1;
+					ip = zim * zim;
+					rp = zre * zre;;
+					iter--;
+				}
+			} else {
+				iter = 8 + (cfractalc.maxiter & 7);
+				;
+				;
+				while (iter && (rp + ip < 100 * 100 && (rp - 2 * zre + ip) > -0.99)) {
+					br = zre + zre + pre - 2;
+					tmp = zre * zim;
+					zre = rp - ip + pre - 1;
+					ip = zim + zim + pim;
+					zim = tmp + tmp + pim;
+					tmp = 1 / (br * br + ip * ip);
+					rp = (zre * br + zim * ip) * tmp;
+					ip = (zim * br - zre * ip) * tmp;
+					zre = (rp + ip) * (rp - ip);
+					zim = rp * ip;
+					zim += zim;
+					rp = zre - 1;
+					ip = zim * zim;
+					rp = zre * zre;;
+					iter--;
+				}
+				if ((rp + ip < 100 * 100 && (rp - 2 * zre + ip) > -0.99)) {
+					iter = (cfractalc.maxiter - 8) & (~7);
+					iter >>= 3;
+					do {
+						szre = zre;
+						szim = zim;
+						br = zre + zre + pre - 2;
+						tmp = zre * zim;
+						zre = rp - ip + pre - 1;
+						ip = zim + zim + pim;
+						zim = tmp + tmp + pim;
+						tmp = 1 / (br * br + ip * ip);
+						rp = (zre * br + zim * ip) * tmp;
+						ip = (zim * br - zre * ip) * tmp;
+						zre = (rp + ip) * (rp - ip);
+						zim = rp * ip;
+						zim += zim;
+						rp = zre - 1;
+						ip = zim * zim;
+						rp = zre * zre;;
+						br = zre + zre + pre - 2;
+						tmp = zre * zim;
+						zre = rp - ip + pre - 1;
+						ip = zim + zim + pim;
+						zim = tmp + tmp + pim;
+						tmp = 1 / (br * br + ip * ip);
+						rp = (zre * br + zim * ip) * tmp;
+						ip = (zim * br - zre * ip) * tmp;
+						zre = (rp + ip) * (rp - ip);
+						zim = rp * ip;
+						zim += zim;
+						rp = zre - 1;
+						ip = zim * zim;
+						rp = zre * zre;;
+						br = zre + zre + pre - 2;
+						tmp = zre * zim;
+						zre = rp - ip + pre - 1;
+						ip = zim + zim + pim;
+						zim = tmp + tmp + pim;
+						tmp = 1 / (br * br + ip * ip);
+						rp = (zre * br + zim * ip) * tmp;
+						ip = (zim * br - zre * ip) * tmp;
+						zre = (rp + ip) * (rp - ip);
+						zim = rp * ip;
+						zim += zim;
+						rp = zre - 1;
+						ip = zim * zim;
+						rp = zre * zre;;
+						br = zre + zre + pre - 2;
+						tmp = zre * zim;
+						zre = rp - ip + pre - 1;
+						ip = zim + zim + pim;
+						zim = tmp + tmp + pim;
+						tmp = 1 / (br * br + ip * ip);
+						rp = (zre * br + zim * ip) * tmp;
+						ip = (zim * br - zre * ip) * tmp;
+						zre = (rp + ip) * (rp - ip);
+						zim = rp * ip;
+						zim += zim;
+						rp = zre - 1;
+						ip = zim * zim;
+						rp = zre * zre;;
+						br = zre + zre + pre - 2;
+						tmp = zre * zim;
+						zre = rp - ip + pre - 1;
+						ip = zim + zim + pim;
+						zim = tmp + tmp + pim;
+						tmp = 1 / (br * br + ip * ip);
+						rp = (zre * br + zim * ip) * tmp;
+						ip = (zim * br - zre * ip) * tmp;
+						zre = (rp + ip) * (rp - ip);
+						zim = rp * ip;
+						zim += zim;
+						rp = zre - 1;
+						ip = zim * zim;
+						rp = zre * zre;;
+						br = zre + zre + pre - 2;
+						tmp = zre * zim;
+						zre = rp - ip + pre - 1;
+						ip = zim + zim + pim;
+						zim = tmp + tmp + pim;
+						tmp = 1 / (br * br + ip * ip);
+						rp = (zre * br + zim * ip) * tmp;
+						ip = (zim * br - zre * ip) * tmp;
+						zre = (rp + ip) * (rp - ip);
+						zim = rp * ip;
+						zim += zim;
+						rp = zre - 1;
+						ip = zim * zim;
+						rp = zre * zre;;
+						br = zre + zre + pre - 2;
+						tmp = zre * zim;
+						zre = rp - ip + pre - 1;
+						ip = zim + zim + pim;
+						zim = tmp + tmp + pim;
+						tmp = 1 / (br * br + ip * ip);
+						rp = (zre * br + zim * ip) * tmp;
+						ip = (zim * br - zre * ip) * tmp;
+						zre = (rp + ip) * (rp - ip);
+						zim = rp * ip;
+						zim += zim;
+						rp = zre - 1;
+						ip = zim * zim;
+						rp = zre * zre;;
+						br = zre + zre + pre - 2;
+						tmp = zre * zim;
+						zre = rp - ip + pre - 1;
+						ip = zim + zim + pim;
+						zim = tmp + tmp + pim;
+						tmp = 1 / (br * br + ip * ip);
+						rp = (zre * br + zim * ip) * tmp;
+						ip = (zim * br - zre * ip) * tmp;
+						zre = (rp + ip) * (rp - ip);
+						zim = rp * ip;
+						zim += zim;
+						rp = zre - 1;
+						ip = zim * zim;
+						rp = zre * zre;;
+						;
+						iter--;
+					}
+					while (iter && (rp + ip < 100 * 100 && (rp - 2 * zre + ip) > -0.99));
+					if (!((rp + ip < 100 * 100 && (rp - 2 * zre + ip) > -0.99))) {
+						iter <<= 3;
+						iter += 8;
+						zre = szre;
+						zim = szim;
+						rp = zre * zre;
+						ip = zim * zim;
+						do {
+							br = zre + zre + pre - 2;
+							tmp = zre * zim;
+							zre = rp - ip + pre - 1;
+							ip = zim + zim + pim;
+							zim = tmp + tmp + pim;
+							tmp = 1 / (br * br + ip * ip);
+							rp = (zre * br + zim * ip) * tmp;
+							ip = (zim * br - zre * ip) * tmp;
+							zre = (rp + ip) * (rp - ip);
+							zim = rp * ip;
+							zim += zim;
+							rp = zre - 1;
+							ip = zim * zim;
+							rp = zre * zre;;
+							iter--;
+						}
+						while ((iter) && (rp + ip < 100 * 100 && (rp - 2 * zre + ip) > -0.99));
+					}
+				} else
+					iter += cfractalc.maxiter - 8 - (cfractalc.maxiter & 7);
+			}
+		}
+		if (rp - 2 * zre + ip > -0.99)
+			zre *= 0.02, zim *= 0.02;;
+		iter = cfractalc.maxiter - iter;
+		if (iter >= (int) cfractalc.maxiter) {
+			return (cfractalc.incoloringmode ? incolor_output(zre, zim, pre, pim, iter) : cpalette.pixels[0]);
+		} else {
+			return (!cfractalc.coloringmode ? cpalette.pixels[(iter % (cpalette.size - 1)) + 1] : color_output(zre, zim, pre, pim, iter));
+		};
+	}
+	
+	static int mand4_calc( number_t zre,  number_t zim,  number_t pre,  number_t pim)
+	{
+		 int iter = cfractalc.maxiter;
+		number_t szre = 0, szim = 0;
+		 number_t rp = 0, ip;
+	
+		;
+		;
+		if (0)
+			iter = 0;
+		else {
+			rp = zre * zre;
+			ip = zim * zim;
+			if (iter < 16) {
+				while (iter && (rp + ip < 4)) {
+					rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+					zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+					zre = rp;
+					rp = zre * zre;
+					ip = zim * zim;;
+					iter--;
+				}
+			} else {
+				iter = 8 + (cfractalc.maxiter & 7);
+				while (iter && (rp + ip < 4)) {	
+					rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+					zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+					zre = rp;
+					rp = zre * zre;
+					ip = zim * zim;;
+					iter--;
+				}
+				if ((rp + ip < 4)) {
+					iter = (cfractalc.maxiter - 8) & (~7);
+					iter >>= 3;
+					do {
+						szre = zre;
+						szim = zim;
+						rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+						zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+						zre = rp;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+						zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+						zre = rp;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+						zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+						zre = rp;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+						zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+						zre = rp;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+						zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+						zre = rp;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+						zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+						zre = rp;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+						zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+						zre = rp;
+						rp = zre * zre;
+						ip = zim * zim;;
+						rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+						zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+						zre = rp;
+						rp = zre * zre;
+						ip = zim * zim;;
+						iter--;
+					}
+					while (iter && (rp + ip < 4));
+					if (!((rp + ip < 4))) {
+						iter <<= 3;
+						iter += 8;
+						zre = szre;
+						zim = szim;
+						rp = zre * zre;
+						ip = zim * zim;
+						do {
+							rp = rp * rp - 6 * rp * ip + ip * ip + pre;
+							zim = 4 * zre * zre * zre * zim - 4 * zre * ip * zim + pim;
+							zre = rp;
+							rp = zre * zre;
+							ip = zim * zim;;
+							iter--;
+						}
+						while ((iter) && (rp + ip < 4));
+					}
+				} else
+					iter += cfractalc.maxiter - 8 - (cfractalc.maxiter & 7);
+			}
+		}
+		;
+		iter = cfractalc.maxiter - iter;
+		if (iter >= (int) cfractalc.maxiter) {
+			return (cfractalc.incoloringmode ? incolor_output(zre, zim, pre, pim, iter) : cpalette.pixels[0]);
+		} else {
+			return (!cfractalc.coloringmode ? cpalette.pixels[(iter % (cpalette.size - 1)) + 1] : color_output(zre, zim, pre, pim, iter));
+		};
+	}
+	
+	static int mand5_calc( number_t zre,  number_t zim,  number_t pre,  number_t pim)
+	{
+		 int iter = cfractalc.maxiter;
+		 number_t rp, ip;
+		number_t t;;
+		if (0)
+			iter = 0;
+		else {
+			rp = zre * zre;
+			ip = zim * zim;
+			while ((iter) && (rp + ip < 4)) {
+				((rp) = ((zre) * (zre) * (zre) * (zre) - 6 * (zre) * (zre) * (zim) * (zim) + (zim) * (zim) * (zim) * (zim)), (ip) = (4 * (zre) * (zre) * (zre) * (zim) - 4 * (zre) * (zim) * (zim) * (zim)));
+				((t) = (zre) * (rp) - (zim) * (ip), (zim) = ((zre) * (ip)) + ((zim) * (rp)));
+				zre = t + pre;
+				zim += pim;
+				rp = zre * zre;
+				ip = zim * zim;;
+				iter--;
+			}
+		}
+		;
+		iter = cfractalc.maxiter - iter;
+		if (iter >= (int) cfractalc.maxiter) {
+			return (cfractalc.incoloringmode ? incolor_output(zre, zim, pre, pim, iter) : cpalette.pixels[0]);
+		} else {
+			return (!cfractalc.coloringmode ? cpalette.pixels[(iter % (cpalette.size - 1)) + 1] : color_output(zre, zim, pre, pim, iter));
+		};
+	}
+	
+	static int mand6_calc( number_t zre,  number_t zim,  number_t pre,  number_t pim)
+	{
+		 int iter = cfractalc.maxiter;
+		 number_t rp, ip;
+		number_t t;;
+		;
+		if (0)
+			iter = 0;
+		else {
+			rp = zre * zre;
+			ip = zim * zim;
+			while ((iter) && (rp + ip < 4)) {
+				((rp) = ((zre) * (zre) * (zre) - 3 * (zre) * (zim) * (zim)), (ip) = (3 * (zre) * (zre) * (zim) - (zim) * (zim) * (zim)));
+				((t) = ((rp) * (rp) * (rp) - 3 * (rp) * (ip) * (ip)), (zim) = (3 * (rp) * (rp) * (ip) - (ip) * (ip) * (ip)));
+				zre = t + pre;
+				zim += pim;
+				rp = zre * zre;
+				ip = zim * zim;;
+				iter--;
+			}
+		}
+		;
+		iter = cfractalc.maxiter - iter;
+		if (iter >= (int) cfractalc.maxiter) {
+			return (cfractalc.incoloringmode ? incolor_output(zre, zim, pre, pim, iter) : cpalette.pixels[0]);
+		} else {
+			return (!cfractalc.coloringmode ? cpalette.pixels[(iter % (cpalette.size - 1)) + 1] : color_output(zre, zim, pre, pim, iter));
+		};
+	}
+*/
+	
+	function barnsley1_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		while (iter && rp+ip < 4) {
+			var t = (zre >= 0) ? zre-1 : zre+1;
+			zre = t*pre-zim*pim;
+			zim = t*pim+zim*pre;
+			rp = zre*zre;
+			ip = zim*zim;
+			iter--;
+		}
+		iter = maxiter - iter;
+		if (iter >= maxiter) {
+			return incolor ? incolor_output(zre, zim, pre, pim, iter) : 0;
+		} else {
+			return outcolor ? color_output(zre, zim, pre, pim, iter) : (iter % (palettesize - 1)) + 1;
+		}
+	}
+
+	function barnsley2_calc(zre, zim, pre, pim)
+	{
+		 var iter = maxiter;
+		 var rp, ip;
+		if (0)
+			iter = 0;
+		else {
+			rp = zre * zre;
+			ip = zim * zim;
+			while ((iter) && (rp + ip < 4)) {
+				;
+	
+				if (zre*pim + zim*pre >= 0) {
+					rp = zre - 1;
+				} else {
+					rp = zre + 1;
+				}
+				((zre) = (rp) * (pre) - (zim) * (pim), (zim) = ((rp) * (pim)) + ((zim) * (pre)));
+				rp = zre * zre;
+				ip = zim * zim;;
+				iter--;
+			}
+		}
+		;
+		iter = maxiter - iter;
+		if (iter >= maxiter) {
+			return (incolor ? incolor_output(zre, zim, pre, pim, iter) : 0);
+		} else {
+			return (!outcolor ? (iter % (palettesize - 1)) + 1 : color_output(zre, zim, pre, pim, iter));
+		};
+	}
+
+	function _barnsley1_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		while (iter && rp + ip < 4) {
+			if (zre >= 0)
+				zre = (zre-1)*pre-zim*pim;
+			else
+				zre = (zre+1)*pre-zim*pim;
+			zim = rp*pim+zim*pre;
+			rp = zre*zre;
+			ip = zim*zim;
+			iter--;
+		}
+		iter = maxiter - iter;
+		if (iter >= maxiter) {
+			return (incolor ? incolor_output(zre, zim, pre, pim, iter) : 0);
+		} else {
+			return (!outcolor ? (iter % (palettesize - 1)) + 1 : color_output(zre, zim, pre, pim, iter));
+		}
+	}
+
+/*
+	static int newton_calc( number_t zre,  number_t zim,  number_t pre,  number_t pim)
+	{
+		 int iter = cfractalc.maxiter;
+		 number_t rp, ip;
+		number_t n, sqrr, sqri, zre1, zim1;;
+		sqri = zim * zim, n = zre, zre = pre, pre = n, n = zim, zim = pim, pim = n, n = 1;;
+		if (0)
+			iter = 0;
+		else {
+			rp = zre * zre;
+			ip = zim * zim;
+			while ((iter) && (n > 1E-6)) {
+				;
+	
+				zre1 = zre;
+				zim1 = zim;
+				n = zim * zim;
+				sqri = zre * zre;
+				sqrr = sqri - n;
+				sqri = n + sqri;
+				n = 0.3333333333 / ((sqri * sqri));
+				zim = (0.66666666) * zim - (zre + zre) * zim * n + pim;
+				zre = (0.66666666) * zre + (sqrr) * n + pre;
+				zre1 -= zre;
+				zim1 -= zim;
+				n = zre1 * zre1 + zim1 * zim1;;
+				iter--;
+			}
+		}
+		;
+		iter = cfractalc.maxiter - iter;
+		if (iter >= (int) cfractalc.maxiter) {
+			return (cfractalc.incoloringmode ? incolor_output(zre, zim, pre, pim, iter) : cpalette.pixels[0]);
+		} else {
+			return (!cfractalc.coloringmode ? cpalette.pixels[(iter % (cpalette.size - 1)) + 1] : color_output(zre, zim, pre, pim, iter));
+		};
+	}
+	
+	static int phoenix_calc( number_t zre,  number_t zim,  number_t pre,  number_t pim)
+	{
+		 int iter = cfractalc.maxiter;
+		 number_t rp, ip;
+		number_t zpr, zip;;
+		zpr = zip = 0;;
+		if (0)
+			iter = 0;
+		else {
+			rp = zre * zre;
+			ip = zim * zim;
+			while ((iter) && (rp + ip < 4)) {
+				;
+	
+				rp = rp - ip + pre + pim * zpr;
+				ip = 2 * zre * zim + pim * zip;
+				zpr = zre, zip = zim;
+				zre = rp;
+				zim = ip;
+				rp = zre * zre, ip = zim * zim;;
+				iter--;
+			}
+		}
+		;
+		iter = cfractalc.maxiter - iter;
+		if (iter >= (int) cfractalc.maxiter) {
+			return (cfractalc.incoloringmode ? incolor_output(zre, zim, pre, pim, iter) : cpalette.pixels[0]);
+		} else {
+			return (!cfractalc.coloringmode ? cpalette.pixels[(iter % (cpalette.size - 1)) + 1] : color_output(zre, zim, pre, pim, iter));
+		};
+	}
+	
+	static int octo_calc( number_t zre,  number_t zim,  number_t pre,  number_t pim)
+	{
+		 int iter = cfractalc.maxiter;
+		number_t tr, ti, zpr, zpm, rp1, ip1;;
+		zpr = zpm = 0, tr = zre, zre = pre, pre = tr, tr = zim, zim = pim, pim = tr, tr = 1;;
+		if (0)
+			iter = 0;
+		else {
+			while ((iter) && (zpr * zpr + zpm * zpm < 4)) {
+				;
+	
+				rp1 = zre;
+				ip1 = zim;
+				((tr) = ((zre) * (zre) * (zre) - 3 * (zre) * (zim) * (zim)), (ti) = (3 * (zre) * (zre) * (zim) - (zim) * (zim) * (zim)));
+				((zre) = (tr) + (zpr), (zim) = (ti) + (zpm));
+				zpr = rp1 + pre;
+				zpm = ip1 + pim;;
+				iter--;
+			}
+		}
+		;
+		iter = cfractalc.maxiter - iter;
+		if (iter >= (int) cfractalc.maxiter) {
+			return (cfractalc.incoloringmode ? incolor_output(zre, zim, pre, pim, iter) : cpalette.pixels[0]);
+		} else {
+			return (!cfractalc.coloringmode ? cpalette.pixels[(iter % (cpalette.size - 1)) + 1] : color_output(zre, zim, pre, pim, iter));
+		};
+	}
+*/
+
+	_.calculate = function(x, y)
+	{
+		if (plane)
+		switch (plane) {
+		case 1: // 1/mu
+			var t = x*x+y*y;
+			if (t < 0.000001) {
+				x = INT_MAX;
+				y = INT_MAX;
+			} else {
+				x /= t;
+				y /= -t;
+			}
+			break;
+		case 2: // 1/(mu + 0.25)
+			var t = x*x+y*y;
+			if (t < 0.000001) {
+				x = INT_MAX;
+				y = INT_MAX;
+			} else {
+				x /= t;
+				y /= -t;
+			}
+			x += 0.25;
+			break;
+		case 3: // lambda
+			var tr = x*x-y*y;
+			var ti = x*y;
+			x = (x-tr/2)/2;
+			y = (y-ti)/2;
+			break;
+		case 4: // 1/lambda
+			var t = x*x+y*y;
+			x /= t;
+			y /= -t;
+			var tr = x*x-y*y;
+			var ti = x*y;
+			x = (x-tr/2)/2;
+			y = (y-ti)/2;
+			break;
+		case 5: // 1/(lambda-1)
+			var t = x*x+y*y;
+			x /= t;
+			y /= -t;
+			x += 1;
+			var tr = x*x-y*y;
+			var ti = x*y;
+			x = (x-tr/2)/2;
+			y = (y-ti)/2;
+			break;
+		case 6: // 1/(mu - 1.40115)
+			var t = x*x+y*y;
+			if (t < 0.000001) {
+				x = INT_MAX;
+				y = INT_MAX;
+			} else {
+				x /= t;
+				y /= -t;
+			}
+			x -= 1.40115;
+			break;
+		}
+
+		var iter = maxiter>>2;
+//formula=0;
+//incolor=0;
+		switch (formula) {
+		case 0: // mand^2
+			var zre=x, zim=y, pre=x, pim=y;
+			var rp = zre*zre, ip = zim*zim;
+			while (rp+ip < 4 && --iter > 0) {
+				var zre3 = rp -ip +pre; var rp3 = zre3*zre3; var zim3 = zim *zre *2+pim; var ip3 = zim3*zim3;
+				var zre2 = rp3-ip3+pre; var rp2 = zre2*zre2; var zim2 = zim3*zre3*2+pim; var ip2 = zim2*zim2;
+				var zre1 = rp2-ip2+pre; var rp1 = zre1*zre1; var zim1 = zim2*zre2*2+pim; var ip1 = zim1*zim1;
+				var zre  = rp1-ip1+pre; var rp  = zre *zre ; var zim  = zim1*zre1*2+pim; var ip  = zim *zim ;
+			} ;
+
+//		if (iter < 0) return incolor ? incolor_output(zre, zim, pre, pim, maxiter) : 0;
+
+		if (rp +ip  >= 4) { iter=maxiter-iter*4+0; return outcolor ? color_output(zre , zim , pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+		if (rp3+ip3 >= 4) { iter=maxiter-iter*4+1; return outcolor ? color_output(zre3, zim3, pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+		if (rp2+ip2 >= 4) { iter=maxiter-iter*4+2; return outcolor ? color_output(zre2, zim2, pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+		if (rp1+ip1 >= 4) { iter=maxiter-iter*4+3; return outcolor ? color_output(zre1, zim1, pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+		return incolor ? incolor_output(zre, zim, pre, pim, maxiter-iter*4) : 0;
+
+			break;
+		case 1: return mand3_calc	(x, y, x, y);
+		case 2: return mand4_calc	(x, y, x, y);
+		case 3: return mand5_calc	(x, y, x, y);
+		case 4: return mand6_calc	(x, y, x, y);
+		case 5: return octo_calc	(0, 0, x, y);
+		case 6: return newton_calc	(x, y, 1.0199502202048319698, 0);
+		case 7: // barnsley1
+			var zre=x, zim=y, pre=-0.6, pim=1.1;
+			var iter = maxiter>>0;
+			do {
+				var rp = zre*zre, ip = zim*zim;
+				var t = (zre >= 0) ? zre-1 : zre+1; var zre  = t*pre-zim*pim; var zim  = t*pim+zim*pre;
+			} while (--iter > 0 && rp+ip < 4);
+			break;
+
+			return barnsley1_calc(x, y, -0.6, 1.1);
+	
+			var t = (zre >= 0) ? zre-1 : zre+1;
+			zre = t*pre-zim*pim;
+			zim = t*pim+zim*pre;
+
+		 return barnsley1_calc(x, y, -0.6, 1.1);
+		case 8: return barnsley2_calc(x, y, -0.6, 1.1);
+		case 9: return phoenix_calc	(x, y, 0.56666667, -0.5);
+		case 10: return magnet1_calc	(0, 0, x, y);
+		case 11: return magnet2_calc(0, 0, x, y);
+		}
+
+		if (rp +ip  >= 4) { iter=maxiter-iter*4-4; return outcolor ? color_output(zre3, zim3, pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+		if (rp3+ip3 >= 4) { iter=maxiter-iter*4-3; return outcolor ? color_output(zre2, zim2, pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+		if (rp2+ip2 >= 4) { iter=maxiter-iter*4-2; return outcolor ? color_output(zre1, zim1, pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+		if (rp1+ip1 >= 4) { iter=maxiter-iter*4-1; return outcolor ? color_output(zre , zim , pre, pim, iter) : (iter % (palettesize - 1)) + 1; }
+		return incolor ? incolor_output(zre, zim, pre, pim, maxiter-iter*1) : 0;
+
+//		if (cfractalc.mandelbrot) {
+//			if (cformula.flags & STARTZERO)
+//				i = cfractalc.calculate (0, 0, x, y);
+//			else
+//				i = cfractalc.calculate (x, y, x, y);
+//		} else
+//			i = cfractalc.calculate (x, y, cfractalc.pre, cfractalc.pim);
+//		return (i);
+	}
+
+}
+
+function _FormulaEngine(formula,incolor,outcolor,plane,maxiter,palettesize)
+{
+	var _ = this;
+	var xpos, ypos, radius;
+//	var incoloring=0;
+//	var outcoloring=0;
+	var palettesize = paletteEngine.size;
+	
+	_.getinitialview = function(f) { f(xpos,ypos,range); };
+
+	var SMUL = 256;
+	var XMAX = (palettesize - 1) * SMUL;
+	var pmax = palettesize - 1;
+
+var incoloringmode = incolor;
+var outcoloringmode = outcolor;
+
+	_.get = function(fn) { fn(formula,incolor,outcolor,plane,maxiter,palettesize); }
+	
+function outcoloring (zre, zim, pre, pim, iter) {
+  var i;
+  iter <<= 8;
+  i = iter;
+
+  switch (outcoloringmode) {
+	case 1:			/* real */
+		i = Math.floor (iter + zre * SMUL);
+		break;
+	case 2:			/* imag */
+		i = Math.floor (iter + zim * SMUL);
+		break;
+	case 3:			/* real / imag */
+		i = Math.floor (iter + (zre / zim) * SMUL);
+		break;
+	case 4:			/* all of the above */
+		i = Math.floor (iter + (zre + zim + zre / zim) * SMUL);
+		break;
+	case 5:
+		if (zim > 0)
+			i = ((maxiter << 8) - iter);
+		break;
+	case 6:
+		if (Math.abs (zim) < 2.0 || Math.abs (zre) < 2.0)
+			i = ((maxiter << 8) - iter);
+		break;
+	case 7:
+		i = Math.floor (Math.sqrt (Math.log (zre * zre + zim * zim) / i) * 256 * 256);
+		break;
+	case 8:
+		i = Math.floor ((Math.atan2 (zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000);
+		break;
+	}
+
+	if (i < 0) {
+		i = (((palettesize - 1)) << 8) - ((-i) % (((palettesize - 1) << 8))) - 1;
+		if (i < 0) i = 0;
+	}
+	iter = i % ((palettesize - 1) << 8);
+    return (1 + (iter >> 8));
+}
+
+function incoloring (zre, zim, pre, pim, iter)
+{
+	iter = 160;
+	var i = iter;
+	switch (incoloringmode)
+	{
+	case 1:
+		i = Math.floor (((zre*zre+zim*zim) * (iter >> 1) * SMUL + SMUL));
+		break;
+	case 2:
+		i = Math.floor (((Math.atan2 (zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000));
+		break;
+	case 3:
+		i = Math.floor (100 + (zre / zim) * SMUL * 10);
+		break;
+	case 4:
+		i += Math.floor (Math.abs(Math.abs(pre) - Math.abs(zre)) * 256 * 64);
+		i += Math.floor (Math.abs(Math.abs(pim) - Math.abs(zim)) * 256 * 64);
+		break;
+	case 5:
+		if ((Math.floor ((zre * zre + zim * zim) * 10)) % 2)
+			i = Math.floor (Math.cos ((zre * zim - pre * pim)) * 256 * 256);
+		else
+			i = Math.floor (Math.sin ((zre * zim - pre * pim)) * 256 * 256);
+		break;
+	case 6:
+		i = Math.floor ((zre * zre + zim * zim) * Math.cos ((zre * zre)) * 256 * 256);
+		break;
+	case 7:
+		i = Math.floor (Math.sin ((zre * zre - zim * zim)) * 256 * 256);
+		break;
+	case 8:
+		i = Math.floor (Math.atan ((zre * zim * pre * pim)) * 256 * 64);
+		break;
+	case 9:
+		if ((Math.abs (Math.floor (zre * 40)) % 2) ^ (Math.abs (Math.floor (zim * 40)) % 2))
+			i = Math.floor (((Math.atan2 (zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000));
+		else
+			i = Math.floor (((Math.atan2 (zim, zre) / (Math.PI + Math.PI) + 0.75) * 20000));
+		break;
+	};
+
+	if (i < 0) {
+		i = (((palettesize - 1)) << 8) - ((-i) % (((palettesize - 1) << 8))) - 1;
+		if (i < 0) i = 0;
+	}
+	iter = i % ((palettesize - 1) << 8);
+    return (1 + (iter >> 8));
+}
+
+function _incoloring (zre, zim, pre, pim, iter)
+{
+	var i = iter;
+	switch (incoloringmode) {
+	case 1:
+      i = Math.floor((zre*zre+zim*zim)*maxiter*0.5);
+
+		if (i < 0)
+			return	(palettesize-1) - (-i)%(palettesize-1);
+		else
+			return i % (palettesize-1) + 1;
+      break;
+    case 2:	
+      	i = Math.floor(Math.atan2 (zre, zim) * 39.0625/Math.PI) + 60;
+
+		if (i < 0)
+			return	(palettesize-1) - (-i)%(palettesize-1);
+		else
+			return i % (palettesize-1) + 1;
+      break;
+    case 3:
+      i = Math.floor(0.39 + (zre / zim) * 10);
+
+		if (i < 0)
+			return	(palettesize-1) - (-i)%(palettesize-1);
+		else
+			return i % (palettesize-1) + 1;
+      break;
+//    case 4:
+//      i += (Math.abs(Math.abs(pre) - Math.abs(zre)) * 256 * 64);
+//      i += (Math.abs(Math.abs(pim) - Math.abs(zim)) * 256 * 64);
+//	  i = Math.floor(i);
+//      break;
+	case 5:
+		if ((Math.floor ((zre * zre + zim * zim) * 10)) % 2)
+			iter = Math.cos(zre * zim * pre * pim) * SMUL * SMUL;
+		else
+			iter = Math.sin(zre * zim * pre * pim) * SMUL * SMUL;
+		if (iter < 0) { iter = XMAX - (-iter % XMAX) - 1; if (iter < 0) iter = 0; } return (iter%XMAX)/SMUL+1;
+	  break;
+    case 6:
+		i = Math.floor ((zre * zre + zim * zim) * Math.cos (zre * zre) * 256 * 256);
+		break;
+	case 7:
+		i = Math.floor (Math.sin ((zre * zre - zim * zim)) * 256 * 256);
+		break;
+    case 8:
+		i = Math.floor (Math.atan ((zre * zim * pre * pim)) * 256 * 64);
+		break;
+    case 9:
+		if ((Math.abs (Math.floor (zre * 40)) % 2) ^ (Math.abs (Math.floor (zim * 40)) % 2))
+			i = Math.floor (((Math.atan2 (zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000));
+		else
+			i = Math.floor (((Math.atan2 (zim, zre) / (Math.PI + Math.PI) + 0.75) * 20000));
+		break;
+/*
+    default:
+      break;
+
+*/
+	};
+
+	if (i < 0) {
+		i =	((palettesize-1)<<8) - (-i)%((palettesize-1)<<8) - 1;
+		if (i < 0) i = 0;
+	}
+	iter = i % ((palettesize-1)<<8);
+
+    return 1 + (iter >> 8);
+}
+	
+	function outcoloring0(zre, zim, pre, pim, iter)
+	{
+		return iter%(paletteEngine.size-1)+1;
+	}
+
+	function incoloring0(zre, zim, pre, pim, iter)
+	{
+		return 0;
+	}
+	function incoloring1(zre, zim, pre, pim, iter)
+	{
+		iter = ((zre*zre+zim*zim) * maxiter)>>1;
+		return (iter%pmax)+1;
+	}
+	function incoloring2(zre, zim, pre, pim, iter)
+	{
+		iter = ((Math.atan2(zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000)>>8;
+		if (iter < 0) iter = pmax-(-iter%pmax)-1;
+		return (iter%pmax)+1;
+	}
+	function incoloring3(zre, zim, pre, pim, iter)
+	{
+		iter = (100 + (zre / zim) * SMUL * 10)>>8;
+		if (iter < 0) iter = pmax-(-iter%pmax)-1;
+		return (iter%pmax)+1;
+	}
+	function incoloring4(zre, zim, pre, pim, iter)
+	{
+		iter += Math.abs(Math.abs(pre) - Math.abs(zre)) * 16384;
+		iter += Math.abs(Math.abs(pim) - Math.abs(zim)) * 16384;
+		iter >>= 8;
+		return (iter%pmax)+1;
+	}
+	function incoloring5(zre, zim, pre, pim, iter)
+	{
+		// wrong
+		if ((    Math.floor ((zre * zre + zim * zim) * 10)    ) % 2)
+			iter = Math.floor(Math.cos(zre * zim * pre * pim) * SMUL * SMUL);
+		else
+			iter = Math.floor(Math.sin(zre * zim * pre * pim) * SMUL * SMUL);
+		if (iter < 0) { iter = XMAX - (-iter % XMAX) - 1; if (iter < 0) iter = 0; }
+		return (iter%XMAX)/SMUL+1;
+	}
+	function incoloring6(zre, zim, pre, pim, iter)
+	{
+		iter = (zre * zre + zim * zim) * Math.cos(zre * zre) * SMUL * SMUL;
+		iter >>= 8;
+		if (iter < 0) iter = pmax-(-iter%pmax)-1;
+		return (iter%pmax)+1;
+	}
+
+	function incoloring7(zre, zim, pre, pim, iter)
+	{
+		iter = sin(zre * zre - zim * zim) * SMUL * SMUL;
+		if (iter < 0) { iter = XMAX - (-iter % XMAX) - 1; if (iter < 0) iter = 0; } return (iter%XMAX)/SMUL+1;
+	}
+	function incoloring8(zre, zim, pre, pim, iter)
+	{
+		iter = atan(zre * zim * pre * pim) * SMUL * 64;
+		if (iter < 0) { iter = XMAX - (-iter % XMAX) - 1; if (iter < 0) iter = 0; } return (iter%XMAX)/SMUL+1;
+	}
+	function incoloring9(zre, zim, pre, pim, iter)
+	{
+		if ((abs((int) (zre * 40)) % 2) ^ (abs((int) (zim * 40)) % 2))
+			iter = ((atan2(zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000);
+		else
+			iter = ((atan2(zim, zre) / (Math.PI + Math.PI) + 0.75) * 20000);
+		if (iter < 0) { iter = XMAX - (-iter % XMAX) - 1; if (iter < 0) iter = 0; } return (iter%XMAX)/SMUL+1;
+	}
+
+	function mand_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter>>2;
+		var rp = zre*zre;
+		var ip = zim*zim;
+
+//	var zim = zre *zim *2+pim; var zre = rp -ip +pre; var rp = zre*zre;  var ip = zim*zim; 
+//	var zim = zre *zim *2+pim; var zre = rp -ip +pre; var rp = zre*zre;  var ip = zim*zim; 
+//	var zim = zre *zim *2+pim; var zre = rp -ip +pre; var rp = zre*zre;  var ip = zim*zim; 
+
+		do {
+			// z^2+p =
+			// zre = zre*zre - zim*zim + pre
+			// zim = zre*zim + zre*zim + pim
+			var zre3 = rp -ip +pre; var rp3 = zre3*zre3; var zim3 = zre *zim *2+pim; var ip3 = zim3*zim3; 
+			var zre2 = rp3-ip3+pre; var rp2 = zre2*zre2; var zim2 = zre3*zim3*2+pim; var ip2 = zim2*zim2; 
+			var zre1 = rp2-ip2+pre; var rp1 = zre1*zre1; var zim1 = zre2*zim2*2+pim; var ip1 = zim1*zim1; 
+			var zre  = rp1-ip1+pre; var rp  = zre *zre ; var zim  = zre1*zim1*2+pim; var ip  = zim *zim ; 
+		} while (--iter && rp+ip < 4);
+
+		iter = maxiter - (iter<<2);
+		if (rp3 + ip3 >= 4) return outcoloring ? outcoloring(zre3, zim3, pre, pim, iter-3) : (iter-3)%(palettesize-1)+1;
+		if (rp2 + ip2 >= 4) return outcoloring ? outcoloring(zre2, zim2, pre, pim, iter-2) : (iter-2)%(palettesize-1)+1;
+		if (rp1 + ip1 >= 4) return outcoloring ? outcoloring(zre1, zim1, pre, pim, iter-1) : (iter-1)%(palettesize-1)+1;
+		if (rp  + ip  >= 4) return outcoloring ? outcoloring(zre , zim , pre, pim, iter  ) : (iter  )%(palettesize-1)+1;
+		return incoloring ? incoloring(zre, zim, pre, pim, iter) : 0;
+	}
+
+	{
+		var zre=0,zim=0,pre=-0.11452626551883616,pim=-0.8610603374526613;
+		var iter = maxiter>>2;
+		var rp = zre*zre;
+		var ip = zim*zim;
+
+		do {
+			// z^2+p =
+			// zre = zre*zre - zim*zim + pre
+			// zim = zre*zim + zre*zim + pim
+			var zre3 = rp -ip +pre; var rp3 = zre3*zre3; var zim3 = zre *zim *2+pim; var ip3 = zim3*zim3; 
+			var zre2 = rp3-ip3+pre; var rp2 = zre2*zre2; var zim2 = zre3*zim3*2+pim; var ip2 = zim2*zim2; 
+			var zre1 = rp2-ip2+pre; var rp1 = zre1*zre1; var zim1 = zre2*zim2*2+pim; var ip1 = zim1*zim1; 
+			var zre  = rp1-ip1+pre; var rp  = zre *zre ; var zim  = zre1*zim1*2+pim; var ip  = zim *zim ; 
+		} while (--iter && rp+ip < 4);
+
+		iter = maxiter - (iter<<2);
+		if (rp3 + ip3 >= 4) return outcoloring ? outcoloring(zre3, zim3, pre, pim, iter-3) : (iter-3)%(paletteEngine.size-1)+1;
+		if (rp2 + ip2 >= 4) return outcoloring ? outcoloring(zre2, zim2, pre, pim, iter-2) : (iter-2)%(paletteEngine.size-1)+1;
+		if (rp1 + ip1 >= 4) return outcoloring ? outcoloring(zre1, zim1, pre, pim, iter-1) : (iter-1)%(paletteEngine.size-1)+1;
+		if (rp  + ip  >= 4) return outcoloring ? outcoloring(zre , zim , pre, pim, iter  ) : (iter  )%(paletteEngine.size-1)+1;
+//		window.alert(zre3+','+zim3+','+pre+','+pim+','+maxiter);
+	}
+
+	function mand3_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter>>2;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		do {
+			// z^3+p =
+			// zre = (rp-ip*3)*zre + pre
+			// zim = (rp*3-ip)*zim + pim
+			zre = (rp -ip *3)*zre+pre; var rp3 = zre*zre; zim = (rp *3-ip )*zim+pim; var ip3 = zim*zim; 
+			zre = (rp3-ip3*3)*zre+pre; var rp2 = zre*zre; zim = (rp3*3-ip3)*zim+pim; var ip2 = zim*zim; 
+			zre = (rp2-ip2*3)*zre+pre; var rp1 = zre*zre; zim = (rp2*3-ip2)*zim+pim; var ip1 = zim*zim; 
+			zre = (rp1-ip1*3)*zre+pre; var rp  = zre*zre; zim = (rp1*3-ip1)*zim+pim; var ip  = zim*zim; 
+		} while (--iter && rp+ip < 4);
+
+		iter = maxiter - (iter<<2);
+		if (rp3+ip3 >= 4) return iter-3;
+		if (rp2+ip2 >= 4) return iter-2;
+		if (rp1+ip1 >= 4) return iter-1; 
+		return iter;
+	}
+
+	function mand4_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter>>2;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		do {
+			// z^4+p =
+			// zre = rp*rp -rp*ip*6 +ip*ip +pre
+			// zim = (rp-ip)*zre*zim*4 +pim
+			// =
+			// zre = (rp-ip)*(rp-ip)-rp*ip*4 +pre
+			// zim = (rp-ip)*zre*zim*4 +pim
+			var t = rp -ip ; zim = t*zre*zim*4+pim; var ip3 = zim*zim; zre = t*t-rp *ip *4+pre; var rp3 = zre*zre; 
+			var t = rp3-ip3; zim = t*zre*zim*4+pim; var ip2 = zim*zim; zre = t*t-rp3*ip3*4+pre; var rp2 = zre*zre; 
+			var t = rp2-ip2; zim = t*zre*zim*4+pim; var ip1 = zim*zim; zre = t*t-rp2*ip2*4+pre; var rp1 = zre*zre; 
+			var t = rp1-ip1; zim = t*zre*zim*4+pim; var ip  = zim*zim; zre = t*t-rp1*ip1*4+pre; var rp  = zre*zre; 
+		} while (--iter && rp+ip < 4);
+
+		iter = maxiter - (iter<<2);
+		if (rp3+ip3 >= 4) return iter-3;
+		if (rp2+ip2 >= 4) return iter-2;
+		if (rp1+ip1 >= 4) return iter-1; 
+		return iter;
+	}
+
+	
+	function mand5_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter>>2;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		do {
+			// z^5+p =
+			// zre = (rp*rp -rp*ip*10 +ip*ip*5)*zre + pre
+			// zim = (rp*rp*5 -rp*ip*10 +ip*ip)*zim + pim
+			// =
+			// zre = ((rp-ip)*(rp-ip)*5 -rp*rp*4)*zre + pre
+			// zim = ((rp-ip)*(rp-ip)*5 -ip*ip*4)*zim + pim
+			var t1=rp -ip ,t2=t1*t1*5; zre = (t2-rp *rp *4)*zre+pre; var rp3 = zre*zre; zim = (t2-ip *ip *4)*zim+pim; var ip3 = zim*zim;  
+			var t1=rp3-ip3,t2=t1*t1*5; zre = (t2-rp3*rp3*4)*zre+pre; var rp2 = zre*zre; zim = (t2-ip3*ip3*4)*zim+pim; var ip2 = zim*zim;  
+			var t1=rp2-ip2,t2=t1*t1*5; zre = (t2-rp2*rp2*4)*zre+pre; var rp1 = zre*zre; zim = (t2-ip2*ip2*4)*zim+pim; var ip1 = zim*zim;  
+			var t1=rp1-ip1,t2=t1*t1*5; zre = (t2-rp1*rp1*4)*zre+pre; var rp  = zre*zre; zim = (t2-ip1*ip1*4)*zim+pim; var ip  = zim*zim;  
+		} while (--iter && rp+ip < 4);
+
+		iter = maxiter - (iter<<2);
+		if (rp3+ip3 >= 4) return iter-3;
+		if (rp2+ip2 >= 4) return iter-2;
+		if (rp1+ip1 >= 4) return iter-1; 
+		return iter;
+	}
+
+	function mand6_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter>>2;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		do {
+			// z^6+p =
+			// zre = rp*rp*rp -rp*rp*ip*15 +rp*ip*ip*15 -ip*ip*ip +pre
+			// zim = (rp*rp*6 -rp*ip*20 +ip*ip*6)*zre*zim  +pim
+			// =
+			// zre = (rp-ip)*(rp-ip)*(rp-ip) -(rp-ip)*rp*ip*12 +pre
+			// zim = ((rp-ip)*(rp-ip)*6-rp*ip*8)*zre*zim +pim
+			var t1=rp -ip ,t2=t1*t1,t3=rp *ip ; zim = (t2*6-t3*8)*zre*zim+pim; var ip3 = zim*zim; zre = (t3*-12+t2)*t1 +pre; var rp3 = zre*zre; 
+			var t1=rp3-ip3,t2=t1*t1,t3=rp3*ip3; zim = (t2*6-t3*8)*zre*zim+pim; var ip2 = zim*zim; zre = (t3*-12+t2)*t1 +pre; var rp2 = zre*zre; 
+			var t1=rp2-ip2,t2=t1*t1,t3=rp2*ip2; zim = (t2*6-t3*8)*zre*zim+pim; var ip1 = zim*zim; zre = (t3*-12+t2)*t1 +pre; var rp1 = zre*zre; 
+			var t1=rp1-ip1,t2=t1*t1,t3=rp1*ip1; zim = (t2*6-t3*8)*zre*zim+pim; var ip  = zim*zim; zre = (t3*-12+t2)*t1 +pre; var rp  = zre*zre; 
+		} while (--iter && rp+ip < 4);
+
+		iter = maxiter - (iter<<2);
+		if (rp3+ip3 >= 4) return iter-3;
+		if (rp2+ip2 >= 4) return iter-2;
+		if (rp1+ip1 >= 4) return iter-1; 
+		return iter;
+	}
+
+	function magnet1_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		do {
+			// ( (z*z+(p-1)) / (z*2+(p-2)) ) ^2
+			var t1re = rp-ip+pre-1;
+			var t1im = zre*zim*2+pim;
+
+			var t2re = zre*2+pre-2;
+			var t2im = zim*2+pim;
+
+			var t = t2re*t2re+t2im*t2im;
+			var t3re = (t1re*t2re+t1im*t2im)/t;
+			var t3im = (t1im*t2re-t1re*t2im)/t;
+
+			var zre = t3re*t3re-t3im*t3im;
+			var zim = t3re*t3im*2;
+			
+			var rp = zre*zre;
+			var ip = zim*zim;
+			var t = rp+ip;
+		} while (--iter && t < 100*100 && t > zre*2-0.99);
+
+		iter = maxiter - iter;
+		return iter;
+	}
+	
+	function magnet2_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		var c1re = (pre-1)*3;
+		var c1im = (pim-0)*3;
+		var c2re = (pre-1)*(pre-2)-pim*pim;
+		var c2im = (pre-1)*pim+(pre-2)*pim;
+		var c3re = (pre-2)*3;
+		var c3im = (pim-0)*3;
+		var c4re = (pre-1)*(pre-2)-pim*pim+1;
+		var c4im = (pre-1)*pim+(pre-2)*pim+0;
+		do {
+			// ( (z*z*z +z*(p-1)*3 +(p-1)*(p-2) ) / (z*z*3 +z*(p-2)*3 +(p-1)*(p-2)+1) ) ^2
+			// ( (z*z*z +z*c1 +c2 ) / (z*z*3 +z*c3 +c4) ) ^2
+
+			var t1re = (ip*-3+rp)*zre + (zre*c1re-zim*c1im) + c2re;
+			var t1im = (rp* 3-ip)*zim + (zre*c1im+zim*c1re) + c2im;
+
+			var t2re = (rp-ip    )*3  + (zre*c3re-zim*c3im) + c4re;
+			var t2im = (zre*zim*2)*3  + (zre*c3im+zim*c3re) + c4im;
+
+			var t = t2re*t2re+t2im*t2im;
+			var t3re = (t1re*t2re+t1im*t2im)/t;
+			var t3im = (t1im*t2re-t1re*t2im)/t;
+
+			zre = t3re*t3re-t3im*t3im;
+			zim = t3re*t3im*2;
+			
+			var rp = zre*zre;
+			var ip = zim*zim;
+
+		} while (--iter && rp+ip < 100*100 && rp+ip > zre*2-0.99);
+
+		iter = maxiter - iter;
+		return iter;
+	}
+	
+	function _barnsley1_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter>>2;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		do {
+			var t = (zre >=0)?zre-1:zre+1; zre = t*pre-zim*pim; var rp3 = zre*zre; zim = t*pim+zim*pre; var ip3 = zim*zim;
+			var t = (zre >=0)?zre-1:zre+1; zre = t*pre-zim*pim; var rp2 = zre*zre; zim = t*pim+zim*pre; var ip2 = zim*zim;
+			var t = (zre >=0)?zre-1:zre+1; zre = t*pre-zim*pim; var rp1 = zre*zre; zim = t*pim+zim*pre; var ip1 = zim*zim;
+			var t = (zre >=0)?zre-1:zre+1; zre = t*pre-zim*pim; var rp  = zre*zre; zim = t*pim+zim*pre; var ip  = zim*zim;
+		} while (--iter && rp+ip < 4);
+
+		iter = maxiter - (iter<<2);
+		if (rp3+ip3 >= 4) return iter-3;
+		if (rp2+ip2 >= 4) return iter-2;
+		if (rp1+ip1 >= 4) return iter-1; 
+		return iter;
+	}
+
+	function barnsley1_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter /*& (~(int) 3) */ ;
+		var rp = zre * zre;
+		var ip = zim * zim;
+		while ((iter) && (rp + ip < 4)) {
+			var szmag = rp + ip;
+			if (zre >= 0) {
+				rp = zre-1;
+				zre = rp*pre-zim*pim;
+				zim = rp*pim+zim*pre;
+			} else {
+				rp = zre+1;
+				zre = rp*pre-zim*pim;
+				zim = rp*pim+zim*pre;
+			}
+			rp = zre*zre;
+			ip = zim*zim;;
+			iter--;
+		}
+		if (iter) {
+			zre = rp + ip;
+//			zre += 0.000001;
+//			szmag += 0.000001;
+
+			iter = ((maxiter - iter) * 256 + Math.log(4/szmag) / Math.log(zre/szmag) * 256);
+
+			if (iter < 0)
+				iter = ((cpalette.size - 1) << 8) - ((-iter) % ((palettesize - 1) << 8)) - 1;
+			iter %= (palettesize - 1) << 8;
+			return 1 + (iter >> 8);
+		};
+	return (incolor ? incoloring(zre, zim, pre, pim, maxiter-iter) : 0);
+}
+	function newton_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter;
+		var rp, ip;
+		var n, sqrr, sqri, zre1, zim1;
+		sqri = zim * zim, n = zre, zre = pre, pre = n, n = zim, zim = pim, pim = n, n = 1;
+	
+		rp = zre * zre;
+		ip = zim * zim;
+		while (iter && (n > 1E-6)) {
+			zre1 = zre;
+			zim1 = zim;
+			n = zim * zim;
+			sqri = zre * zre;
+			sqrr = sqri - n;
+			sqri = n + sqri;
+			n = 0.3333333333 / ((sqri * sqri));
+			zim = 0.66666666 * zim - (zre + zre) * zim * n + pim;
+			zre = 0.66666666 * zre + (sqrr) * n + pre;
+			zre1 -= zre;
+			zim1 -= zim;
+			n = zre1 * zre1 + zim1 * zim1;
+			iter--;
+		}
+	
+		iter = maxiter - iter;
+			return iter % (paletteEngine.size-1) + 1;
+	//	if (iter >= uih->fcontext->maxiter) {
+	//		return (uih->fcontext->incoloringmode ? uih->fcontext->incoloring(zre, zim, pre, pim, iter) : 0);
+	//	} else {
+	//		return (uih->fcontext->outcoloringmode ? uih->fcontext->outcoloring(zre, zim, pre, pim, iter) : iter%(xpalette.size-1)+1);
+	//	}
+	}
+
+	function phoenix_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter>>2;
+		var rp = zre*zre;
+		var ip = zim*zim;
+		var zpr = 0;
+		var zpi = 0;
+		do {
+			// z[n+1] = z[n]*z[n]+pre+z[n-1]*pim
+			var zre3 = rp -ip +pre+zpr; var zim3 = zre *zim *2+zpi; zpr = zre *pim; zpi = zim *pim; rp3 = zre3*zre3; ip3 = zim3*zim3;
+			var zre2 = rp3-ip3+pre+zpr; var zim2 = zre3*zim3*2+zpi; zpr = zre3*pim; zpi = zim3*pim; rp2 = zre2*zre2; ip2 = zim2*zim2;
+			var zre1 = rp2-ip2+pre+zpr; var zim1 = zre2*zim2*2+zpi; zpr = zre2*pim; zpi = zim2*pim; rp1 = zre1*zre1; ip1 = zim1*zim1;
+			var zre  = rp1-ip1+pre+zpr; var zim  = zre1*zim1*2+zpi; zpr = zre1*pim; zpi = zim1*pim; rp  = zre *zre ; ip  = zim *zim ;
+		} while (--iter && rp+ip < 4);
+
+		iter = maxiter - (iter<<2);
+		if (rp3+ip3 >= 4) return iter-3;
+		if (rp2+ip2 >= 4) return iter-2;
+		if (rp1+ip1 >= 4) return iter-1; 
+		return iter;
+	}
+
+	function octo_calc(zre, zim, pre, pim)
+	{
+		var iter = maxiter>>2;
+		var zpr = 0;
+		var zpi = 0;
+
+		do {
+			var zpr3 = pre+zre;
+			var zpi3 = pim+zim;
+
+			var rp = pre*pre;
+			var ip = pim*pim;
+			var pre3 = (rp-3*ip)*pre+zpr;
+			var pim3 = (3*rp-ip)*pim+zpi;
+			var zpr2 = pre3+zre;
+			var zpi2 = pim3+zim;
+
+			var rp = pre3*pre3;
+			var ip = pim3*pim3;
+			var pre2 = (rp-3*ip)*pre3+zpr3;
+			var pim2 = (3*rp-ip)*pim3+zpi3;
+			var zpr1 = pre2+zre;
+			var zpi1 = pim2+zim;
+
+			var rp = pre2*pre2;
+			var ip = pim2*pim2;
+			var pre1 = (rp-3*ip)*pre2+zpr2;
+			var pim1 = (3*rp-ip)*pim2+zpi2;
+			var zpr = pre1+zre;
+			var zpi = pim1+zim;
+
+			var rp = pre1*pre1;
+			var ip = pim1*pim1;
+			var pre = (rp-3*ip)*pre1+zpr1;
+			var pim = (3*rp-ip)*pim1+zpi1;
+
+		} while (--iter && zpr*zpr + zpi*zpi < 4);
+
+		iter = maxiter - (iter<<2);
+		if (zpr3*zpr3 + zpi3*zpi3 >= 4) return iter-3;
+		if (zpr2*zpr2 + zpi2*zpi2 >= 4) return iter-2;
+		if (zpr1*zpr1 + zpi1*zpi1 >= 4) return iter-1; 
+		return iter;
+
+
+		var iter = maxiter;
+		var tr, ti, zpr, zpm, rp1, ip1;
+		zpr = zpm = 0, tr = zre, zre = pre, pre = tr, tr = zim, zim = pim, pim = tr, tr = 1;
+
+//1964,-1458566020
+//8036,772890544
+//7755,772890544
+//7900,772890544
+//6400,-1294220541
+//7909,-1294220541
+//6338,-1294220541
+//6364,-1294220541
+//6304,-1294220541
+
+		var rp = zre * zre;
+		var ip = zim * zim;
+		while (iter && (zpr * zpr + zpm * zpm < 4)) {
+
+			rp1 = zre;
+			ip1 = zim;
+			tr = (rp-3*ip)*zre;
+			ti = (3*rp-ip)*zim;
+			zre = tr + zpr;
+			zim = ti + zpm;
+			zpr = rp1 + pre;
+			zpm = ip1 + pim;
+			rp = zre * zre;
+			ip = zim * zim;
+
+			iter--;
+		}
+	
+		iter = maxiter - iter;
+			return iter % (paletteEngine.size-1) + 1;
+	//	if (iter >= uih->fcontext->maxiter) {
+	//		return (uih->fcontext->incoloringmode ? uih->fcontext->incoloring(zre, zim, pre, pim, iter) : 0);
+	//	} else {
+	//		return (uih->fcontext->outcoloringmode ? uih->fcontext->outcoloring(zre, zim, pre, pim, iter) : iter%(xpalette.size-1)+1);
+	//	}
+	}
+
+	var calc = mand_calc;
+	
+	_.setformula = function(nr)
+	{
+		switch (nr) {
+		case 0: calc = mand_calc;		xpos=-0.75; ypos=0.0; range=2.5; break;
+		case 1: calc = mand3_calc;		xpos=0.0; ypos=0.0; range=2.5; break;
+		case 2: calc = mand4_calc;		xpos=0.0; ypos=0.0; range=2.5; break;
+		case 3: calc = mand5_calc;		xpos=0.0; ypos=0.0; range=2.5; break;
+		case 4: calc = mand6_calc;		xpos=0.0; ypos=0.0; range=2.5; break;
+		case 5: calc = octo_calc;		xpos=0.0; ypos=0.0; range=2.5; break;
+		case 6: calc = newton_calc;		xpos=0.0; ypos=0.0; range=2.5; break;
+		case 7: calc = barnsley1_calc;	xpos=0.0; ypos=0.0; range=2.5; break;
+		case 8: calc = phoenix_calc;	xpos=0.0; ypos=0.0; range=2.5; break;
+		case 9: calc = magnet_calc;		xpos=1.5; ypos=0.0; range=3.0; break;
+		}
+	}
+	_.setformula(7);
+	
+	_.calculate = function(zre, zim)
+	{
+		var SMUL = 256;
+		var XMAX = ((paletteSize - 1) * SMUL);
+
+				var iter = Math.floor((Math.atan2(zre, zim) / (3.14159 + 3.14159) + 0.75) * 20000);
+				if (iter < 0) { 
+					iter = XMAX - (-iter % XMAX) - 1;
+					if (iter < 0)
+						iter = 0;
+				}
+
+				return Math.floor((iter%XMAX)/SMUL)+1;
+	}
+	_.calculate = function(zre, zim) {
+		switch (formula) {
+		case 0: return calc(zre, zim, zre, zim);
+		case 1: return calc(zre, zim, zre, zim);
+		case 2: return calc(zre, zim, zre, zim);
+		case 3: return calc(zre, zim, zre, zim);
+		case 4: return calc(zre, zim, zre, zim);
+		case 5: return calc(0, 0, zre, zim);
+		case 6: return calc(zre, zim, 1.0199502202048319698, 0);
+		case 7: return calc(zre, zim, -0.6, 1.1);
+		case 8: return calc(zre, zim, 0.56666667, -0.5);
+		case 9: return calc(0, 0, zre, zim);
+		}
+		return calc(zre, zim, zre, zim);
+
+//		if (iter >= uih->fcontext->maxiter) {
+//			return (uih->fcontext->incoloringmode ? uih->fcontext->incoloring(zre, zim, pre, pim, iter) : 0);
+//		} else {
+//			return (uih->fcontext->outcoloringmode ? uih->fcontext->outcoloring(zre, zim, pre, pim, iter) : iter%(xpalette.size-1)+1);
+//		}
+	}
+
+}
+var formulaEngine = new FormulaEngine(0,0,0,0,config.maxiter,paletteEngine.size);
+
+//----
+//----
+//----
+//----
+
+function NavEngine(viewwidth, viewheight)
+{
+	var _ = this;
+
+	var last = getTime();
+
+	// width/height based on viewport size
+	var width = Math.ceil(Math.sqrt(viewwidth*viewwidth+viewheight*viewheight));
+	width = Math.ceil(width/4)*4; // round up to next multiple of 4 to avoid rounding errors causing array out of bounds
+	var height = width; // rotation needs square area
+	
+	// mouse state
+	var mouseX=0, mouseY=0, mouseButtons=0;
+	var userX=0, userY=0, userButtons=0;
+	var pressed=false, oldx, oldy; // BUTTON2 state
+
+	var movement=true; // when set to true, do a full state calculation
+	var animation=2; // used for slowdown after button release
+	var step=0; // current speed
+	var quality=0; // image quality. range 0-1
+	var grain=0; // grain of resolution
+	
+	// autopilot
+	var autopilot=false;
+	var autopilotx=rrandom(width), autopiloty=rrandom(height), autopilotbuttons=0;
+	var autopilotquality=0; // number of defined lines. 
+	var ap_minsize=1000, ap_maxsize=0, ap_watchdog=0;
+	var ap_time=0;
+	var ap_waitforquality=0;
+	
+	// current coordinate and rotation angle
+	var xcenter, ycenter, radius, angle; // local copies of config. read-only. to change use setview()
+	var rsin, rcos;
+	var xradius, yradius;
+
+	// storage for zoom rulers
+	var savfrom = new Array(width);
+	var savpos = new Array(width);
+	var savreal = new Array(width);
+	var savweight = new Array(width);
+	var xreal = new Array(width);
+	var xpos = new Array(width);
+	var xfrom = new Array(width);
+	var xweight = new Array(width);
+	var yreal = new Array(height);
+	var ypos = new Array(height);
+	var yfrom = new Array(height);
+	var yweight = new Array(height);
+	var ztable = new Array(width+height);
+	var ztablepos = 0;
+	var ztablesize = 0;
+	
+	// storage for pixel values
+	var pixelbank0 = new Array(width*height);
+	var pixelbank1 = new Array(width*height);
+	var currbank = 0;
+
+	// interleaving
+	var lineweight = new Array(width);
+
+	for (var i=0; i<width; i++) xpos[i] = 0, xreal[i] = xweight[i] = undefined, xfrom[i] = -1;
+	for (var i=0; i<height; i++) ypos[i] = 0, yreal[i] = yweight[i] = undefined, yfrom[i] = -1;
+	for (var i=0; i<height*width; i++) pixelbank0[i] = pixelbank1[i] = 0;
+	for (var i=0; i<width; i++) savfrom[i] = savpos[i] = savreal[i] = savweight[i] = 0;
+
+	// populate lineweight[]
+	for (var i=width-1; i>=0; --i) {
+		xfrom[i]   = i;
+		xweight[i] = (1/(i+1) + 1/(width-i))*2;
+		lineweight[i] = 0;
+	}
+	for (var i=width; i>0; --i) {
+		var bestw = xweight[0];
+		var bestj = 0;
+		for (var j=i-1; j>0; --j) {
+			if (xweight[j] < bestw) {
+				bestw = xweight[j];
+				bestj = j;
+			}
+		}
+		var besti = xfrom[bestj];
+		lineweight[besti] = (i+1)/(width+2);
+		xfrom[bestj] = xfrom[i-1];
+		xweight[bestj] = xweight[i-1];
+		for (var j=i-1; j>0; --j)
+			xweight[j] += 1/Math.abs(besti-xfrom[j]);
+	}
+	
+	// sort function c
+	function compare(a, b) {
+		var i;
+		var wa = (a >= 0)? xweight[a] : yweight[-a-1];
+		var wb = (b >= 0)? xweight[b] : yweight[-b-1];
+
+		if (wa > wb) return -1;
+		if (wa < wb) return 1;
+		return 0;
+	}
+
+	_.getPixels = function() { return currbank ? pixelbank1 : pixelbank0; }
+	_.getPixelsWidth = function() { return width; }
+
+	_.get = function(ob)
+	{
+		ob.viewwidth = viewwidth;
+		ob.viewheight = viewheight;
+		ob.xcenter = xcenter;
+		ob.ycenter = ycenter;
+		ob.radius = radius;
+		ob.angle = angle;
+		return ob;
+	}
+	
+	_.redraw = function() {
+		for (var i=0; i<width ; i++) { xweight[i]=lineweight[i]; xreal[i] = xpos[i]+1e-9; }
+		for (var i=0; i<height; i++) { yweight[i]=lineweight[i]; yreal[i] = ypos[i]+1e-9; }
+
+		// recreate ztable
+		ztablepos = ztablesize = 0;
+		for (var i=0; i<width;  i++) ztable[ztablesize++] = i;
+		for (var j=0; j<height; j++) ztable[ztablesize++] = -j-1;
+		ztable.sort(compare);
+		quality = (width+height-ztablesize)/(width+height);
+	}
+
+	_.setview = function(x, y, r) {
+		config.xcenter = xcenter = x;
+		config.ycenter = ycenter = y;
+		config.radius = radius = r;
+		var t = Math.sqrt(viewwidth*viewwidth+viewheight*viewheight);
+		xradius = radius*viewwidth /t;
+		yradius = radius*viewheight/t;
+		movement = true;
+	}
+	_.setMouse = function(x,y,b)
+	{
+		userX = x;
+		userY = y;
+		userButtons = b;
+		if (b)
+			movement = true;
+	}
+	_.setangle = function(a) {
+		config.angle = angle = a;
+		config.sin = rsin = Math.sin(angle * Math.PI / 180);
+		config.cos = rcos = Math.cos(angle * Math.PI / 180);
+	}
+	_.setautopilot = function(n) {
+		if (n) {
+			autopilot = true;
+			movement = true;
+			ap_minsize=1000;
+			ap_maxsize=0;
+			ap_watchdog=0;
+			ap_time=0;
+			ap_waitforquality=0;
+		} else {
+			autopilot = false;
+			autopilotbuttons = 0;
+			mouseButtons = 0;
+		}
+	}
+
+	function mkrealloc(size, begin, end, xyreal, xypos, xyfrom, xyweight)
+	{
+		// save ruler
+		var savsize = 0;
+		for (var i=0; i<size; i++) {
+			if (xyreal[i] !== undefined && xypos[i] >= begin && xypos[i] <= end) {
+				savfrom[savsize] = i;
+				savreal[savsize] = xyreal[i];
+				savsize++;
+			}
+		}
+
+		// new ruler
+		for (var i=0; i<size; i++) {
+			xypos[i] = (end-begin)*i/size+begin;
+			xyreal[i] = xyweight[i] = undefined;
+			xyfrom[i] = -1;
+		}
+		
+		for (var i=0,j=0; i<savsize; i++) {
+			var i0 = savreal[i];
+
+			while (j > 0 && i0 < xypos[j-1])
+				j--;
+			while (j < size-1 && i0 > xypos[j+1])
+				j++;
+
+			if (j >= 0 && j < size) {
+				var w = Math.abs(i0-xypos[j]);
+				if (xyfrom[j] < 0 || w < xyweight[j]) {
+					if (xyfrom[j] < 0)
+						autopilotquality++;
+					xyfrom[j] = savfrom[i];
+					xyreal[j] = i0;
+					xyweight[j] = w;
+				}
+			}
+		}
+
+		// interleave scanlines within gaps
+		for (var i=width-1; i>=0; --i) {
+			if (xyweight[i] === undefined)
+				xyweight[i] = 1000 + lineweight[i];
+		}
+	}
+	
+	function copypixels()
+	{
+		var calculate = formulaEngine.calculate;
+		var pixels    = currbank ? pixelbank1 : pixelbank0;
+		var oldpixels = currbank ? pixelbank0 : pixelbank1;
+	
+		//copy top-left edge from oldpixels. contents doesn't really matter as they have high weight and resolved quickly
+		for (var i=0; i<width; i++)
+			pixels[0*width+i] = pixels[0*width+i]
+		for (var j=0; j<height; j++)
+			pixels[j*width+0] = pixels[j*width+0]
+
+		// high speed copy
+		var m = width;
+		for (var j=1; j<height; j++) {
+			m++;
+			if (yfrom[j] < 0) {
+				for (var i=1,n=m-width; i<width; i++)
+					pixels[m++] = pixels[n++];
+			} else {
+				var k=yfrom[j]*width;
+				for (var i=1,n=m-1; i<width; i++) {
+					if (xfrom[i] < 0) {
+						pixels[m++] = pixels[n++];
+					} else {
+						pixels[m++] = oldpixels[k+xfrom[i]];
+						n++;
+					}
+				}
+			}
+		}
+	}
+
+	function doztable(z, pixels)
+	{
+		var calculate = formulaEngine.calculate;
+	
+		if (z >= 0) {
+			var i=z;
+			var x = xpos[i];
+
+			var c = pixels[0*width+i];
+			for (var j=1; j<height; j++) {
+				if (yreal[j] !== undefined)
+					c = calculate(x, ypos[j]);
+				pixels[j*width+i] = c;
+			}
+			if (xreal[i] === undefined) autopilotquality++;
+			xreal[i] = x;
+			xfrom[i] = -1;
+			xweight[i] = 0;
+			for (i++; i<width && xreal[i]===undefined; i++) {
+				for (var j=0,m=j*width+i; j<height; j++,m+=width)  {
+					pixels[m] = pixels[m-1];
+				}
+			}
+		} else {
+			var j=-z-1;
+			var y = ypos[j];
+
+			var c = pixels[j*width+0];
+			for (var i=1; i<width; i++) {
+				if (xreal[i] !== undefined)
+					c = calculate(xpos[i], y);
+				pixels[j*width+i] = c;
+			}
+			if (yreal[j] === undefined) autopilotquality++;
+			yreal[j] = y;
+			yfrom[j] = -1;
+			yweight[j] = 0;
+			for (j++; j<height && yreal[j]===undefined; j++) {
+				for (var i=1,m=j*width+i,n=m-width; i<width; i++) {
+					pixels[m++] = pixels[n++];
+				}
+			}
+		}
+	}
+
+	_.doautopilot = function()
+	{
+		// Are we waiting for better quality?
+		if (!autopilotbuttons && autopilotquality/(width+height) < 0.2)
+			return false;
+
+		// Oscilating prevention
+		if (radius < ap_minsize) {
+			ap_minsize = radius;
+			ap_watchdog = 0;
+		}
+		if (radius > ap_maxsize) {
+			ap_minsize = radius;
+			ap_maxsize = radius;
+			ap_watchdog = 0;
+		}
+		$('flog').innerHTML = radius + ','+ap_minsize + ','+ap_maxsize + ','+ap_watchdog;
+fstat.innerHTML = ap_time;
+
+		if (ap_waitforquality) {
+			if (autopilotquality/(width+height) < ap_waitforquality) {
+				autopilotbuttons = 0;
+		fstat.innerHTML = 'wait';
+				return;
+			}
+			ap_waitforquality = 0;
+		}
+		if (autopilotquality/(width+height) < 0.2) {
+			autopilotbuttons = 0;
+			ap_waitforquality = 0.5;
+fstat.innerHTML = 'wait';
+			return;
+		}
+		
+		if (--ap_time >= 0)
+			return;
+		ap_time = rrandom(config.autopilotmaxtime);
+
+		if (grain >= config.maxgrainsize || ap_watchdog++ > config.autopilotwatchdog) {
+			navEngine.setview(-0.75, 0, 2.5);
+			navEngine.setangle(0);
+			autopilotbuttons = 0;
+			_.setautopilot(true);
+			return;
+		}
+
+		var lookradius = 2;
+		var pixels = currbank ? pixelbank1 : pixelbank0;
+		
+		var api = Math.floor(((autopilotx-xcenter)/radius+1)*width /2);
+		var apj = Math.floor(((autopiloty-ycenter)/radius+1)*height/2);
+		
+		var min = ((lookradius+1)*(lookradius+1)) >> 2;
+		var max = min*3;
+	
+		// look close
+		var border = 15+lookradius;	
+		if (api > border && apj > border && api < width-border && apj < height-border) {
+			for (var k=0; k<450; k++) {
+				var i0 = api + rrandom(2*lookradius) - lookradius;
+				var j0 = apj + rrandom(2*lookradius) - lookradius;
+				// convert to x/y
+				var x = (i0/width *2-1)*radius+xcenter;
+				var y = (j0/height*2-1)*radius+ycenter;
+				// convert to viewport coords
+				var i = ((x-xcenter)*rcos-(y-ycenter)*rsin+xradius)*viewwidth  /2/xradius;
+				var j = ((x-xcenter)*rsin+(y-ycenter)*rcos+yradius)*viewheight /2/yradius;
+				// must be visable
+				if (i < 0 || j < 0 || i >= viewwidth || j >= viewheight)
+					continue;
+		
+				var c = 0;
+				for (var j=j0-lookradius; j<=j0+lookradius; j++)
+					for (var i=i0-lookradius; i<=i0+lookradius; i++)
+						if (pixels[j*width+i] == 0)
+							c++;
+				if (c >= min && c <= max) {
+					autopilotx = x;
+					autopiloty = y;
+					autopilotbuttons = BUTTON1;
+fstat.innerHTML = 'zoom near';
+					return;
+				}
+			}
+		}
+
+		// look far
+		for (var k=0; k<1000; k++) {
+			var i0 = rrandom(width -2*lookradius) + lookradius;
+			var j0 = rrandom(height-2*lookradius) + lookradius;
+			// convert to x/y
+			var x = (i0/width *2-1)*radius+xcenter;
+			var y = (j0/height*2-1)*radius+ycenter;
+			// convert to viewport coords
+			var i = ((x-xcenter)*rcos-(y-ycenter)*rsin+xradius)*viewwidth  /2/xradius;
+			var j = ((x-xcenter)*rsin+(y-ycenter)*rcos+yradius)*viewheight /2/yradius;
+			// must be visable
+			if (i < 0 || j < 0 || i >= viewwidth || j >= viewheight)
+				continue;
+	
+			var c = 0;
+			for (var j=j0-lookradius; j<=j0+lookradius; j++)
+				for (var i=i0-lookradius; i<=i0+lookradius; i++)
+					if (pixels[j*width+i] == 0)
+						c++;
+			if (c >= min && c <= max) {
+				autopilotx = x;
+				autopiloty = y;
+				autopilotbuttons = BUTTON1;
+fstat.innerHTML = 'zoom far';
+				return;
+			}
+		}
+		
+		// not found
+		autopilotx = xcenter;
+		autopiloty = ycenter;
+		if (autopilotquality/(width+height) < 0.9) {
+			autopilotbuttons = 0;
+fstat.innerHTML = 'wait';
+		} else {
+			autopilotbuttons = BUTTON3;
+			ap_time = config.autopilotmaxtime>>1;
+fstat.innerHTML = 'unzoom';
+		}
+	}
+
+	var last = getTime();
+	
+	_.ontick = function(now, endtime)
+	{
+		if (userButtons) {
+			mouseX = userX;
+			mouseY = userY;
+			mouseButtons = userButtons;
+			ap_watchdog = 0; // prevent ap reset after button release
+		} else if (autopilot) {
+			_.doautopilot();
+			mouseX = ((autopilotx-xcenter)*rcos-(autopiloty-ycenter)*rsin+xradius)*viewwidth  /2/xradius;
+			mouseY = ((autopilotx-xcenter)*rsin+(autopiloty-ycenter)*rcos+yradius)*viewheight /2/yradius;
+			mouseButtons = autopilotbuttons;
+//autopilotx = -0.7632928157248872;
+//autopiloty =  0.0865456634689339;
+//mouseButtons = BUTTON1;
+		}
+
+		var mul = (now-last)/config.frametime;
+		last = now;
+
+		if (mouseButtons)
+			animation = 5;
+		else if (animation > 0)
+			--animation;
+		else
+			mul = animation = step = 0;
+		if (animation && step == 0)
+			step = 1e-5;
+		if (step) {
+			var x = mouseX * xradius*2 / viewwidth  - xradius;
+			var y = mouseY * yradius*2 / viewheight - yradius;
+			var t = x;
+			x = y*rsin+t*rcos+xcenter;
+			y = y*rcos-t*rsin+ycenter;
+	
+			var mmul = Math.pow(1-step, mul);
+			if (mmul >= 1 || grain < config.maxgrainsize)
+				_.setview((xcenter-x)*mmul+x, (ycenter-y)*mmul+y, radius*mmul);
+			movement = true;
+		}
+		
+		if (mouseButtons == BUTTON2) {
+			var x = mouseX * xradius*2 / viewwidth  - xradius;
+			var y = mouseY * yradius*2 / viewheight - yradius;
+			var t = x;
+			x = y*rsin+t*rcos+xcenter;
+			y = y*rcos-t*rsin+ycenter;
+
+			if (!pressed) {
+				oldx = x;
+				oldy = y;
+				pressed = true;
+			} else {
+				_.setview(xcenter-x+oldx, ycenter-y+oldy, radius);
+			}
+			movement = true;
+		} else {
+			pressed = false;
+		}
+
+		var zoomspeed = config.zoomspeed;
+		var maxspeed = zoomspeed*12;
+
+		if (mouseButtons == BUTTON1) {
+			step += zoomspeed * 2 * mul;
+			if (step > maxspeed)
+				step = maxspeed;
+			else if (step < -maxspeed)
+				step = -maxspeed;
+			movement = true;
+		} else if (mouseButtons == BUTTON3) {
+			step -= zoomspeed * 2 * mul;
+			if (step > maxspeed)
+				step = maxspeed;
+			else if (step < -maxspeed)
+				step = -maxspeed;
+			movement = true;
+		} else {
+			if (step > 0) {
+				if (step < zoomspeed * mul)
+					step = 0;
+				else
+					step -= zoomspeed * mul;
+				movement = true;
+			} else if (step < 0) {
+				if (step > -zoomspeed * mul)
+					step = 0;
+				else
+					step += zoomspeed * mul;
+				movement = true;
+			}
+		}
+
+		if (movement) {
+			// flip
+			currbank ^= 1;
+			
+			// create rulers
+			autopilotquality = 0;
+			mkrealloc(width,  xcenter-radius, xcenter+radius, xreal, xpos, xfrom, xweight);
+			mkrealloc(height, ycenter-radius, ycenter+radius, yreal, ypos, yfrom, yweight);
+
+			// create sorted table
+			ztablepos = ztablesize = 0;
+			for (var i=0; i<width;  i++) if (xreal[i] != undefined || xweight[i]!==0) ztable[ztablesize++] = i;
+			for (var j=0; j<height; j++) if (yreal[j] != undefined || yweight[j]!==0) ztable[ztablesize++] = -j-1;
+			// determine top/left  asap
+			if (xweight[0]>=1000) xweight[0]=2000;
+			if (yweight[0]>=1000) yweight[0]=2000;
+			ztable.sort(compare);
+			quality = (width+height-ztablesize)/(width+height);
+
+			// determine resolution grain
+			grain = 0;
+			for (var i=0; i<width; i++) {
+				for (var j=i+1; j<width && xpos[j]==xpos[i]; j++)
+					grain = Math.max(grain,j-i);
+				i=j-1;
+			}
+			for (var i=0; i<height; i++) {
+				for (var j=i+1; j<height && ypos[j]==ypos[i]; j++)
+					grain = Math.max(grain,j-i);
+				i=j-1;
+			}
+
+			copypixels();
+		}
+
+		changed |= movement;
+		movement = false;
+		mouseButtons = 0;
+	}
+
+	_.onquality = function(now, endtime)
+	{
+		var cnt = 0;
+		if (ztablepos<ztablesize) {
+			var pixels = _.getPixels();
+			while (ztablepos<ztablesize && getTime()<endtime) {
+				doztable(ztable[ztablepos++], pixels);
+				cnt++;
+			}
+
+			// ztablesize are the lowres lines, between ztablesize and width*height are highres
+			quality = (width+height-ztablesize+ztablepos)/(width+height);
+
+			$('qualtxt').innerHTML = (quality*100).toFixed()+'%'+(autopilotquality*100/(width+height)).toFixed()+'%';
+		}
+		return cnt;
+	}
+if(0){	
+	var crc_table = new Array(256);
+
+	for (var n= 0; n<256; n++) {
+		for (var c=n,k=0; k<8; k++)
+			c = (c&1) ? 0xedb88320 ^ ((c >> 1)&0x7fffffff) : ((c >> 1)&0x7fffffff);
+		crc_table[n] = c;
+	}
+
+	var c = formulaEngine.calculate;
+	var t1 = getTime();
+	var crc = 0xffffffff;
+	for (var j=0; j<1600; j++) {
+		var y = 2.5*j/800+( 0   -2.5);;
+		for (var i=0; i<1600; i++) {
+			var x = 2.5*i/800+(-0.75-2.5);
+			var v = c(x,y);
+			crc = crc_table[(crc ^ v) & 0xff] ^ ((crc >> 8)&0x00ffffff);
+		}
+	}
+	crc ^= 0xffffffff;
+	t1 = getTime()-t1;
+	window.alert(t1+','+crc+(crc==930691623?'':'!!!'));
+}
+
+_.tester = function(x,y)
+{
+			var x = x * xradius*2 / viewwidth  - xradius;
+			var y = y * yradius*2 / viewheight - yradius;
+			var t = x;
+			x = y*rsin+t*rcos+xcenter;
+			y = y*rcos-t*rsin+ycenter;
+
+//	$('ytxt').innerHTML = x+','+y+','+formulaEngine.calculate(x,y);
+}
+
+}
+
+//	var ws_cr = -0.1048346508938945, ws_rr = 4.6029509787048895e-9;
+//	var ws_ci =  0.9621412983557928, ws_ri = 4.602951242382858e-9;
+//	var ws_cr = -0.1048345899743876, ws_rr = 4.642120021713936e-14;
+//	var ws_ci =  0.9621412722015328, ws_ri = 4.474198789239381e-14;
+//	var ws_cr = -0.7632928157248872, ws_rr = 4.574562950665495e-11;
+//	var ws_ci =  0.08654566346893391, ws_ri = 8.175640719976230e-12;
+//	var ws_cr = -0.75, ws_rr = 2.5;
+//	var ws_ci = 0, ws_ri = 2.5;
+
+var navEngine = new NavEngine(config.viewwidth, config.viewheight);
+var t = formulaEngine.get({});
+navEngine.setview(t.initialx, t.initialy, t.initialradius);
+//navEngine.setview(-0.7632928157248872, 0.08654566346893391, 4.574562950665495e-11);
+navEngine.setangle(0);
+
+//----
+//----
+//----
+//----
+//----
+
+function UiEngine(mainimg)
+{
+	var _ = this;
+	var buttonstate = 0;
+	var keylisteners = new Array();
+
+	_.resizing = false; // true when resize gesture busy, effectively freezing calculations
+	
+	/*
+	 * Event handlers/translators
+	 */
+	 
+	function MouseHandler(hdlname,btncode) {
+		var __ = this;
+		__.grab = undefined;
+		__.onmouse = function(e) {
+			if (!e) e = window.event;
+			if (e.preventDefault) e.preventDefault();
+			var t = e.target ? e.target : e.srcElement;
+
+			// get xy of target
+			var x = e.clientX+window.pageXOffset;
+			var y = e.clientY+window.pageYOffset;
+			for (var t2=t; t2; t2=t2.offsetParent) { x -= t2.offsetLeft; y -= t2.offsetTop; }
+navEngine.tester(x,y);
+$('xtxt').innerHTML=t.id+','+x+','+y;
+
+			if (btncode)
+				btncode(e);
+			if (__.grab) {
+				if (!__.grab(t,x,y,buttonstate,e))
+					return false;
+			}
+			
+			while (t) {
+				if (t[hdlname])
+					if (!t[hdlname](t,x,y,buttonstate,e))
+						return false;
+				x += t.offsetLeft;
+				y += t.offsetTop;
+				t = t.parentNode;
+				if (0 && t) {
+					x += t.clientLeft;
+					y += t.clientTop;
+				}
+			}
+			return true;
+		}
+	}
+	
+	function WheelHandler(hdlname) {
+		var __ = this;
+		__.grab = undefined;
+		__.onwheel = function(e) {
+			if (!e) e = window.event;
+			if (e.preventDefault) e.preventDefault();
+			var t = e.target ? e.target : e.srcElement;
+			var d = e.wheelDelta ? e.wheelDelta / 120 : e.detail ? -e.detail / 3 : 0;
+			if (__.grab)
+				if (!__.grab(t,d,e))
+					return false;
+			while (t) {
+				if (t[hdlname])
+					if (!t[hdlname](t,d,e))
+						return false;
+				t = t.parentNode;
+			}
+
+			if (d > 0) {
+				_.zoomspeed.raise();
+				return false;
+			} else {
+				_.zoomspeed.lower();
+				return false;
+			}
+
+			return true;
+		}
+	}
+
+	function KeyHandler() {
+		var __ = this;
+		__.grab = undefined;
+		__.grabdecode = undefined;
+		var downkeys = new Boolean(256);
+		var repeatkey = undefined;
+		var repeattim = undefined;
+
+		function decodeKey(k, repeated) {
+			for (var i=0; i<keylisteners.length; i++) {
+				if (keylisteners[i].onkey)
+					if (!keylisteners[i].onkey(k, repeated))
+						return false;
+			}
+			return true;
+		}
+
+		__.ondown = function(e) {
+			if (!e) e = window.event;
+			if (e.keyCode < 0 || e.keyCode >= 256 || downkeys[e.keyCode]) return true;
+	
+			downkeys[e.keyCode] = true;
+			
+			if (__.grab) {
+				if (!__.grab(e.keyCode,e))
+					return false;
+			}
+
+			repeatkey = e.keyCode;
+			repeattim = getTime() + config.keyrepeatdelay;
+			return (__.grabdecode?__.grabdecode:decodeKey)(e.keyCode, false);
+		}
+		__.onup = function(e) {
+			if (!e) e = window.event;
+			if (e.keyCode < 0 || e.keyCode >= 256) return true;
+
+			downkeys[e.keyCode] = false;
+			repeatkey = repeattim = undefined;
+			
+			return true;
+		}
+		__.ontick = function(now, endtime) {
+			if (repeattim && now-repeattim >= 0) {
+				(__.grabdecode?__.grabdecode:decodeKey)(repeatkey, true);
+				repeattim = now + config.keyrepeatrate;
+			}
+		}
+	}
+	
+	_.keydown = new KeyHandler();
+	_.mouseover = new MouseHandler('onmouseoverEx');
+	_.mousemove = new MouseHandler('onmousemoveEx');
+	_.mousedown = new MouseHandler('onmousedownEx',function(e){buttonstate = 1<<e.button});
+	_.mouseup = new MouseHandler('onmouseupEx',function(e){buttonstate = 0});
+	_.wheel = new WheelHandler('onwheelEx');
+	
+	/*
+	 * Dropdown widget
+	 */
+	function Dropdown(box, initpos, names, opts) {
+		var __ = this;
+		var pos = 0;
+		var lbl = document.createElement('span');
+		var btn = document.createElement('img');
+
+		lbl.className = "dropdowntext";
+		box.appendChild(lbl);
+		btn.className = "dropdownmark";
+		btn.src = "data:image/gif;base64,R0lGODlhEAASAKIAAP///9TQyICAgEBAQAAAAAAAAAAAAAAAACH5BAAHAP8ALAAAAAAQABIAAAM4GLrcEyDKKcUDLQcLdeOYt4DieJUKGRBsS5id4r5wKLPfydCMWvoioEeoIWY4gqRyuRw4n9CoMwEAOw==";
+		box.appendChild(btn);
+
+		if (opts.key)
+			keylisteners.push(__);
+
+		__.get = function() { return pos; }
+		__.set = function(n) {
+			if (n < 0) n = 0;
+			if (n >= names.length) n = names.length-1;
+			pos = n;
+			lbl.innerHTML = names[n];
+			if (opts.set)
+				opts.set(n);
+		};
+
+		box.onwheelEx = function(t,d,e) { __.set(pos-d); return false; };
+		box.onmousedownEx = function(t,x,y,b,e) {
+			var list = document.createElement('div');
+			list.className = "dropdownlist";
+
+			var lines = new Array(names.length);
+
+			var savset = __.set;
+			__.set = function(n) {
+				savset(n);
+				highlight(pos);
+			}
+			
+			var close = function() {
+				box.parentNode.removeChild(list);
+				_.mousedown.grab = undefined;
+				_.keydown.grabdecode = undefined;
+				__.set = savset;
+			}
+
+			function findPos(t) {
+				for (var i=0; i<names.length; i++)
+					if (lines[i] == t)
+						return i;
+				return -1;
+			}
+
+			function highlight(n) {
+				for (var i=0; i<names.length; i++) {
+					if (i==n)
+						lines[i].className = "dropdownhighlight";
+					else if (lines[i].className != "dropdownline")
+						lines[i].className = "dropdownline";
+				}
+			}
+
+			for (var i=0; i<names.length; i++) {
+				lines[i] = document.createElement('div');
+				lines[i].className = (i==pos) ? "dropdownhighlight" : "dropdownline";
+				lines[i].appendChild(document.createTextNode(names[i]));
+				lines[i].onmouseupEx = function(t,x,y,b,e){ __.set(findPos(t)); close(); return false; };
+				lines[i].onmouseoverEx = function(t,x,y,b,e){ highlight(findPos(t)); return false; };
+				list.appendChild(lines[i]);
+			}
+			box.parentNode.appendChild(list);
+
+			list.onwheelEx = function(t,d,e) { __.set(pos-d); return false; };
+			_.mousedown.grab = function(t,x,y,b,e) {
+				while(t) { 
+					if (t==list)
+						return false;
+					else if (t==box)
+						break;
+					t=t.parentNode;
+				}
+				close();
+				return t!=box;
+			}
+			_.keydown.grabdecode = function(k) {
+				if (k == opts.key) {
+					close();
+					return false;
+				}
+				switch (k) {
+					case ENTER: __.set(pos); close(); return false;
+					case ESC: close(); return false;
+					case HOME: case PAGEUP: __.set(0); return false;
+					case END: case PAGEDN: __.set(names.length-1); return false;
+					case LEFT: case UP: __.set(pos-1); return true;
+					case RIGHT: case DOWN: __.set(pos+1); return true;
+					default: return false;
+				}
+			}
+
+		};
+		
+		__.onkey = function(k,repeated) {
+			if (opts.key && k==opts.key) {
+				box.onmousedownEx();
+				return false;
+			}
+			return true;
+		};
+
+		__.set(initpos);
+	};
+
+	_.formula = new Dropdown($('formula'), config.formula, [
+		"mandlebrot",
+		"mandlebrot^3",
+		"mandlebrot^4",
+		"mandlebrot^5",
+		"mandlebrot^6",
+		"octal",
+		"newton",
+		"barnsley1",
+		"barnsley2",
+		"phoenix",
+		"magnet1",
+		"magnet2"
+	], {
+		key: 70,
+		set: function(n) {
+			var t = formulaEngine.get(paletteEngine.get(navEngine.get({})));
+
+			config.formula = n;
+			config.angle = 0;
+			formulaEngine = new FormulaEngine(config.formula,config.incolor,config.outcolor,config.plane,config.maxiter,config.maxcolor);
+			navEngine = new NavEngine(config.viewwidth, config.viewheight);
+			navEngine.setview(t.initialx, t.initialy, t.initialradius);
+			navEngine.setangle(0);
+		},
+	});
+
+	_.incoloring = new Dropdown($('incoloring'), config.incoloring, [
+		"maxiter",
+		"zmag",
+		"decomposition-like",
+		"real/imag",
+		"abs(abs(c)-abs(r))",
+		"cos(mag)",
+		"mag*cos(real^2)",
+		"sin(real^2-imag^2)",
+		"atan(real*imag*creal*cimag)",
+		"squares"
+	], {
+		key: 73,
+		set: function(n) {
+			config.incoloring = n;
+			formulaEngine = new FormulaEngine(config.formula,config.incolor,config.outcolor,config.plane,config.maxiter,config.maxcolor);
+			navEngine.redraw();
+		},
+	});
+
+	_.outcoloring = new Dropdown($('outcoloring'), config.outcoloring, [
+		"iter",
+		"iter+real",
+		"iter+imag",
+		"iter+real/imag",
+		"iter+real+imag+real/imag",
+		"binary decomposition",
+		"biomorphs",
+		"potential",
+		"color decomposition"
+	], {
+		key: 79,
+		set: function(n) {
+			config.outcoloring = n;
+			formulaEngine = new FormulaEngine(config.formula,config.incolor,config.outcolor,config.plane,config.maxiter,config.maxcolor);
+			navEngine.redraw();
+		},
+	});
+
+	_.plane = new Dropdown($('plane'), config.plane, [
+		"mu",
+		"1/mu",
+		"1/(mu+0.25)",
+		"lambda",
+		"1/lambda",
+		"1/(lambda-1)",
+		"1/(mu-1.40115)"
+	], {
+		key: 80,
+		set: function(n) {
+			config.plane = n;
+			formulaEngine = new FormulaEngine(config.formula,config.incolor,config.outcolor,config.plane,config.maxiter,config.maxcolor);
+			navEngine = new NavEngine(config.viewwidth, config.viewheight);
+			navEngine.setview(config.xcenter, config.ycenter, config.radius);
+			navEngine.setangle(config.angle);
+		},
+	});
+	
+	/*
+	 * Slider widget
+	 */
+
+	function Slider(slider,initpos,min,max,opts)
+	{
+		var __ = this;
+		var pit = document.createElement('div');
+		var gem = document.createElement('div');
+
+		pit.className = "sliderpit";
+		gem.appendChild(pit);
+		gem.className = "slidergem";
+		slider.appendChild(gem);
+
+		var pos = 0;
+		var step = 1;
+		var sliderW = slider.clientWidth;
+		var gemW = gem.clientWidth;
+
+		if (opts.keyup || opts.keydown)
+			keylisteners.push(this);
+
+		var posToX = function(p) {
+			return Math.round( (p-min) * (sliderW-gemW) / (max-min) );
+		};
+		var xToPos = function(x) {
+			return Math.round( (x-(gemW>>1)) * (max-min) / (sliderW-gemW) + min );
+		};
+		
+		__.get = function() { return pos; }
+		__.set = function(n) {
+			if (n < min) n = min;
+			if (n > max) n = max;
+			pos = n;
+			gem.style.left = posToX(pos)+'px';
+			if (opts.set) return opts.set(pos);
+			txt.innerHTML = pos;
+		};
+
+		__.raise = function() {	__.set(pos+step); }
+		__.lower = function() { __.set(pos-step); }
+
+		__.onkey = function(k,repeated) {
+			if (opts.keyup && k==opts.keyup) {
+				__.raise();
+				return false;
+			}
+			if (opts.keydown && k==opts.keydown) {
+				__.lower();
+				return false;
+			}
+			return true;
+		};
+
+		slider.onwheelEx = function(t,d,e) { __.set(pos+d); return false; };
+		slider.onmousedownEx = function(t,x,y,b,e) {
+			// difference between screen X and start of slider
+			var isDown = ( x-(gemW>>1)+slider.clientLeft) - e.clientX;
+			__.set(xToPos(e.clientX + isDown));
+
+			_.mousemove.grab = function(t,x,y,b,e) { __.set(xToPos(e.clientX + isDown)); return false; };
+			_.mouseup.grab = function(t,x,y,b,e) { _.mousemove.grab = _.mouseup.grab = undefined; return true; };	
+			return true;
+		};
+		
+		__.set(initpos);
+	}
+
+	_.zoomspeed = new Slider($('zoomspeed'),Math.round(Math.log(config.zoomspeed*10000)/Math.log(10)*100),0,230,{
+		keyup: UP,
+		keydown: DOWN,
+		set: function(n) {
+			var v = Math.round(Math.exp(Math.log(10)*n/100));
+			$('speedtxt').innerHTML = v;
+			config.zoomspeed = 0.0001*v;
+		},
+	});
+	_.rotatespeed = new Slider($('rotatespeed'),config.rotatespeed,-100,+100,{
+		keyup: RIGHT,
+		keydown: LEFT,
+		set: function(n) {
+			config.rotatespeed = n/100;
+			$('rotatetxt').innerHTML = n;
+		},
+	});
+	_.cyclingspeed = new Slider($('cyclingspeed'),config.cyclingspeed,-100,+100,{
+		keyup: PAGEUP,
+		keydown: PAGEDN,
+		set: function(n) {
+			config.cyclingspeed = n/100;
+			$('cyclingtxt').innerHTML = n;
+		},
+	});
+	_.maxiter = new Slider($('maxiter'),Math.round(Math.log(config.maxiter)/Math.log(10)*100),170,330,{
+		set: function(n) {
+			config.maxiter = Math.round(Math.exp(Math.log(10)*n/100)/4)*4; // must be multiple of 4
+			var t = formulaEngine.get(paletteEngine.get({}));
+			formulaEngine = new FormulaEngine(t.formula,t.incolor,t.outcolor,t.plane,config.maxiter,t.palettesize);
+			navEngine.redraw();
+			$('maxitertxt').innerHTML = config.maxiter;
+		},
+	});
+	_.fps = new Slider($('fps'),Math.round(1000/config.frametime),4,20,{
+		set: function(n) {
+			config.frametime = Math.round(1000/n);
+			$('fpstxt').innerHTML = n;
+		},
+	});
+
+	/*
+	 * Button widget
+	 */
+
+	function Button(btn,opts)
+	{
+		var __ = this;
+		var state = undefined;
+
+		var led = document.createElement('div');
+		led.className = "buttonled";
+		btn.appendChild(led);
+
+		if (opts.key)
+			keylisteners.push(__);
+
+		__.get = function() { return state; };
+		__.set = function(n) {
+			state = n;
+			led.className = (n) ? "buttonled buttonon" : "buttonled";
+			if (opts.set) opts.set(n);
+		};
+
+		__.onkey = function(k,repeated) {
+			if (k!=opts.key)
+				return true;
+
+			__.set(opts.toggle?!state:true);
+			return false;
+		};
+		
+		btn.onmousedownEx = function(t,x,y,b,e) {
+			btn.className = "button buttondown";
+			__.set(opts.toggle?!state:true);
+			
+			_.mousemove.grab = function(t,x,y,b,e) { if (t!=btn) btn.className = "button"; return (t!=btn); };
+			_.mouseup.grab = function(t,x,y,b,e) { _.mousemove.grab = _.mouseup.grab = undefined; btn.className = "button"; return true; };	
+			return true;
+		};
+	}
+	
+	_.autopilot = new Button($('autopilot'),{
+		key: 65,
+		toggle: true,
+		set: function(n) {
+			config.autopilot = n;
+			navEngine.setautopilot(n);
+		},
+	});
+	_.randompalette = new Button($('randompalette'),{
+		key: 82,
+		set: function(n) {
+			if (n) {
+				paletteEngine.mkrandom();
+				_.defaultpalette.set(!n);
+				changed = true;
+			}
+		},
+	});
+	_.defaultpalette = new Button($('defaultpalette'),{
+		key: 68,
+		set: function(n) {
+			if (n) {
+				paletteEngine.mkdefault();
+				_.randompalette.set(!n);
+				changed = true;
+			}
+		},
+	});
+	_.power = new Button($('power'),{
+		key: 0,
+		toggle: true,
+		set: function(n) { if (n) tid = window.setTimeout(mainloop, 1); else clearTimeout(tid); },
+	});
+
+	/*
+	 * Main image hooks
+	 */
+
+	mainimg.onmousemoveEx = function(t,x,y,b,e) {
+		if (x >= config.viewwidth-18 && y >= config.viewheight-18)
+			return true; // propagate resizer
+		navEngine.setMouse(x,y,b);
+		return false;
+	};
+	mainimg.onmousedownEx = function(t,x,y,b,e) {
+		if (x+y > config.viewwidth+config.viewheight-18) {
+			if (b == BUTTON1) {
+				var oldx = e.clientX+window.pageXOffset;
+				var oldy = e.clientY+window.pageYOffset;
+				var oldw = mainimg.width;
+				var oldh = mainimg.height;
+				_.resizing = true;
+		
+				_.mousemove.grab = function(t,x,y,b,e) {
+					mainimg.width  = Math.max(18,oldw+e.clientX+window.pageXOffset-oldx);
+					mainimg.height = Math.max(18,oldh+e.clientY+window.pageYOffset-oldy);
+					return false;
+				};
+				_.mouseup.grab = function(t,x,y,b,e) { 
+					_.mousemove.grab = _.mouseup.grab = undefined;
+
+					mainimg.width  = config.viewwidth = Math.max(18,oldw+e.clientX+window.pageXOffset-oldx);
+					mainimg.height = config.viewheight = Math.max(18,oldh+e.clientY+window.pageYOffset-oldy);
+
+					navEngine = new NavEngine(config.viewwidth, config.viewheight);
+					navEngine.setview(config.xcenter, config.ycenter, config.radius);
+					navEngine.setangle(config.angle);
+					gifEngine = new GifEngine(config.viewwidth, config.viewheight, config.bpp);
+
+					_.resizing = false;
+					return true;
+				};	
+				return false;
+			}
+			return true; // propgate resizer
+		}
+		
+		navEngine.setMouse(x,y,b);
+		return false;
+	};
+	mainimg.onmouseupEx = function(t,x,y,b,e) {
+		navEngine.setMouse(x,y,b);
+		return false;
+	};
+	mainimg.oncontextmenu = function(e) {
+		if (!e) e = window.event;
+		var t = e.target ? e.target : e.srcElement;
+		var x = e.clientX+window.pageXOffset;
+		var y = e.clientY+window.pageYOffset;
+		while (t) { x -= t.offsetLeft; y -= t.offsetTop; t=t.offsetParent; }
+		return x+y > config.viewwidth+config.viewheight-18;
+	}
+
+	_.ontick = function(now, endtime) {
+		_.keydown.ontick(now, endtime);
+	}
+	
+	document.onkeydown = _.keydown.ondown;
+	document.onkeyup = _.keydown.onup;
+	document.onmouseover = _.mouseover.onmouse;
+	document.onmousemove = _.mousemove.onmouse;
+	document.onmousedown = _.mousedown.onmouse;
+	document.onmouseup = _.mouseup.onmouse;
+	if (window.onmousewheel)
+		window.onmousewheel = _.wheel.onwheel;
+	else
+		document.onmousewheel = _.wheel.onwheel;
+
+	if (document.addEventListener)
+		document.addEventListener('DOMMouseScroll', _.wheel.onwheel, false);
+}
+
+var mainimg = $('mainimg');
+var uiEngine = new UiEngine(mainimg);
+
+	var now = getTime(), last=now, reftime=now;
+	var statsS = [ 1,1,1,1,1 ];
+	var statsU = [ 1,1,1,1,1 ];
+	var stats1 = [ 1,1,1,1,1 ];
+	var stats2 = [ 1,1,1,1,1 ];
+	var stats3 = [ 1,1,1,1,1 ];
+	var stats4 = [ 1,1,1,1,1 ];
+	var stats5 = [ 1,1,1,1,1 ];
+	var spos0=0,spos1=0,spos2=0,spos3=0,spos4=0,spos5=0;
+	var state = 1;
+	var changed = true;
+
+	// make sure image matches config value
+	mainimg.width = config.viewwidth;
+	mainimg.height = config.viewheight;
+	
+	var mainloop = function() {
+			last = now;
+			now = getTime();
+			if (reftime+2000 < now)
+				reftime = now; // hibernated too long
+
+			if (uiEngine.resizing) {
+				reftime += config.frametime;
+				tid = window.setTimeout(mainloop, Math.max(reftime-now,1));
+				return;
+			}
+			
+			var timeslice = config.frametime;
+			timeslice -= 2;// give system a bit of breating space
+			var sysload = Math.max(now-reftime, 0);
+			var endtime = reftime + timeslice; 
+			var usrload = now;
+			
+			var avg1 = (stats1[0]+stats1[1]+stats1[2]+stats1[3]+stats1[4]) / 5;
+			var avg2 = (stats2[0]+stats2[1]+stats2[2]+stats2[3]+stats2[4]) / 5;
+			var avg3 = (stats3[0]+stats3[1]+stats3[2]+stats3[3]+stats3[4]) / 5;
+			var avg4 = (stats4[0]+stats4[1]+stats4[2]+stats4[3]+stats4[4]) / 5;
+			var m = timeslice-sysload;
+			avg1 = Math.min(avg1,m);
+			avg2 = Math.min(avg2,m);
+			avg3 = Math.min(avg3,m);
+			avg4 = Math.min(avg4,m);
+var stxt = avg1.toFixed()+' '+avg2.toFixed()+' '+avg3.toFixed()+' '+avg4.toFixed();
+
+			// timer dependent updates
+			uiEngine.ontick(now, endtime);
+			if (config.cyclingspeed) {
+				config.cycle += (now-last) * config.cyclinginc * config.cyclingspeed;
+				changed = true;
+			}
+			if (config.rotatespeed) {
+				navEngine.setangle(config.angle + (now-last) * config.rotateinc * config.rotatespeed);
+				changed = true;
+			}
+
+			switch (state) {
+			case 1: // create image
+				if (now+avg1 > endtime) break;
+stxt = stxt + '|'+(endtime-now);
+					
+				if (changed) {
+stxt = stxt + 'C';
+					gifEngine.encode(paletteEngine.red, paletteEngine.green, paletteEngine.blue,navEngine.getPixels(),navEngine.getPixelsWidth());
+
+					var t = getTime();
+					stats1[spos1] = t-now;
+					spos1 = (spos1+1)%5;
+					now = t;
+				}
+				state = 2;
+				// fall through
+			case 2: // create base64
+				if (now+avg2 > endtime) break;
+stxt = stxt + '|'+(endtime-now);
+
+				if (changed) {
+stxt = stxt + 'C';
+					var str = gifEngine.base64();
+					mainimg.src = str;
+					changed = false;
+
+					var t = getTime();
+					stats2[spos2] = t-now;
+					spos2 = (spos2+1)%5;
+					now = t;
+				}
+				state = 3;
+				// fall through
+			case 3: // zoom
+				if (now+avg3 > endtime) break;
+stxt = stxt + '|'+(endtime-now);
+
+				// autopilot
+				navEngine.ontick(now, endtime);
+
+				var t = getTime();
+				stats3[spos3] = t-now;
+				spos3 = (spos3+1)%5;
+				now = t;
+				state = 4;
+				// fall through
+			case 4: // enhance quality	
+				state = 1; // preempt will reset state
+stxt = stxt + '|'+(endtime-now);
+
+				// lower endtime with duration of (slow) lines
+				var cnt = navEngine.onquality(now, endtime-avg4);
+				if (cnt > 0) {
+stxt = stxt + 'C';
+					changed = true;
+
+					var t = getTime();
+					var toolate = Math.max(t-endtime,0);
+					stats4[spos4] = (t-now)/cnt + toolate;
+					spos4 = (spos4+1)%5;
+					now = t;
+				}
+			}
+stxt = stxt + '|'+(endtime-now);
+
+			usrload = now - usrload;
+			statsS[spos0] = sysload;
+			statsU[spos0] = usrload;
+			spos0 = (spos0+1)%5;
+			var avgS = (statsS[0]+statsS[1]+statsS[2]+statsS[3]+statsS[4]) / 5;
+			var avgU = (statsU[0]+statsU[1]+statsU[2]+statsU[3]+statsU[4]) / 5;
+
+			$('loadtxt').innerHTML = ((avgS+avgU)*100/config.frametime).toFixed()+'% (sys:'+avgS.toFixed()+'mSec+usr:'+avgU.toFixed()+'mSec) ['+stxt+']';
+			
+			reftime += config.frametime;
+			tid = window.setTimeout(mainloop, Math.max(reftime-now,1));
+			return true;
+		}
+
+	// opera does not support 'pointer-events:none'
+	if (window.opera) {
+		var resizer = $('resizer');
+		resizer.parentNode.removeChild(resizer);
+	}
+	
+	uiEngine.defaultpalette.set(true);
+	uiEngine.power.set(true);
+
+</script>
+</body>
+</html>
