@@ -28,40 +28,63 @@
 	<script type="text/javascript" src="aria-listbox-collapsible.js"></script>
 	<script type="text/javascript" src="aria-slider.js"></script>
 	<script type="text/javascript" src="aria-button.js"></script>
+	<script type="text/javascript" src="aria-radioGroup.js"></script>
+	<script type="text/javascript" src="aria-radioButton.js"></script>
+	<script type="text/javascript" src="jsFractalZoom.js"></script>
 </head>
 <body>
 <div id="top-wrapper" class="pane">
 	<div id="top" class="pane">
+		<h1>
+			<a href="https://www.rockingship.net/jsFractalZoom.html">jsFractalZoom</a>
+		</h1>
+		quality: <span id="idStatusQuality">100%100%</span>
+		load: <span id="idStatusLoad">7% (sys:6mSec+usr:0mSec) [4 2 0 0|75|75|75|75|75]</span>
+		rect: <span id="idStatusRect">{x:2, y:7, dx:0.2, dy:0.2}</span>
 	</div>
 </div>
 <div id="bot-wrapper" class="pane">
-	<div id="view-wrapper" class="pane">
-		<div id="view" class="pane">
+	<div id="main-wrapper" class="pane">
+		<div id="main"
+		     class="pane"
+		     tabindex="0"
+		     role="region"
+		     aria-live="off">
 		</div>
 	</div>
 	<div id="nav-wrapper" class="pane">
-		<div id="nav" class="pane">
+		<div id="nav" class="pane" aria-controls="main">
 
 			<div class="navRow navButton">
-				<button id="idPowerButton"
-					role="button">
+				<div id="idPowerButton"
+				     class="button"
+				     tabindex="0"
+				     role="button"
+				     aria-pressed="false">
 					Power
 
-					<div class="light-outer">
-						<div class="light-inner"></div>
-					</div>
-				</button>
-				<span class="navCaption">[P]</span>
+					<div class="light"></div>
+				</div>
+				<span class="navCaption">[Q]</span>
 
-				<button id="idAutoPilotButton"
-					role="button">
+				<div id="idAutoPilotButton"
+				     class="button"
+				     tabindex="0"
+				     role="button"
+				     aria-pressed="false">
 					Autopilot
 
-					<div class="light-outer">
-						<div class="light-inner"></div>
-					</div>
-				</button>
+					<div class="light"></div>
+				</div>
 				<span class="navCaption">[A]</span>
+
+				<div id="idHomeButton"
+				     class="button"
+				     tabindex="0"
+				     role="button">
+					Home
+				</div>
+				<span class="navCaption">[HOME]</span>
 			</div>
 
 			<div class="navSeparator">
@@ -78,32 +101,30 @@
 				<div id="idFormulaLabel" class="navLabel">Formula</div>
 				<div id="idFormulaLeft" class="navLeft"></div>
 				<div id="idFormulaValue" class="navValue">
-					<button id="idFormulaButton"
-						aria-haspopup="listbox"
-						aria-labelledby="idFormulaLabel idFormulaButton">
-						mandelbrot
-
-						<div class="mark-outer">
-							<div class="mark-inner"></div>
-						</div>
-					</button>
+					<div id="idFormulaButton"
+					     class="button"
+					     tabindex="0"
+					     role="button"
+					     aria-haspopup="listbox"
+					     aria-labelledby="idFormulaLabel">
+					</div>
 					<ul id="idFormulaList"
 					    class="hidden"
 					    tabindex="-1"
 					    role="listbox"
 					    aria-labelledby="idFormulaLabel">
-						<li id="exp_mandelbrot" role="option">mandelbrot</li>
-						<li id="exp_mandelbrot3" role="option">mandelbrot^3</li>
-						<li id="exp_mandelbrot4" role="option">mandlebrot^4</li>
-						<li id="exp_mandelbrot5" role="option">mandlebrot^5</li>
-						<li id="exp_mandelbrot6" role="option">mandelbrot^6</li>
-						<li id="exp_octal" role="option">octal</li>
-						<li id="exp_newton" role="option">newton</li>
-						<li id="exp_barnsley1" role="option">barnsley1</li>
-						<li id="exp_barnsley2" role="option">barnsley2</li>
-						<li id="exp_phoenix" role="option">phoenix</li>
-						<li id="exp_magnet1" role="option">magnet1</li>
-						<li id="exp_magnet2" role="option">magnet2</li>
+						<li id="formula_0" role="option">mandelbrot</li>
+						<li id="formula_1" role="option">mandelbrot^3</li>
+						<li id="formula_2" role="option">mandlebrot^4</li>
+						<li id="formula_3" role="option">mandlebrot^5</li>
+						<li id="formula_4" role="option">mandelbrot^6</li>
+						<li id="formula_5" role="option">octal</li>
+						<li id="formula_6" role="option">newton</li>
+						<li id="formula_7" role="option">barnsley1</li>
+						<li id="formula_8" role="option">barnsley2</li>
+						<li id="formula_9" role="option">phoenix</li>
+						<li id="formula_10" role="option">magnet1</li>
+						<li id="formula_11" role="option">magnet2</li>
 					</ul>
 				</div>
 				<div id="idFormulaRight" class="navRight"><span class="navCaption">[F]</span></div>
@@ -113,30 +134,28 @@
 				<div id="idIncolourLabel" class="navLabel">Incolour</div>
 				<div id="idIncolourLeft" class="navLeft"></div>
 				<div id="idIncolourValue" class="navValue">
-					<button id="idIncolourButton"
-						aria-haspopup="listbox"
-						aria-labelledby="idIncolourLabel idIncolourButton">
-						maxiter
-
-						<div class="mark-outer">
-							<div class="mark-inner"></div>
-						</div>
-					</button>
+					<div id="idIncolourButton"
+					     class="button"
+					     tabindex="0"
+					     role="button"
+					     aria-haspopup="listbox"
+					     aria-labelledby="idIncolourLabel">
+					</div>
 					<ul id="idIncolourList"
 					    class="hidden"
 					    tabindex="-1"
 					    role="listbox"
 					    aria-labelledby="idIncolourLabel">
-						<li id="inc_mandelbrot" role="option">maxiter</li>
-						<li id="inc_mandelbrot3" role="option">zmag</li>
-						<li id="inc_mandelbrot4" role="option">decomposition-like</li>
-						<li id="inc_mandelbrot5" role="option">real/imag</li>
-						<li id="inc_mandelbrot6" role="option">abs(abs(c)-abs(r))</li>
-						<li id="inc_octal" role="option">cos(mag)</li>
-						<li id="inc_newton" role="option">mag*cos(real^2)</li>
-						<li id="inc_barnsley1" role="option">sin(real^2-imag^2)</li>
-						<li id="inc_barnsley2" role="option">atan(real*imag*creal*cimag)</li>
-						<li id="inc_phoenix" role="option">squares</li>
+						<li id="incolour_0" role="option">maxiter</li>
+						<li id="incolour_1" role="option">zmag</li>
+						<li id="incolour_2" role="option">decomposition-like</li>
+						<li id="incolour_3" role="option">real/imag</li>
+						<li id="incolour_4" role="option">abs(abs(c)-abs(r))</li>
+						<li id="incolour_5" role="option">cos(mag)</li>
+						<li id="incolour_6" role="option">mag*cos(real^2)</li>
+						<li id="incolour_7" role="option">sin(real^2-imag^2)</li>
+						<li id="incolour_8" role="option">atan(real*imag*creal*cimag)</li>
+						<li id="incolour_9" role="option">squares</li>
 					</ul>
 				</div>
 				<div id="idIncolourRight" class="navRight"><span class="navCaption">[I]</span></div>
@@ -146,29 +165,27 @@
 				<div id="idOutcolourLabel" class="navLabel">Outcolour</div>
 				<div id="idOutcolourLeft" class="navLeft"></div>
 				<div id="idOutcolourValue" class="navValue">
-					<button id="idOutcolourButton"
-						aria-haspopup="listbox"
-						aria-labelledby="idOutcolourLabel idOutcolourButton">
-						iter
-
-						<div class="mark-outer">
-							<div class="mark-inner"></div>
-						</div>
-					</button>
+					<div id="idOutcolourButton"
+					     class="button"
+					     tabindex="0"
+					     role="button"
+					     aria-haspopup="listbox"
+					     aria-labelledby="idOutcolourLabel">
+					</div>
 					<ul id="idOutcolourList"
 					    class="hidden"
 					    tabindex="-1"
 					    role="listbox"
 					    aria-labelledby="idOutcolourLabel">
-						<li id="outc_mandelbrot" role="option">iter</li>
-						<li id="outc_mandelbrot3" role="option">iter+real</li>
-						<li id="outc_mandelbrot4" role="option">iter+imag</li>
-						<li id="outc_mandelbrot5" role="option">iter+real/imag</li>
-						<li id="outc_mandelbrot6" role="option">iter+real+imag+real/imag</li>
-						<li id="outc_octal" role="option">binary decomposition</li>
-						<li id="outc_newton" role="option">biomorphs</li>
-						<li id="outc_barnsley1" role="option">potential</li>
-						<li id="putc_barnsley2" role="option">color decomposition</li>
+						<li id="outcolour_0" role="option">iter</li>
+						<li id="outcolour_1" role="option">iter+real</li>
+						<li id="outcolour_2" role="option">iter+imag</li>
+						<li id="outcolour_3" role="option">iter+real/imag</li>
+						<li id="outcolour_4" role="option">iter+real+imag+real/imag</li>
+						<li id="outcolour_5" role="option">binary decomposition</li>
+						<li id="outcolour_6" role="option">biomorphs</li>
+						<li id="outcolour_7" role="option">potential</li>
+						<li id="outcolour_8" role="option">color decomposition</li>
 					</ul>
 				</div>
 				<div id="idOutcolourRight" class="navRight"><span class="navCaption">[O]</span></div>
@@ -178,27 +195,25 @@
 				<div id="idPlaneLabel" class="navLabel">Plane</div>
 				<div id="idPlaneLeft" class="navLeft"></div>
 				<div id="idPlaneValue" class="navValue">
-					<button id="idPlaneButton"
-						aria-haspopup="listbox"
-						aria-labelledby="idPlaneLabel idPlaneButton">
-						mu
-
-						<div class="mark-outer">
-							<div class="mark-inner"></div>
-						</div>
-					</button>
+					<div id="idPlaneButton"
+					     class="button"
+					     tabindex="0"
+					     role="button"
+					     aria-haspopup="listbox"
+					     aria-labelledby="idPlaneLabel">
+					</div>
 					<ul id="idPlaneList"
 					    class="hidden"
 					    tabindex="-1"
 					    role="listbox"
 					    aria-labelledby="idPlaneLabel">
-						<li id="plane_mandelbrot" role="option">mu</li>
-						<li id="plane_mandelbrot3" role="option">1/mu</li>
-						<li id="plane_mandelbrot4" role="option">1/(mu+0.25)</li>
-						<li id="plane_mandelbrot5" role="option">lambda</li>
-						<li id="plane_mandelbrot6" role="option">1/lambda</li>
-						<li id="plane_octal" role="option">1/(lambda-1)</li>
-						<li id="plane_newton" role="option">1/(mu-1.40115)</li>
+						<li id="plane_0" role="option">mu</li>
+						<li id="plane_1" role="option">1/mu</li>
+						<li id="plane_2" role="option">1/(mu+0.25)</li>
+						<li id="plane_3" role="option">lambda</li>
+						<li id="plane_4" role="option">1/lambda</li>
+						<li id="plane_5" role="option">1/(lambda-1)</li>
+						<li id="plane_6" role="option">1/(mu-1.40115)</li>
 					</ul>
 				</div>
 				<div id="idPlaneRight" class="navRight"><span class="navCaption">[P]</span></div>
@@ -216,14 +231,14 @@
 
 			<div id="idSpeed" class="navRow navSlider">
 				<div id="idSpeedLabel" class="navLabel">Speed</div>
-				<div id="idSpeedLeft" class="navLeft">999</div>
+				<div id="idSpeedLeft" class="navLeft"></div>
 				<div id="idSpeedValue" class="navValue">
 					<div id="idSpeedRail" class="rail">
 						<div id="idSpeedThumb"
 						     role="slider"
 						     tabindex="0"
 						     class="thumb"
-						     aria-valuemin="0"
+						     aria-valuemin="1"
 						     aria-valuenow="35"
 						     aria-valuemax="255"
 						     aria-labelledby="idSpeedLabel">
@@ -235,16 +250,16 @@
 
 			<div id="idRotate" class="navRow navSlider">
 				<div id="idRotateLabel" class="navLabel">Rotate</div>
-				<div id="idRotateLeft" class="navLeft">999</div>
+				<div id="idRotateLeft" class="navLeft"></div>
 				<div id="idRotateValue" class="navValue">
 					<div id="idRotateRail" class="rail">
 						<div id="idRotateThumb"
 						     role="slider"
 						     tabindex="0"
 						     class="thumb"
-						     aria-valuemin="0"
-						     aria-valuenow="35"
-						     aria-valuemax="255"
+						     aria-valuemin="-100"
+						     aria-valuenow="0"
+						     aria-valuemax="+100"
 						     aria-labelledby="idRotateLabel">
 						</div>
 					</div>
@@ -264,16 +279,16 @@
 
 			<div id="idCycle" class="navRow navSlider">
 				<div id="idCycleLabel" class="navLabel">Cycle speed</div>
-				<div id="idCycleLeft" class="navLeft">999</div>
+				<div id="idCycleLeft" class="navLeft"></div>
 				<div id="idCycleValue" class="navValue">
 					<div id="idCycleRail" class="rail">
 						<div id="idCycleThumb"
 						     role="slider"
 						     tabindex="0"
 						     class="thumb"
-						     aria-valuemin="0"
-						     aria-valuenow="35"
-						     aria-valuemax="255"
+						     aria-valuemin="-100"
+						     aria-valuenow="0"
+						     aria-valuemax="+100"
 						     aria-labelledby="idCycleLabel">
 						</div>
 					</div>
@@ -285,25 +300,33 @@
 				<div id="idPaletteLabel" class="navLabel">Palette</div>
 				<div id="idPaletteLeft" class="navLeft"></div>
 				<div id="idPaletteValue" class="navValue">
-					<button id="idRandomPaletteButton"
-						role="button">
-						Random
+					<div role="radiogroup"
+					     aria-labelledby="idPaletteLabel"
+					     id="idPaletteGroup">
 
-						<div class="light-outer">
-							<div class="light-inner"></div>
+						<div id="idRandomPaletteButton"
+						     class="button"
+						     tabindex="0"
+						     role="radio"
+						     aria-checked="false">
+							Random
+
+							<div class="light"></div>
 						</div>
-					</button>
-					<span class="navCaption">[R]</span>
+						<span class="navCaption">[R]</span>
 
-					<button id="idDefaultPaletteButton"
-						role="button">
-						Default
+						<div id="idDefaultPaletteButton"
+						     class="button"
+						     tabindex="-1"
+						     role="radio"
+						     aria-checked="false">
+							Default
 
-						<div class="light-outer">
-							<div class="light-inner"></div>
+							<div class="light"></div>
 						</div>
-					</button>
-					<span class="navCaption">[D]</span>
+						<span class="navCaption">[D]</span>
+
+					</div>
 				</div>
 				<div id="idPaletteRight" class="navRight"></div>
 			</div>
@@ -320,16 +343,16 @@
 
 			<div id="idDepth" class="navRow navSlider">
 				<div id="idDepthLabel" class="navLabel">Depth</div>
-				<div id="idDepthLeft" class="navLeft">999</div>
+				<div id="idDepthLeft" class="navLeft"></div>
 				<div id="idDepthValue" class="navValue">
 					<div id="idDepthRail" class="rail">
 						<div id="idDepthThumb"
 						     role="slider"
 						     tabindex="0"
 						     class="thumb"
-						     aria-valuemin="0"
+						     aria-valuemin="170"
 						     aria-valuenow="35"
-						     aria-valuemax="255"
+						     aria-valuemax="2000"
 						     aria-labelledby="idDepthLabel">
 						</div>
 					</div>
@@ -337,106 +360,56 @@
 				<div id="idDepthRight" class="navRight"><span class="navCaption">[]</span></div>
 			</div>
 
-			<div id="idFrame" class="navRow navSlider">
-				<div id="idFrameLabel" class="navLabel">Framerate</div>
-				<div id="idFrameLeft" class="navLeft">999</div>
-				<div id="idFrameValue" class="navValue">
-					<div id="idFrameRail" class="rail">
-						<div id="idFrameThumb"
+			<div id="idFramerate" class="navRow navSlider">
+				<div id="idFramerateLabel" class="navLabel">Framerate</div>
+				<div id="idFramerateLeft" class="navLeft"></div>
+				<div id="idFramerateValue" class="navValue">
+					<div id="idFramerateRail" class="rail">
+						<div id="idFramerateThumb"
 						     role="slider"
 						     tabindex="0"
 						     class="thumb"
-						     aria-valuemin="0"
-						     aria-valuenow="35"
-						     aria-valuemax="255"
-						     aria-labelledby="idFrameLabel">
+						     aria-valuemin="4"
+						     aria-valuenow="12"
+						     aria-valuemax="20"
+						     aria-labelledby="idFramerateLabel">
 						</div>
 					</div>
 				</div>
-				<div id="idFrameRight" class="navRight"><span class="navCaption">[]</span></div>
+				<div id="idFramerateRight" class="navRight"><span class="navCaption">[]</span></div>
 			</div>
 		</div>
 	</div>
 </div>
 <script type="text/javascript">
-	var __ = {};
 
 	/*
-	 * remove whitespace between elements
+	 * attack the situation that whitespace between tags upsets layout
 	 * https://blog.nightly.mozilla.org/2016/10/17/devtools-now-display-white-space-text-nodes-in-the-dom-inspector
 	 */
 	function cleanNode(node) {
 		var child;
 		for (var i = node.childNodes.length; i--;) {
 			child = node.childNodes[i];
-			// If commentt/textNode and has no non-whitespace character in it, delete it.
+			// delete whitespace-only text nodes
 			if (child.nodeType === 3 && !/\S/.test(child.nodeValue)) {
 				node.removeChild(child);
-				// n--;
-			}
-			else {
+			} else {
 				cleanNode(child);
 			}
 		}
 	}
 
 	window.addEventListener('load', function () {
-		/*
-		// Sliders before the listview popup
-		__.speedSlider = new Slider(__.redPad, __.redText,__.redValue);
-		__.redSlider.init();
-		*/
+		// remove whitespace-only text nodes
 		cleanNode(document.body);
 
-		__.speedThumb = document.getElementById('idSpeedThumb'); // The DOM object containing aria enhancements
-		__.speedRail = document.getElementById('idSpeedRail'); // responsive pad
-		__.speedText = document.getElementById('idSpeedLeft'); // Feedback value
-		__.speed = new Slider(__.speedThumb, __.speedRail, __.speedText);
+		// setup and link top-level components
+		var config = new Config();
+		var gui = new GUI(config);
 
-		__.rotateThumb = document.getElementById('idRotateThumb'); // The DOM object containing aria enhancements
-		__.rotateRail = document.getElementById('idRotateRail'); // responsive pad
-		__.rotateText = document.getElementById('idRotateLeft'); // Feedback value
-		__.rotate = new Slider(__.rotateThumb, __.rotateRail, __.rotateText);
-
-		__.cycleThumb = document.getElementById('idCycleThumb'); // The DOM object containing aria enhancements
-		__.cycleRail = document.getElementById('idCycleRail'); // responsive pad
-		__.cycleText = document.getElementById('idCycleLeft'); // Feedback value
-		__.cycle = new Slider(__.cycleThumb, __.cycleRail, __.cycleText);
-
-		__.depthThumb = document.getElementById('idDepthThumb'); // The DOM object containing aria enhancements
-		__.depthRail = document.getElementById('idDepthRail'); // responsive pad
-		__.depthText = document.getElementById('idDepthLeft'); // Feedback value
-		__.depth = new Slider(__.depthThumb, __.depthRail, __.depthText);
-
-		__.frameThumb = document.getElementById('idFrameThumb'); // The DOM object containing aria enhancements
-		__.frameRail = document.getElementById('idFrameRail'); // responsive pad
-		__.frameText = document.getElementById('idFrameLeft'); // Feedback value
-		__.frame = new Slider(__.frameThumb, __.frameRail, __.frameText);
-
-		__.button = document.getElementById('idFormulaButton');
-		__.exListbox = new aria.Listbox(document.getElementById('idFormulaList'));
-		__.listboxButton = new aria.ListboxButton(__.button, __.exListbox);
-
-		__.button = document.getElementById('idIncolourButton');
-		__.exListbox = new aria.Listbox(document.getElementById('idIncolourList'));
-		__.listboxButton = new aria.ListboxButton(__.button, __.exListbox);
-
-		__.button = document.getElementById('idOutcolourButton');
-		__.exListbox = new aria.Listbox(document.getElementById('idOutcolourList'));
-		__.listboxButton = new aria.ListboxButton(__.button, __.exListbox);
-
-		__.button = document.getElementById('idPlaneButton');
-		__.exListbox = new aria.Listbox(document.getElementById('idPlaneList'));
-		__.listboxButton = new aria.ListboxButton(__.button, __.exListbox);
-
-		__.button = document.getElementById('idPowerButton');
-		__.button = new Button(__.button);
-		__.button = document.getElementById('idAutoPilotButton');
-		__.button = new Button(__.button);
-		__.button = document.getElementById('idRandomPaletteButton');
-		__.button = new Button(__.button);
-		__.button = document.getElementById('idDefaultPaletteButton');
-		__.button = new Button(__.button);
+		// initial focus main view
+		gui.domMain.focus();
 	});
 </script>
 </body>

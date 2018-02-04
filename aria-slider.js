@@ -8,11 +8,21 @@
 */
 
 // Create Slider that contains value, valuemin, valuemax, and valuenow
-var Slider = function (domThumb, domRail, domText) {
+var Slider = function (domThumb, domRail) {
+
+	/**
+	 * Called when slider value changes
+	 * @param newValue {number}
+	 */
+	this.handleValueChange = function (newValue) {
+	};
+	this.setHandleValueChange = function(handler) {
+		this.handleValueChange = handler;
+		handler(this.valueNow);
+	};
 
 	this.domNode = domThumb;
 	this.railDomNode = domRail;
-	this.valueDomNode = domText;
 
 	this.valueMin = 0;
 	this.valueMax = 100;
@@ -38,23 +48,17 @@ var Slider = function (domThumb, domRail, domText) {
 		'home': 36
 	});
 
-	if (this.domNode.getAttribute('aria-valuemin')) {
+	if (x=this.domNode.getAttribute('aria-valuemin')) {
 		this.valueMin = parseInt((this.domNode.getAttribute('aria-valuemin')));
 	}
-	if (this.domNode.getAttribute('aria-valuemax')) {
+	if (x=this.domNode.getAttribute('aria-valuemax')) {
 		this.valueMax = parseInt((this.domNode.getAttribute('aria-valuemax')));
 	}
-	if (this.domNode.getAttribute('aria-valuenow')) {
+	if (x=this.domNode.getAttribute('aria-valuenow')) {
 		this.valueNow = parseInt((this.domNode.getAttribute('aria-valuenow')));
 	}
 
-	if (this.valueDomNode) {
-		this.valueDomNode.innerHTML = '0';
-		// this.valueDomNode.style.left = (this.railDomNode.offsetLeft + this.railWidth + 10) + 'px';
-		// this.valueDomNode.style.top = (this.railDomNode.offsetTop - 8) + 'px';
-	}
-
-	if (this.domNode.tabIndex != 0) {
+	if (this.domNode.tabIndex !== 0) {
 		this.domNode.tabIndex = 0;
 	}
 
@@ -85,14 +89,12 @@ Slider.prototype.moveSliderTo = function (value) {
 	this.domNode.setAttribute('aria-valuenow', this.valueNow);
 
 	var pos = Math.round(
-		(this.valueNow * this.railWidth) / (this.valueMax - this.valueMin)
-	) - (this.thumbWidth / 2);
+		((this.valueNow - this.valueMin) * this.railWidth) / (this.valueMax - this.valueMin)
+	) - (this.thumbWidth / 2) ;
 
 	this.domNode.style.left = pos + 'px';
 
-	if (this.valueDomNode) {
-		this.valueDomNode.innerHTML = this.valueNow.toString();
-	}
+	this.handleValueChange(this.valueNow);
 
 	// updateColorBox();
 
@@ -100,49 +102,39 @@ Slider.prototype.moveSliderTo = function (value) {
 
 Slider.prototype.handleKeyDown = function (event) {
 
-	var flag = false;
-
 	switch (event.keyCode) {
 		case this.keyCode.left:
 		case this.keyCode.down:
 			this.moveSliderTo(this.valueNow - 1);
-			flag = true;
 			break;
 
 		case this.keyCode.right:
 		case this.keyCode.up:
 			this.moveSliderTo(this.valueNow + 1);
-			flag = true;
 			break;
 
 		case this.keyCode.pageDown:
 			this.moveSliderTo(this.valueNow - 10);
-			flag = true;
 			break;
 
 		case this.keyCode.pageUp:
 			this.moveSliderTo(this.valueNow + 10);
-			flag = true;
 			break;
 
 		case this.keyCode.home:
 			this.moveSliderTo(this.valueMin);
-			flag = true;
 			break;
 
 		case this.keyCode.end:
 			this.moveSliderTo(this.valueMax);
-			flag = true;
 			break;
 
 		default:
-			break;
+			return;
 	}
 
-	if (flag) {
-		event.preventDefault();
-		event.stopPropagation();
-	}
+	event.preventDefault();
+	event.stopPropagation();
 
 };
 
@@ -164,8 +156,8 @@ Slider.prototype.handleMouseDown = function (event) {
 
 		var rect = self.railDomNode.getBoundingClientRect();
 		var diffX = event.pageX - rect.left;
-		self.valueNow = parseInt(((self.valueMax - self.valueMin) * diffX) / self.railWidth);
 		self.railWidth = rect.right - rect.left + 1;
+		self.valueNow = self.valueMin + parseInt(((self.valueMax - self.valueMin) * diffX) / self.railWidth);
 		self.moveSliderTo(self.valueNow);
 
 		event.preventDefault();
@@ -201,8 +193,8 @@ Slider.prototype.handleClick = function (event) {
 
 	var rect = this.railDomNode.getBoundingClientRect();
 	var diffX = event.pageX - rect.left;
-	this.valueNow = parseInt(((this.valueMax - this.valueMin) * diffX) / this.railWidth);
 	this.railWidth = rect.right - rect.left + 1;
+	this.valueNow = this.valueMin + parseInt(((this.valueMax - this.valueMin) * diffX) / this.railWidth);
 	this.moveSliderTo(this.valueNow);
 
 	event.preventDefault();

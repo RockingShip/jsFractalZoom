@@ -11,13 +11,16 @@ The engine creates GIF images using an ultra fast GIF encoder which has been mad
 
 ## Demos
 
-There are 2 demos. All are work-in-progress and may not work in any/all situations.
+There are 3 demos. All are work-in-progress and may not work in any/all situations.
 
 [jsFractalZoom-formula.html](jsFractalZoom-formulas.html)
 The original with most of the formula's working.
 
 [jsFractalZoom-navigation.html](jsFractalZoom-navigation.html)
 The original with most of the navigation working.
+
+[jsFractalZoom.html](jsFractalZoom.html)
+The current unification and completion.
 
 ## Versioning
 

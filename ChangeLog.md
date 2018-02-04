@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- RadioButton/RadioGroup
+- JavaScript bindings
+
 ## [0.2.0] 2018-02-03
 ### Added
 - Redesigned user interface according to ARIA practices https://www.w3.org/TR/wai-aria-practices

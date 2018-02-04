@@ -1,34 +1,15 @@
 /*
-	Fractal zoomer written in javascript
-	https://github.com/xyzzy/jsFractalZoom
-
-	Copyright 2018 https://github.com/xyzzy
-
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU Affero General Public License as published
-	by the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU Affero General Public License for more details.
-
-	You should have received a copy of the GNU Affero General Public License
-	along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-/*
- *	Using absolute positioning for regions to fit parent boxes (i.e. fit to browser window)
- *	See https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html
+ *	see https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html
  *	paragraph 10.3.7 and 10.6.4 what the effect of absolute positioning has on width/height
+ *
+ *	Basically, 'auto' refers to the parent element, not the children
  */
 
 .hidden {
 	display: none;
 }
 .focus {
-	outline: 1px dotted #888;
+	outline: 2px dotted #888;
 }
 
 body {
@@ -57,18 +38,17 @@ body {
 	left: 0;
 	width: auto;
 	right: 0;
-	overflow: hidden;
 }
 
 #top-wrapper {
-	height: 4em;
+	height: 5em;
 }
 
 #bot-wrapper {
-	top: 4em;
+	top: 5em;
 }
 
-#view-wrapper {
+#main-wrapper {
 	right: 32em;
 }
 
@@ -81,45 +61,38 @@ body {
 	padding: 4px;
 }
 
-#view {
+#main {
 	padding: 4px;
-	border: 2px solid green;
+	/*border: 2px dotted transparent;*/
 }
 
 #nav {
-	/*line-height: 0.8em;*/
-	/*font-size: 0.8em;*/
+	overflow: hidden;
 }
 
 /*
- * ARIA
+ * top box
  */
-.annotate{
-	font-style: italic;
-	color: #366ED4;
+
+#top h1 {
+	margin: 0;
+	padding:0;
 }
 
-.listbox-area {
-	padding: 20px;
-	background: #eee;
-	border: 1px solid #aaa;
-	font-size: 0px;
+#top a {
+	text-decoration: none;
+	color: #000;
+	display: block;
+	text-align: center;
 }
 
-.left-area, .right-area {
-	box-sizing: border-box;
-	display: inline-block;
-	font-size: 14px;
-	vertical-align: top;
-	width: 50%;
-}
+/*
+ * Main view
+ */
 
-.left-area {
-	padding-right: 10px;
-}
-
-.right-area {
-	padding-left: 10px;
+#main.focus {
+	/*border-color: #888;*/
+	outline: 2px dotted #000;
 }
 
 /*
@@ -145,6 +118,11 @@ body {
 	text-align: center;
 	width: 10em;
 	font-size: 1em;
+
+	-webkit-user-select: none; /* Safari 3.1+ */
+	-moz-user-select: none; /* Firefox 2+ */
+	-ms-user-select: none; /* IE 10+ */
+	user-select: none; /* Standard syntax */
 }
 .navSepRight {
 	display: inline-block;
@@ -176,6 +154,11 @@ body {
 	text-align: left;
 	line-height: 1em;
 	width: 8em;
+
+	-webkit-user-select: none; /* Safari 3.1+ */
+	-moz-user-select: none; /* Firefox 2+ */
+	-ms-user-select: none; /* IE 10+ */
+	user-select: none; /* Standard syntax */
 }
 .navLeft {
 	font-size: 0.6em;
@@ -186,6 +169,11 @@ body {
 	text-align: right;
 	line-height: 1em;
 	width: 6.6em; /* 4em/0.6 */
+
+	-webkit-user-select: none; /* Safari 3.1+ */
+	-moz-user-select: none; /* Firefox 2+ */
+	-ms-user-select: none; /* IE 10+ */
+	user-select: none; /* Standard syntax */
 }
 .navValue {
 	display: inline-block;
@@ -200,11 +188,21 @@ body {
 	text-align: left;
 	line-height: 1em;
 	width: 7em;
+
+	-webkit-user-select: none; /* Safari 3.1+ */
+	-moz-user-select: none; /* Firefox 2+ */
+	-ms-user-select: none; /* IE 10+ */
+	user-select: none; /* Standard syntax */
 }
 
 .navCaption {
 	font-size: 0.6em;
 	font-family: Verdana, Geneva, sans-serif;
+
+	-webkit-user-select: none; /* Safari 3.1+ */
+	-moz-user-select: none; /* Firefox 2+ */
+	-ms-user-select: none; /* IE 10+ */
+	user-select: none; /* Standard syntax */
 }
 
 /*
@@ -244,7 +242,7 @@ body {
  * Listbox
  */
 
-.navListbox button {
+.navListbox .button {
 	font-family: Tahoma, Geneva, sans-serif;
 	font-size: 0.8em; /* this changes em for this node and children */
 
@@ -261,110 +259,74 @@ body {
 	height: 1.4em;
 	line-height: 1.4em;
 	vertical-align: middle;
-}
-.navListbox button#text {
-	outline: none;
-}
 
-.navListbox button[aria-disabled="true"] {
-	opacity: 0.5;
+	-webkit-user-select: none; /* Safari 3.1+ */
+	-moz-user-select: none; /* Firefox 2+ */
+	-ms-user-select: none; /* IE 10+ */
+	user-select: none; /* Standard syntax */
 }
 
 .navListbox ul {
-	/*border-top: 0;*/
-	/*max-height: 10em;*/
-	/*overflow-y: auto;*/
-	/*position: absolute;*/
-	/*margin: 0;*/
-	/*width: 148px;*/
+	font-family: Tahoma, Geneva, sans-serif;
+	font-size: 0.8em; /* this changes em for this node and children */
+	line-height: 1em;
 
-    border: 2px outset ThreeDLightShadow;
-    background-color: #fff;
-    position: absolute;
-    top: 21px;
-    left: -1px;
-    width: 194px;
-    text-indent: 4px;
-    font-family: Tahoma, Geneva, sans-serif;
-    font-size: 13px;
-    cursor: pointer;
-    z-index: 1;
-}
+	border: 2px outset ThreeDLightShadow;
+	background-color: #fff;
+	position: absolute;
+	zwidth: 194px;
+	ztext-indent: 4px;
+	cursor: pointer;
+	z-index: 1;
 
-.navListbox li {
-	width: 194px;
-	height: 18px;
+	margin: 0 0.8em;
+	padding: 0 0 0 0.4em;
 }
 
 /* expand/collapse box */
-.navListbox .mark-outer {
-	position: absolute;
-	right: 0;
-	width: 1.4em;
-	height: 1.4em;
-	top: 0;
-	border: 2px outset ThreeDLightShadow;
-	background-color: #f0f0f0;
-	box-sizing: border-box;
-}
-
-.navListbox .mark-inner {
+.navListbox .button::after {
+	width: 0;
+	height: 0;
 	border-left: 0.4em solid transparent;
 	border-right: 0.4em solid transparent;
 	border-top: 0.4em solid #000;
+	content: " ";
+	position: absolute;
+	right: .4em;
+	top: .6em;
+}
+
+.navListbox .button[aria-expanded="true"]::after {
 	width: 0;
 	height: 0;
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	padding: 0;
-	margin: auto;
-}
-.navListbox button[aria-expanded="true"] .mark-inner {
 	border-top: none;
 	border-bottom: 5px solid #000;
 }
 
-
 /* dropdown list */
-[role="listbox"] {
-	min-height: 18em;
-	padding: 0px;
-	background: white;
-	border: 1px solid #aaa;
-}
-
-[role="option"] {
+.navListbox li {
 	display: block;
 	padding: 0 1em;
 	position: relative;
-	line-height: 1.8em;
+	line-height: 1.6em;
 }
 
-[role="option"].focused {
-	background: #bde4ff;
+.navListbox li:hover {
+	background: #f0f0f0;
 }
-
-[role="option"][aria-selected] {
-	padding-left: 1.5em;
-}
-
-[role="option"][aria-selected="true"]::before {
-	content: 'âœ“';
-	position: absolute;
-	left: 0.5em;
+.navListbox li.focused {
+	background: #c0c0c0;
 }
 
 /*
  * Button
  */
 
-.navButton button {
+.navButton .button {
 	font-family: Tahoma, Geneva, sans-serif;
 	font-size: 0.8em; /* this changes em for this node and children */
 
+	display: inline-block;
 	position: relative;
 	margin: 0 0.2em 0 0.8em;
 	text-align: left;
@@ -380,21 +342,25 @@ body {
 
 	background-color: #f0f0f0;
 	color: black;
+
+	-webkit-user-select: none; /* Safari 3.1+ */
+	-moz-user-select: none; /* Firefox 2+ */
+	-ms-user-select: none; /* IE 10+ */
+	user-select: none; /* Standard syntax */
 }
 
-.navButton button:hover,
-.navButton button.hover
+.navButton .button:hover,
+.navButton .button.hover
 {
 	background-color: #c0c0c0;
 }
 
-.navButton button:active,
-.navButton button.active {
+.navButton .button.active {
 	border-style: inset;
 	/*background-color: #c0c0c0;*/
 }
 
-.navButton .mark-outer {
+.navButton .light-outer {
 	position: absolute;
 	right: 0;
 	width: 1.4em;
@@ -406,7 +372,7 @@ body {
 }
 
 /* on/off light */
-.navButton .light-inner {
+.navButton .light {
 	position: absolute;
 	width: 1em;
 	height: .4em;
@@ -418,6 +384,13 @@ body {
 	margin: auto;
 }
 
-.navButton button[aria-pressed="true"] .light-inner {
+.navButton .button[aria-pressed="true"] .light,
+.navButton .button[aria-checked="true"] .light
+{
 	background-color: #0f0;
+}
+
+/* home button has no light */
+#idHomeButton {
+		padding: 0 0.4em;
 }
