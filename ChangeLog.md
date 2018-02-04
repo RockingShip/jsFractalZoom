@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.0] 2018-02-03
 ### Added
 - Redesigned user interface according to ARIA practices https://www.w3.org/TR/wai-aria-practices
 
@@ -18,4 +19,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial creation
 
-[Unreleased]: https://github.com/xyzzy/jsFractalZoom/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/xyzzy/jsFractalZoom/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.1.0...v0.2.0
