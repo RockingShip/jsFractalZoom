@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Redesigned user interface according to ARIA practices https://www.w3.org/TR/wai-aria-practices
+
 ## 0.1.0 2018-01-30
 ### Changed
 - General cleanup

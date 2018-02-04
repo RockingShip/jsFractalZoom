@@ -1,0 +1,423 @@
+/*
+	Fractal zoomer written in javascript
+	https://github.com/xyzzy/jsFractalZoom
+
+	Copyright 2018 https://github.com/xyzzy
+
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Affero General Public License as published
+	by the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Affero General Public License for more details.
+
+	You should have received a copy of the GNU Affero General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/*
+ *	Using absolute positioning for regions to fit parent boxes (i.e. fit to browser window)
+ *	See https://www.w3.org/TR/2007/CR-CSS21-20070719/visudet.html
+ *	paragraph 10.3.7 and 10.6.4 what the effect of absolute positioning has on width/height
+ */
+
+.hidden {
+	display: none;
+}
+.focus {
+	outline: 1px dotted #888;
+}
+
+body {
+	font-family: Verdana, Geneva, sans-serif;
+	position: absolute;
+	border: none;
+	margin: 0;
+	padding: 0;
+	top: 2px;
+	height: auto;
+	bottom: 2px;
+	left: 2px;
+	width: auto;
+	right: 2px;
+	overflow: hidden; /* layout is pixel precise. don't let whitespace between tags FIU */
+}
+
+.pane {
+	position: absolute;
+	border: none;
+	margin: 0;
+	padding: 0;
+	top: 0;
+	height: auto;
+	bottom: 0;
+	left: 0;
+	width: auto;
+	right: 0;
+	overflow: hidden;
+}
+
+#top-wrapper {
+	height: 4em;
+}
+
+#bot-wrapper {
+	top: 4em;
+}
+
+#view-wrapper {
+	right: 32em;
+}
+
+#nav-wrapper {
+	left: auto;
+	width: 32em;
+}
+
+#top {
+	padding: 4px;
+}
+
+#view {
+	padding: 4px;
+	border: 2px solid green;
+}
+
+#nav {
+	/*line-height: 0.8em;*/
+	/*font-size: 0.8em;*/
+}
+
+/*
+ * ARIA
+ */
+.annotate{
+	font-style: italic;
+	color: #366ED4;
+}
+
+.listbox-area {
+	padding: 20px;
+	background: #eee;
+	border: 1px solid #aaa;
+	font-size: 0px;
+}
+
+.left-area, .right-area {
+	box-sizing: border-box;
+	display: inline-block;
+	font-size: 14px;
+	vertical-align: top;
+	width: 50%;
+}
+
+.left-area {
+	padding-right: 10px;
+}
+
+.right-area {
+	padding-left: 10px;
+}
+
+/*
+ * Seperator
+ */
+
+.navSeparator {
+	height: 2em;
+	white-space: nowrap;
+}
+.navSeparator hr {
+	width: 9em;
+}
+.navSepLeft {
+	display: inline-block;
+	vertical-align: middle;
+	text-align: center;
+	width: 11em;
+}
+.navSepName {
+	display: inline-block;
+	vertical-align: middle;
+	text-align: center;
+	width: 10em;
+	font-size: 1em;
+}
+.navSepRight {
+	display: inline-block;
+	vertical-align: middle;
+	width: 11em;
+}
+.navLine {
+	display: inline-block;
+	border: 1px inset gray;
+	vertical-align: middle;
+	text-align: center;
+	width: 9em;
+}
+
+
+/*
+ * 4-column layout
+ */
+.navRow {
+	width: 32em;
+	margin: 0 5px;
+	height: 2em;
+	white-space: nowrap;
+}
+
+.navLabel {
+	display: inline-block;
+	vertical-align: middle;
+	text-align: left;
+	line-height: 1em;
+	width: 8em;
+}
+.navLeft {
+	font-size: 0.6em;
+	font-family: Verdana, Geneva, sans-serif;
+
+	display: inline-block;
+	vertical-align: middle;
+	text-align: right;
+	line-height: 1em;
+	width: 6.6em; /* 4em/0.6 */
+}
+.navValue {
+	display: inline-block;
+	vertical-align: middle;
+	line-height: 1em;
+	width: 13em;
+}
+.navRight {
+	/* same as .navLeft but with fixed spaced */
+	display: inline-block;
+	vertical-align: middle;
+	text-align: left;
+	line-height: 1em;
+	width: 7em;
+}
+
+.navCaption {
+	font-size: 0.6em;
+	font-family: Verdana, Geneva, sans-serif;
+}
+
+/*
+ * Slider
+ */
+.navSlider {
+	height: 2em;
+}
+.navSlider .rail {
+	margin: 0.8em;
+	background-color: #eee;
+	border: 2px solid #888;
+	height: 0.3em;
+	width: auto;
+	cursor: pointer;
+}
+
+.navSlider .rail.focus {
+	background-color: #AAA;
+}
+
+.navSlider .thumb  {
+	margin: 2px;
+	position: relative;
+	border-radius: 0.8em;
+	cursor: pointer;
+	background: #0f0;
+	height: 0.7em;
+	width: 0.7em;
+	border: 0.2em solid black;
+	margin-left: -0.2em;
+	margin-top: -0.4em;
+	outline: none !important;
+}
+
+/*
+ * Listbox
+ */
+
+.navListbox button {
+	font-family: Tahoma, Geneva, sans-serif;
+	font-size: 0.8em; /* this changes em for this node and children */
+
+	position: relative;
+	margin: 0 0.8em;
+	padding: 0 0 0 0.4em;
+	text-align: left;
+	white-space: nowrap;
+	background-color: inherit;
+	box-sizing: content-box;
+	cursor: pointer;
+	border: 2px inset ThreeDLightShadow;
+	width: 14.25em; /* compensate (13em-margin)*current-font-size (13-0.8-0.8)/0.8 */
+	height: 1.4em;
+	line-height: 1.4em;
+	vertical-align: middle;
+}
+.navListbox button#text {
+	outline: none;
+}
+
+.navListbox button[aria-disabled="true"] {
+	opacity: 0.5;
+}
+
+.navListbox ul {
+	/*border-top: 0;*/
+	/*max-height: 10em;*/
+	/*overflow-y: auto;*/
+	/*position: absolute;*/
+	/*margin: 0;*/
+	/*width: 148px;*/
+
+    border: 2px outset ThreeDLightShadow;
+    background-color: #fff;
+    position: absolute;
+    top: 21px;
+    left: -1px;
+    width: 194px;
+    text-indent: 4px;
+    font-family: Tahoma, Geneva, sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.navListbox li {
+	width: 194px;
+	height: 18px;
+}
+
+/* expand/collapse box */
+.navListbox .mark-outer {
+	position: absolute;
+	right: 0;
+	width: 1.4em;
+	height: 1.4em;
+	top: 0;
+	border: 2px outset ThreeDLightShadow;
+	background-color: #f0f0f0;
+	box-sizing: border-box;
+}
+
+.navListbox .mark-inner {
+	border-left: 0.4em solid transparent;
+	border-right: 0.4em solid transparent;
+	border-top: 0.4em solid #000;
+	width: 0;
+	height: 0;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	padding: 0;
+	margin: auto;
+}
+.navListbox button[aria-expanded="true"] .mark-inner {
+	border-top: none;
+	border-bottom: 5px solid #000;
+}
+
+
+/* dropdown list */
+[role="listbox"] {
+	min-height: 18em;
+	padding: 0px;
+	background: white;
+	border: 1px solid #aaa;
+}
+
+[role="option"] {
+	display: block;
+	padding: 0 1em;
+	position: relative;
+	line-height: 1.8em;
+}
+
+[role="option"].focused {
+	background: #bde4ff;
+}
+
+[role="option"][aria-selected] {
+	padding-left: 1.5em;
+}
+
+[role="option"][aria-selected="true"]::before {
+	content: 'âœ“';
+	position: absolute;
+	left: 0.5em;
+}
+
+/*
+ * Button
+ */
+
+.navButton button {
+	font-family: Tahoma, Geneva, sans-serif;
+	font-size: 0.8em; /* this changes em for this node and children */
+
+	position: relative;
+	margin: 0 0.2em 0 0.8em;
+	text-align: left;
+	white-space: nowrap;
+	box-sizing: content-box;
+	cursor: pointer;
+	border: 2px outset ThreeDLightShadow;
+	width: auto;
+	height: 1.4em;
+	line-height: 1.4em;
+	vertical-align: middle;
+	padding: 0 2.25em 0 0.4em;
+
+	background-color: #f0f0f0;
+	color: black;
+}
+
+.navButton button:hover,
+.navButton button.hover
+{
+	background-color: #c0c0c0;
+}
+
+.navButton button:active,
+.navButton button.active {
+	border-style: inset;
+	/*background-color: #c0c0c0;*/
+}
+
+.navButton .mark-outer {
+	position: absolute;
+	right: 0;
+	width: 1.4em;
+	height: 1.4em;
+	top: 0;
+	border: 2px outset ThreeDLightShadow;
+	background-color: #f0f0f0;
+	box-sizing: border-box;
+}
+
+/* on/off light */
+.navButton .light-inner {
+	position: absolute;
+	width: 1em;
+	height: .4em;
+	top: 0;
+	right: .3em;
+	border: 3px inset #f0f0f0;
+	background-color: #000;
+	bottom: 0;
+	margin: auto;
+}
+
+.navButton button[aria-pressed="true"] .light-inner {
+	background-color: #0f0;
+}
