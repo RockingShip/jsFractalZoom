@@ -7,8 +7,10 @@ function Config() {
 	this.power = true;
 	this.autoPilot = false;
 	this.speed = 0;
-	this.rotate = 0;
-	this.cycle = 0;
+	this.rotateSpeed = 0;
+	this.rotateIncrement = 0.2; // angle increment
+	this.offsetSpeed = 0;
+	this.offsetImcrement = 0.1; // cycle increment
 	this.depth = 0;
 	this.framerate = 0;
 	this.formula = '';
@@ -18,272 +20,33 @@ function Config() {
 	this.width = 1;
 	this.height = 1;
 
+	this.offset = 0; // color palette cycle timer updated
+	this.angle = 0; // viewport angle timer updated
+
 	this.msecPerFrame = 1000 / this.framerate;
+	this.rsin = Math.sin(this.angle * Math.PI / 180);
+	this.rcos = Math.cos(this.angle * Math.PI / 180);
 }
 
-/*
- * improved base64 (word based)
+/**
+ * Set rotation angle
+ *
+ * @param {number} angle - range -1.0 to +1.0
  */
-function GifEncoder(width, height) {
+Config.prototype.setAngle = function(angle) {
+	this.angle = angle;
+	this.rsin = Math.sin(angle * Math.PI / 180);
+	this.rcos = Math.cos(angle * Math.PI / 180);
+};
 
-	/*
-	 * Allocate (worstcase) persistent storage for result
-	 *
-	 * worst case uncompressed (8bpp) uses 1810 24bit words for 3839 pixels
-	 */
-
-	this.out_store = new Uint32Array(
-		Math.floor(29 / 3) + // headers
-		256 + // colormap
-		(Math.floor(width * height / 3838) + 1) * 1811 + // pixels
-		32 // unforeseen
-	);
-
-	/**
-	 * Precalculate 2 adjacent base64 characters (2*6 bits = 4096 combos)
-	 *
-	 * @type {string[]}
-	 */
-	this.base64Pair = new Array(4096);
-
-	var base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-	for (var i=0; i<4096; i++)
-		this.base64Pair[i] = base64Chars[(i >> 6) & 63] + base64Chars[(i >> 0) & 63];
-
-	/**
-	 * Encode
-	 *
-	 * @param bpp {number} - bits per pixel (max 8 for 256 colours)
-	 * @param red {number[]} - red palette
-	 * @param green {number[]} - green palette
-	 * @param blue {number[]} - blue palette
-	 * @param pixels {number[]} - color indexed pixel data
-	 * @returns {string} - result
-	 */
-	this.encode = function(bpp, red, green, blue, pixels) {
-		var n_bits = bpp + 1;
-		var maxcode = (1 << n_bits) - 1;
-		var CLRcode = 1 << bpp;
-		var EOFcode = CLRcode + 1;
-		var curcode = CLRcode + 2;
-		var out_accum = 0;
-		var out_bits = 0;
-		var out_len = 0;
-		var out_store = this.out_store;
-		var i, j, v;
-
-		/**
-		 * Slow function (only used for headers) to add byte
-		 *
-		 * @param v
-		 */
-		var putByte = function (v) {
-			out_accum |= v << out_bits;
-			if ((out_bits += 8) >= 24) {
-				out_store[out_len++] = out_accum;
-				out_accum = v >> (8 - (out_bits -= 24));
-			}
-		};
-
-		/**
-		 * Slow function (only used for headers) to add word
-		 *
-		 * @param v
-		 */
-		var putWord = function (v) {
-			putByte(v & 255);
-			putByte(v >> 8);
-		};
-
-		// Write the Magic header
-		putByte(71); // G
-		putByte(73); // I
-		putByte(70); // F
-		putByte(56); // 8
-		putByte(57); // 9
-		putByte(97); // a
-
-		// Write out the screen width and height
-		putWord(width);
-		putWord(height);
-
-		// global colour map | color resolution | Bits per Pixel
-		putByte(128 | (bpp - 1) << 4 | (bpp - 1));
-
-		// Write out the Background colour
-		putByte(0);
-
-		// Byte of 0's (future expansion)
-		putByte(0);
-
-		this.cycle = this.cycle || 0;
-		this.cycle++;
-
-		// Write out the Global Colour Map
-		for (i = 0; i < CLRcode; ++i) {
-			j = (this.cycle+i)%16;
-			putByte(red[j]);
-			putByte(green[j]);
-			putByte(blue[j]);
-		}
-
-		// Write an Image separator
-		putByte(44);
-
-		// Write the Image header
-		putWord(0); // left
-		putWord(0); // top
-		putWord(width);
-		putWord(height);
-
-		// Write out whether or not the image is interlaced
-		putByte(0);
-
-		// Write out the initial code size
-		putByte(bpp);
-
-		// mark
-		var mark = out_len;
-		out_accum |= 254;
-		out_bits += 8;
-
-		// place CLR in head of compressed stream
-		var str = CLRcode;
-		curcode--; // compensate for lack of previous symbol
-		var hash = new Uint16Array(4096);
-
-		// compress frame
-		for (var xy = 0; xy < width * height; xy++) {
-			var c = pixels[xy];
-
-			var fcode = (c << 12) | str;
-			if ((v = hash[fcode])) {
-				str = v;
-			} else {
-				v = str;
-				out_accum |= v << out_bits;
-				if ((out_bits += n_bits) >= 24) {
-					out_store[out_len++] = out_accum;
-					out_accum = v >> (n_bits - (out_bits -= 24));
-
-					if ((v = out_len - mark) >= 85) {
-						mark = out_len;
-						out_accum <<= 8;
-						out_accum |= 254;
-						out_bits += 8;
-					}
-				}
-
-				str = c;
-
-				if (curcode < 4096) {
-					hash[fcode] = curcode;
-					if (curcode++ > maxcode)
-						maxcode = (1 << ++n_bits) - 1;
-				} else {
-					// CLEAR
-					v = CLRcode;
-					out_accum |= v << out_bits;
-					if ((out_bits += n_bits) >= 24) {
-						out_store[out_len++] = out_accum;
-						out_accum = v >> (n_bits - (out_bits -= 24));
-
-						if ((v = out_len - mark) >= 85) {
-							mark = out_len;
-							out_accum <<= 8;
-							out_accum |= 254;
-							out_bits += 8;
-						}
-					}
-
-					// reset codes
-					n_bits = bpp + 1;
-					maxcode = (1 << n_bits) - 1;
-					curcode = CLRcode + 2;
-					hash = new Uint16Array(4096);
-				}
-			}
-		}
-
-		// last code
-		v = str;
-		out_accum |= v << out_bits;
-		if ((out_bits += n_bits) >= 24) {
-			out_store[out_len++] = out_accum;
-			out_accum = v >> (n_bits - (out_bits -= 24));
-
-			if ((v = out_len - mark) >= 85) {
-				mark = out_len;
-				out_accum <<= 8;
-				out_accum |= 254;
-				out_bits += 8;
-			}
-		}
-
-		// EOF
-		v = EOFcode;
-		out_accum |= v << out_bits;
-		if ((out_bits += n_bits) >= 24) {
-			out_store[out_len++] = out_accum;
-			out_accum = v >> (n_bits - (out_bits -= 24));
-
-			if ((v = out_len - mark) >= 85) {
-				mark = out_len;
-				out_accum <<= 8;
-				out_accum |= 254;
-				out_bits += 8;
-			}
-		}
-
-		if (mark === out_bits && out_bits === 8) {
-			// undo mark
-			out_accum >>= 8;
-			out_bits -= 8;
-		} else {
-			// FLUSH
-			v = (out_len - mark) * 3 - 1;
-			if (out_bits > 16) {
-				out_bits = 24;
-				v += 3;
-				out_store[out_len++] = out_accum;
-				out_bits = out_accum = 0;
-			} else if (out_bits > 8) {
-				out_bits = 16;
-				v += 2;
-			} else if (out_bits > 0) {
-				out_bits = 8;
-				v += 1;
-			}
-			out_store[mark] &= ~255;
-			out_store[mark] |= v;
-		}
-
-		// Write out a Zero-length packet (to end the series)
-		putByte(0);
-
-		// Write the GIF file terminator
-		putByte(59);
-
-		// fast flush
-		putByte(0);
-		putByte(0);
-		putByte(0);
-
-		// export as base64
-		var res = new Array(out_len * 2 + 1);
-		j = 0;
-		res[j++] = "data:image/gif;base64,";
-		for (i = 0; i < out_len; i++) {
-			v = out_store[i];
-			res[j++] = this.base64Pair[((v & 0x0000ff) << 4) | ((v & 0x00f000) >> 12)];
-			res[j++] = this.base64Pair[((v & 0x000f00) << 0) | ((v & 0xff0000) >> 16)];
-		}
-
-		// return with appropriate header
-		return  res.join('');
-	}
-
-}
+/**
+ * Set colour palette cycle offset
+ *
+ * @param {number} offset - range -1.0 to +1.0
+ */
+Config.prototype.setOffset = function(offset) {
+	this.offset = offset;
+};
 
 /**
  * DOM bindings and event handlers
@@ -343,18 +106,32 @@ function GUI(config) {
 	this.msecSys = 0;
 	/** @type {number} - Average time in mSec spent in jsFractalZoom framework */
 	this.msecUsr = 0;
-	/** @type {number} - Average time in mSec spent in stage1 (GIF) */
+	/** @type {number} - Average time in mSec spent in stage1 (Draw) */
 	this.msecState1 = 0;
 	/** @type {number} - Average time in mSec spent in stage2 (Zoom) */
 	this.msecState2 = 0;
 	/** @type {number} - Average time in mSec spent in stage3 (Lines) */
 	this.msecState3 = 0;
 
-	/*
-	 * gif encoder
-	 */
-	/** @type {GifEncoder} - Encoder */
-	this.gifencoder = undefined;
+	/** @type {Uint8Array} - temporary red palette after rotating palette index */
+	this.tmpRed = new Uint8Array(256);
+	/** @type {Uint8Array} - temporary red palette after rotating palette index */
+	this.tmpGreen = new Uint8Array(256);
+	/** @type {Uint8Array} - temporary red palette after rotating palette index */
+	this.tmpBlue = new Uint8Array(256);
+
+	/** @type {number} - width of viewport */
+	this.viewWidth = undefined;
+	/** @type {number} - height of viewport */
+	this.viewHeight = undefined;
+	/** @type {number} - diameter of the pixel data */
+	this.diameter = undefined;
+	/** @type {Uint8Array} - pixel data (must be square) */
+	this.pixels = undefined;
+	/** @type {CanvasRenderingContext2D} */
+	this.ctx = undefined;
+	/** @type {ImageData} - direct access to canvas pixel data */
+	this.imagedata = undefined;
 
 	/*
 	 * Find the elements and replace the string names for DOM references
@@ -365,27 +142,17 @@ function GUI(config) {
 		}
 	}
 
-	/*
-	 * create encoder
-	 */
-	this.config.width = this.domMain.clientWidth;
-	this.config.height = this.domMain.clientHeight;
-	this.domWxH.innerHTML = '['+this.config.width+'x'+this.config.height+']';
+	// init viewport
+	this.setViewport(this.domMain);
 
-	this.gifencoder = new GifEncoder(this.config.width, this.config.height);
-	this.pixels = new Uint8Array(this.config.width * this.config.height);
-	this.image = document.createElement('img');
-	this.image.width = this.config.width;
-	this.image.height = this.config.height;
-	this.domMain.width = this.config.width; // set canvas property or drawImage() resamples everything
-	this.domMain.height = this.config.height;
+	// initial palette
 	this.paletteRed = [230, 135, 75, 254, 255, 246, 223, 255, 255, 197, 255, 255, 214, 108, 255, 255];
 	this.paletteGreen = [179, 135, 75, 203, 244, 246, 223, 212, 224, 146, 235, 247, 214, 108, 255, 255];
 	this.paletteBlue = [78, 135, 75, 102, 142, 246, 223, 111, 123, 45, 133, 145, 214, 108, 153, 255];
-	this.ctx = this.domMain.getContext("2d");
-	this.ctx.imageSmoothingEnabled = false; // disable anti aliasing
-	for (var i=0; i<this.config.width*this.config.height; i++)
-		this.pixels[i] = (i)%16;
+	// grayscale
+	this.paletteRed = [0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0];
+	this.paletteGreen = [0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0];
+	this.paletteBlue = [0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0];
 
 	// register global key bindings before widgets override
 	document.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -420,6 +187,7 @@ function GUI(config) {
 
 	// replace static mainloop with a bound instance
 	this.mainloop = this.mainloop.bind(this);
+	this.animationFrame = this.animationFrame.bind(this);
 
 	// attach event listeners
 	var self = this;
@@ -431,12 +199,12 @@ function GUI(config) {
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
 	this.rotate.setCallbackValueChange(function(newValue) {
-		self.config.rotate = newValue;
+		self.config.rotateSpeed = newValue / 100; // scale to -1.0 <= angle <= +1.0
 		self.domRotateLeft.innerHTML = newValue;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
 	this.cycle.setCallbackValueChange(function(newValue) {
-		self.config.cycle = newValue;
+		self.config.offsetSpeed = newValue / 100; // scale to -1.0 <= angle <= +1.0
 		self.domCycleLeft.innerHTML = newValue;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
@@ -496,6 +264,105 @@ function GUI(config) {
 		self.domMain.innerHTML = newButton.domButton.id + ' ' + (self.counter++);
 	});
 }
+
+/**
+ * Set viewport dimensions and allocate storage
+ *
+ * @param {Element} domView
+ */
+GUI.prototype.setViewport = function (domView) {
+	// get canvas and set size property
+	this.viewWidth = domView.clientWidth;
+	this.viewHeight = domView.clientHeight;
+	domView.width = this.viewWidth;
+	domView.height = this.viewHeight;
+
+	// calculate and allocate pixel store (must be square so viewport can rotate within it)
+	this.diameter = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
+	this.pixels = new Uint8Array(this.diameter * this.diameter);
+
+	// access canvas pixels
+	this.ctx = domView.getContext("2d");
+	this.imagedata = this.ctx.getImageData(0, 0, this.viewWidth, this.viewHeight);
+
+	// update config
+	this.config.width = this.viewWidth;
+	this.config.height = this.viewHeight;
+
+	// update GUI
+	this.domWxH.innerHTML = '[' + this.viewWidth + 'x' + this.viewHeight + ']';
+
+	// test image
+	for (var i=0; i<this.diameter*this.diameter; i++)
+		this.pixels[i] = (i)%16;
+};
+
+/*
+ * Paint viewport with pixel data
+ */
+GUI.prototype.paintViewport = function () {
+
+	// make references local
+	var paletteSize = this.paletteRed.length;
+	var tmpRed = this.tmpRed;
+	var tmpGreen = this.tmpGreen;
+	var tmpBlue = this.tmpBlue;
+	var viewWidth = this.viewWidth; // viewport width
+	var viewHeight = this.viewHeight; // viewport height
+	var pixels = this.pixels; // pixel data
+	var diameter = this.diameter; // pixel scanline width (it's square)
+	var rgba = this.imagedata.data; // canvas pixel data
+	var i, j, x, y, ix, iy, ji, c;
+
+	// palette offset must be integer and may not be negative
+	var offset = Math.round(this.config.offset % paletteSize);
+	if (offset < 0)
+		offset += paletteSize;
+
+	// apply colour cycling
+	for (i = 0; i < paletteSize; i++) {
+		tmpRed[i] = this.paletteRed[(i + offset) % paletteSize];
+		tmpGreen[i] = this.paletteGreen[(i + offset) % paletteSize];
+		tmpBlue[i] = this.paletteBlue[(i + offset) % paletteSize];
+	}
+	this.frame++;
+
+	this.rsin = Math.sin(this.config.angle * Math.PI / 180);
+	this.rcos = Math.cos(this.config.angle * Math.PI / 180);
+
+	// viewport rotation
+	var sin = this.config.rsin; // sine for viewport angle
+	var cos = this.config.rcos; // cosine for viewport angle
+	var xstart = Math.floor((diameter - viewHeight * sin - viewWidth * cos) * 32768);
+	var ystart = Math.floor((diameter - viewHeight * cos + viewWidth * sin) * 32768);
+	var ixstep = Math.floor(cos * 65536);
+	var iystep = Math.floor(sin * -65536);
+	var jxstep = Math.floor(sin * 65536);
+	var jystep = Math.floor(cos * 65536);
+
+	// copy pixels
+	ji = 0;
+	for (j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
+		for (i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
+			c = pixels[(iy >> 16) * diameter + (ix >> 16)];
+
+			rgba[ji++] = tmpRed[c];
+			rgba[ji++] = tmpGreen[c];
+			rgba[ji++] = tmpBlue[c];
+			rgba[ji++] = 255;
+		}
+	}
+};
+
+/**
+ * Syncronise screen updates
+ */
+GUI.prototype.animationFrame = function() {
+	this.ctx.putImageData(this.imagedata, 0, 0);
+
+	// update next vblank so `endtime` is more accurate
+	this.vblank += this.config.msecPerFrame;
+};
 
 /**
  * Handle keyboard down event
@@ -660,7 +527,6 @@ GUI.prototype.start = function() {
  * stop the mainloop
  */
 GUI.prototype.stop = function() {
-	this.state = 0; // stop
 	clearTimeout(this.timerId);
 	this.timerId = null;
 };
@@ -674,6 +540,9 @@ GUI.prototype.mainloop = function() {
 	if (!this.timerId)
 		return false;
 
+	// make local for speec
+	var config = this.config;
+
 	// current time
 	var now = Date.now();
 
@@ -684,82 +553,56 @@ GUI.prototype.mainloop = function() {
 	// update vertical blank
 	if (this.vblank + 2000 <= now) {
 		// hibernated too long (like when stepping during debugging)
-		this.vblank = now + this.config.msecPerFrame; // time of next vblank
+		this.vblank = now + config.msecPerFrame; // time of next vblank
 	} else {
-		this.vblank += this.config.msecPerFrame; // update next vblank
+		this.vblank += config.msecPerFrame; // update next vblank
 	}
 
 	// endtime based on framerate and 2 mSec framework breathing space
-	var endtime = this.vblank + this.config.msecPerFrame - 2;
+	var endtime = this.vblank + config.msecPerFrame - 2;
 
-	// last = now;
-	// now = getTime();
+	/*
+	 * test for viewport resize
+	 */
+	if (this.domMain.clientWidth != this.viewWidth || this.domMain.clientHeight != this.viewHeight)
+		this.setViewport(this.domMain);
 
-	// if (uiEngine.resizing) {
-	// 	reftime += config.msecPerFrame;
-	// 	tid = window.setTimeout(mainloop, Math.max(reftime-now,1));
-	// 	return;
-	// }
-
-	// var sysload = Math.max(now-reftime, 0);
-	// var usrload = now;
-	// var avg1 = (stats1[0]+stats1[1]+stats1[2]+stats1[3]+stats1[4]) / 5;
-	// var avg2 = (stats2[0]+stats2[1]+stats2[2]+stats2[3]+stats2[4]) / 5;
-	// var avg3 = (stats3[0]+stats3[1]+stats3[2]+stats3[3]+stats3[4]) / 5;
-	// var avg4 = (stats4[0]+stats4[1]+stats4[2]+stats4[3]+stats4[4]) / 5;
-	// var m = timeslice-sysload;
-	// avg1 = Math.min(avg1,m);
-	// avg2 = Math.min(avg2,m);
-	// avg3 = Math.min(avg3,m);
-	// avg4 = Math.min(avg4,m);
-	// var stxt = avg1.toFixed()+' '+avg2.toFixed()+' '+avg3.toFixed()+' '+avg4.toFixed();
-
-	// timer dependent updates
-	// uiEngine.ontick(now, endtime);
-	// if (config.cyclingspeed) {
-	// 	config.cycle += (now-last) * config.cyclinginc * config.cyclingspeed;
-	// 	changed = true;
-	// }
-	// if (config.rotatespeed) {
-	// 	navEngine.setangle(config.angle + (now-last) * config.rotateinc * config.rotatespeed);
-	// 	changed = true;
-	// }
+	/*
+	 * Update colour palette cycle offset and viewport angle
+	 */
+	if (config.offsetSpeed)
+		config.setOffset(config.offset + config.msecPerFrame * config.offsetImcrement * config.offsetSpeed);
+	if (config.rotateSpeed)
+		config.setAngle(config.angle + config.msecPerFrame * config.rotateIncrement * config.rotateSpeed);
 
 	var usrload = now;
-	var last = now;
 	var diff = undefined;
 
 	/*
-	 * Create GIF image
+	 * State1: Paint viewport
 	 */
-	{
+	var last = now;
+	this.paintViewport();
+	window.requestAnimationFrame(this.animationFrame);
 
-		var data = this.gifencoder.encode(4, this.paletteRed, this.paletteGreen, this.paletteBlue, this.pixels);
-		this.image.src = data;
-		this.ctx.drawImage(this.image, 0, 0, this.image.width, this.image.height);
-
-		now = Date.now();
-		diff = now - last;
-		this.msecState1 += (diff - this.msecState1) * this.coef;
-		last = now;
-	}
+	now = Date.now();
+	diff = now - last;
+	this.msecState1 += (diff - this.msecState1) * this.coef;
 
 	/*
-	 * zoom/autopilot
+	 * State2: zoom/autopilot
 	 */
-	{
-//		navEngine.ontick(now, endtime);
+	last = now;
+//	navEngine.ontick(now, endtime);
 
-		now = Date.now();
-		diff = now - last;
-		this.msecState2 += (diff - this.msecState2) * this.coef;
-		last = now;
-	}
+	now = Date.now();
+	diff = now - last;
+	this.msecState2 += (diff - this.msecState2) * this.coef;
 
 	/*
-	 * redraw as many as possible scanlines
-	 * but no more than 20 scanlines
+	 * State3: redraw as many as possible scanlines
 	 */
+	last = now;
 	var numLines = 0;
 	var moreTodo = false;
 	while (now < endtime) {
@@ -781,13 +624,14 @@ GUI.prototype.mainloop = function() {
 	this.msecUsr += (usrload - this.msecUsr) * this.coef;
 
 	// this.domMain.innerHTML = ((avgS+avgU)*100/config.frametime).toFixed()+'% (sys:'+avgS.toFixed()+'mSec+usr:'+avgU.toFixed()+'mSec) ['+stxt+']';
-	this.domStatusRect.innerHTML = ((this.msecSys + this.msecUsr) * 100 / this.config.msecPerFrame).toFixed() +
+	this.domStatusRect.innerHTML = ((this.msecSys + this.msecUsr) * 100 / config.msecPerFrame).toFixed() +
 		'% (sys:' + this.msecSys.toFixed() +
 		'mSec+usr:' + this.msecUsr.toFixed() +
 		'mSec) [' + this.msecState1.toFixed(3) +
 		',' +  this.msecState2.toFixed(6) +
 		',' +  this.msecState3.toFixed(6) +
-		']';
+		']'
+	;
 
 	if (moreTodo) {
 		// more to do, sleep as short as possible

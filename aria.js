@@ -104,9 +104,11 @@ Aria.Button.prototype.buttonDown = function() {
 	if (currentState) {
 		// 2-state button, down gesture toggles active state
 		if (currentState === 'true') {
+			currentState = 'false';
 			this.domButton.setAttribute('aria-pressed', 'false');
 			this.domButton.classList.remove('active');
 		} else {
+			currentState = 'true';
 			this.domButton.setAttribute('aria-pressed', 'true');
 			this.domButton.classList.add('active');
 		}

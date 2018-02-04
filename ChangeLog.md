@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - RadioButton/RadioGroup
 - JavaScript bindings
 - Mainloop and GIF encoder
+- Replaced GIF encoder with drawing pixels directly on canvas
 
 ### Changed
 - Unified ARIA
