@@ -31,8 +31,9 @@
 <div id="top-wrapper" class="pane">
 	<div id="top" class="pane">
 		<h1>
-			<a href="https://www.rockingship.net/jsFractalZoom.html">jsFractalZoom</a>
+			<a href="https://www.rockingship.net/jsFractalZoom" tabindex="-1">jsFractalZoom</a>
 		</h1>
+		<span id="WxH"></span>
 		quality: <span id="idStatusQuality">100%100%</span>
 		load: <span id="idStatusLoad">7% (sys:6mSec+usr:0mSec) [4 2 0 0|75|75|75|75|75]</span>
 		rect: <span id="idStatusRect">{x:2, y:7, dx:0.2, dy:0.2}</span>
@@ -40,12 +41,12 @@
 </div>
 <div id="bot-wrapper" class="pane">
 	<div id="main-wrapper" class="pane">
-		<div id="main"
+		<canvas id="main"
 		     class="pane"
 		     tabindex="0"
 		     role="region"
 		     aria-live="off">
-		</div>
+		</canvas>
 	</div>
 	<div id="nav-wrapper" class="pane">
 		<div id="nav" class="pane" aria-controls="main">
@@ -373,6 +374,8 @@
 				</div>
 				<div id="idFramerateRight" class="navRight"><span class="navCaption">[]</span></div>
 			</div>
+
+			<div id="idProjectPage">Visit <a href="https://www.rockingship.net/jsFractalZoom" >jsFractalZoom</a> project page</div>
 		</div>
 	</div>
 </div>

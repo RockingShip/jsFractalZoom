@@ -574,6 +574,7 @@ Aria.ListboxButton.prototype.checkShow = function (event) {
 	var key = event.which || event.keyCode;
 
 	switch (key) {
+		case Aria.KeyCode.RETURN:
 		case Aria.KeyCode.UP:
 		case Aria.KeyCode.DOWN:
 			this.showListbox();

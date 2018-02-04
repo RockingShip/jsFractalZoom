@@ -62,8 +62,12 @@ body {
 }
 
 #main {
-	padding: 4px;
+	/*padding: 4px;*/
 	/*border: 2px dotted transparent;*/
+	position: relative;
+	width: 100%;
+	height: 100%;
+
 }
 
 #nav {
@@ -397,4 +401,11 @@ body {
 /* home button has no light */
 #idHomeButton {
 		padding: 0 0.4em;
+}
+
+
+#idProjectPage {
+	display: block;
+	margin: 0.5em 1em;
+	font-size: 0.6em;
 }
