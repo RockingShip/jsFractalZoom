@@ -24,12 +24,7 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/>
 	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 	<link rel=stylesheet href="jsFractalZoom.css">
-	<script type="text/javascript" src="aria-listbox.js"></script>
-	<script type="text/javascript" src="aria-listbox-collapsible.js"></script>
-	<script type="text/javascript" src="aria-slider.js"></script>
-	<script type="text/javascript" src="aria-button.js"></script>
-	<script type="text/javascript" src="aria-radioGroup.js"></script>
-	<script type="text/javascript" src="aria-radioButton.js"></script>
+	<script type="text/javascript" src="aria.js"></script>
 	<script type="text/javascript" src="jsFractalZoom.js"></script>
 </head>
 <body>
@@ -60,7 +55,7 @@
 				     class="button"
 				     tabindex="0"
 				     role="button"
-				     aria-pressed="false">
+				     aria-pressed="true">
 					Power
 
 					<div class="light"></div>
@@ -115,8 +110,8 @@
 					    aria-labelledby="idFormulaLabel">
 						<li id="formula_0" role="option">mandelbrot</li>
 						<li id="formula_1" role="option">mandelbrot^3</li>
-						<li id="formula_2" role="option">mandlebrot^4</li>
-						<li id="formula_3" role="option">mandlebrot^5</li>
+						<li id="formula_2" role="option">mandelbrot^4</li>
+						<li id="formula_3" role="option">mandelbrot^5</li>
 						<li id="formula_4" role="option">mandelbrot^6</li>
 						<li id="formula_5" role="option">octal</li>
 						<li id="formula_6" role="option">newton</li>
@@ -306,7 +301,7 @@
 
 						<div id="idRandomPaletteButton"
 						     class="button"
-						     tabindex="0"
+						     tabindex="-1"
 						     role="radio"
 						     aria-checked="false">
 							Random
@@ -317,9 +312,9 @@
 
 						<div id="idDefaultPaletteButton"
 						     class="button"
-						     tabindex="-1"
+						     tabindex="0"
 						     role="radio"
-						     aria-checked="false">
+						     aria-checked="true">
 							Default
 
 							<div class="light"></div>

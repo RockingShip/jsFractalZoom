@@ -1,24 +1,4 @@
 /*
-	Fractal zoomer written in javascript
-	https://github.com/xyzzy/jsFractalZoom
-
-	Copyright 2018 https://github.com/xyzzy
-
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU Affero General Public License as published
-	by the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU Affero General Public License for more details.
-
-	You should have received a copy of the GNU Affero General Public License
-	along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-/*
  * Globals settings and values
  *
  * @constructor
@@ -106,31 +86,32 @@ function GUI(config) {
 		}
 	}
 
-	// construct sliders
-	this.speed = new Slider(this.domSpeedThumb, this.domSpeedRail);
-	this.rotate = new Slider(this.domRotateThumb, this.domRotateRail);
-	this.cycle = new Slider(this.domCycleThumb, this.domCycleRail);
-	this.depth = new Slider(this.domDepthThumb, this.domDepthRail);
-	this.framerate = new Slider(this.domFramerateThumb, this.domFramerateRail);
+	// register global key bindings before widgets override
+	document.addEventListener('keydown', this.handleKeyDown.bind(this));
+	document.addEventListener('keyup', this.handleKeyUp.bind(this));
 
-	// construct listboxes
-	this.formulaList = new aria.Listbox(this.domFormulaList);
-	this.incolourList = new aria.Listbox(this.domIncolourList);
-	this.outcolourList = new aria.Listbox(this.domOutcolourList);
-	this.planeList = new aria.Listbox(this.domPlaneList);
+	// construct sliders
+	this.speed = new Aria.Slider(this.domSpeedThumb, this.domSpeedRail);
+	this.rotate = new Aria.Slider(this.domRotateThumb, this.domRotateRail);
+	this.cycle = new Aria.Slider(this.domCycleThumb, this.domCycleRail);
+	this.depth = new Aria.Slider(this.domDepthThumb, this.domDepthRail);
+	this.framerate = new Aria.Slider(this.domFramerateThumb, this.domFramerateRail);
 
 	// construct controlling listbox button
-	this.formula = new aria.ListboxButton(this.domFormulaButton, this.formulaList);
-	this.incolour = new aria.ListboxButton(this.domIncolourButton, this.incolourList);
-	this.outcolour = new aria.ListboxButton(this.domOutcolourButton, this.outcolourList);
-	this.plane = new aria.ListboxButton(this.domPlaneButton, this.planeList);
+	this.formula = new Aria.ListboxButton(this.domFormulaButton, this.domFormulaList);
+	this.incolour = new Aria.ListboxButton(this.domIncolourButton, this.domIncolourList);
+	this.outcolour = new Aria.ListboxButton(this.domOutcolourButton, this.domOutcolourList);
+	this.plane = new Aria.ListboxButton(this.domPlaneButton, this.domPlaneList);
 
 	// construct buttons
-	this.power = new Button(this.domPowerButton, true);
-	this.autoPilot = new Button(this.domAutoPilotButton, true);
-	this.home = new Button(this.domHomeButton, false);
-	this.randomPalette = new Button(this.domRandomPaletteButton, true);
-	this.defaultPalette = new Button(this.domDefaultPaletteButton, true);
+	this.power = new Aria.Button(this.domPowerButton, true);
+	this.autoPilot = new Aria.Button(this.domAutoPilotButton, true);
+	this.home = new Aria.Button(this.domHomeButton, false);
+
+	// construct radio group
+	this.paletteGroup = new Aria.RadioGroup(document.getElementById('idPaletteGroup'));
+	this.randomPalette = this.paletteGroup.radioButtons[0];
+	this.defaultPalette = this.paletteGroup.radioButtons[1];
 
 	// add listener for mainview focus
 	this.domMain.addEventListener('focus', this.handleFocus.bind(this));
@@ -140,78 +121,71 @@ function GUI(config) {
 	var self = this;
 
 	// sliders
-	this.speed.setHandleValueChange(function(newValue) {
+	this.speed.setCallbackValueChange(function(newValue) {
 		self.config.speed = newValue;
 		self.domSpeedLeft.innerHTML = newValue;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
-	this.rotate.setHandleValueChange(function(newValue) {
+	this.rotate.setCallbackValueChange(function(newValue) {
 		self.config.rotate = newValue;
 		self.domRotateLeft.innerHTML = newValue;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
-	this.cycle.setHandleValueChange(function(newValue) {
+	this.cycle.setCallbackValueChange(function(newValue) {
 		self.config.cycle = newValue;
 		self.domCycleLeft.innerHTML = newValue;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
-	this.depth.setHandleValueChange(function(newValue) {
+	this.depth.setCallbackValueChange(function(newValue) {
 		self.config.depth = newValue;
 		self.domDepthLeft.innerHTML = newValue;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
-	this.framerate.setHandleValueChange(function(newValue) {
+	this.framerate.setCallbackValueChange(function(newValue) {
 		self.config.framerate = newValue;
 		self.domFramerateLeft.innerHTML = newValue;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
 
 	// listboxes
-	this.formulaList.setHandleFocusChange(function(focusedItem) {
+	this.formula.listbox.setCallbackFocusChange(function(focusedItem) {
 		self.config.formula = focusedItem.id;
 		self.domFormulaButton.innerText = focusedItem.innerText;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
-	this.incolourList.setHandleFocusChange(function(focusedItem) {
+	this.incolour.listbox.setCallbackFocusChange(function(focusedItem) {
 		self.config.incolour = focusedItem.id;
 		self.domIncolourButton.innerText = focusedItem.innerText;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
-	this.outcolourList.setHandleFocusChange(function(focusedItem) {
+	this.outcolour.listbox.setCallbackFocusChange(function(focusedItem) {
 		self.config.outcolour = focusedItem.id;
 		self.domOutcolourButton.innerText = focusedItem.innerText;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
-	this.planeList.setHandleFocusChange(function(focusedItem) {
+	this.plane.listbox.setCallbackFocusChange(function(focusedItem) {
 		self.config.plane = focusedItem.id;
 		self.domPlaneButton.innerText = focusedItem.innerText;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
 
 	// buttons
-	this.power.setHandleValueChange(function(newValue) {
+	this.power.setCallbackValueChange(function(newValue) {
 		self.config.power = newValue;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
-	this.autoPilot.setHandleValueChange(function(newValue) {
+	this.autoPilot.setCallbackValueChange(function(newValue) {
 		self.config.autoPilot = newValue;
 		self.domMain.innerHTML = JSON.stringify(config, null, '<br/>');
 	});
-	this.home.setHandlePressed(function(newValue) {
+	this.home.setCallbackValueChange(function(newValue) {
 		self.domMain.innerHTML = 'HOME';
 	});
 
-	// radiogroup
-	this.paletteGroup = new RadioGroup(document.getElementById('idPaletteGroup'));
-	this.paletteGroup.init();
-
-	this.paletteGroup.setHandleFocusChange(function(focusedItem) {
-		self.domMain.innerHTML = focusedItem.domNode.id;
+	this.counter = 0;
+	this.paletteGroup.setCallbackFocusChange(function(newButton) {
+		self.domMain.innerHTML = newButton.domButton.id + ' ' + (self.counter++);
 	});
-
-	// shortcut handler
-	window.addEventListener('keydown', this.handleKeyDown.bind(this));
-	window.addEventListener('keyup', this.handleKeyUp.bind(this));
 }
 
 GUI.prototype.handleKeyDown = function (event) {
@@ -219,74 +193,63 @@ GUI.prototype.handleKeyDown = function (event) {
 
 	// Grab the keydown and click events
 	switch (event.keyCode) {
-		case 'Px':
-		case 'px':
-			break;
 		case 0x41: // A
 		case 0x61: // a
-			this.autoPilot.goDown();
+			this.autoPilot.buttonDown();
 			this.domAutoPilotButton.focus();
 			break;
 		case 0x44: // D
 		case 0x64: // d
-			this.paletteGroup.radioButtons[1].goDown();
+			this.paletteGroup.radioButtons[1].buttonDown();
 			this.domDefaultPaletteButton.focus();
 			break;
 		case 0x46: // F
 		case 0x66: // f
-			if (this.formula.keyToggle(event))
-				this.domFormulaButton.focus();
-			else
+			if (!this.formula.toggleListbox(event))
 				this.domMain.focus();
 			break;
 		case 0x49: // I
 		case 0x69: // i
-			if (this.incolour.keyToggle(event))
-				this.domIncolourButton.focus();
-			else
+			if (!this.incolour.toggleListbox(event))
 				this.domMain.focus();
 			break;
 		case 0x4f: // O
 		case 0x6f: // o
-			if (this.outcolour.keyToggle(event))
-				this.domOutcolourButton.focus();
-			else
+			if (!this.outcolour.toggleListbox(event))
 				this.domMain.focus();
 			break;
 		case 0x50: // P
 		case 0x70: // p
-			if (this.plane.keyToggle(event))
-				this.domPlaneButton.focus();
-			else
+			if (!this.plane.toggleListbox(event))
 				this.domMain.focus();
 			break;
 		case 0x51: // Q
 		case 0x71: // q
-			this.power.goDown();
+			this.power.buttonDown();
 			this.domPowerButton.focus();
 			break;
 		case 0x52: // R
 		case 0x72: // r
-			this.paletteGroup.radioButtons[0].goDown();
+			this.paletteGroup.radioButtons[0].buttonDown();
 			this.domRandomPaletteButton.focus();
 			break;
-		case aria.KeyCode.HOME:
-			this.home.goDown();
+		case Aria.KeyCode.HOME:
+			this.home.buttonDown();
 			this.domHomeButton.focus();
 			break;
-		case aria.KeyCode.UP:
+		case Aria.KeyCode.UP:
 			this.speed.moveSliderTo(this.speed.valueNow + 1);
 			this.domSpeedThumb.focus();
 			break;
-		case aria.KeyCode.DOWN:
+		case Aria.KeyCode.DOWN:
 			this.speed.moveSliderTo(this.speed.valueNow - 1);
 			this.domSpeedThumb.focus();
 			break;
-		case aria.KeyCode.PAGE_UP:
+		case Aria.KeyCode.PAGE_UP:
 			this.rotate.moveSliderTo(this.rotate.valueNow + 1);
 			this.domRotateThumb.focus();
 			break;
-		case aria.KeyCode.PAGE_DOWN:
+		case Aria.KeyCode.PAGE_DOWN:
 			this.rotate.moveSliderTo(this.rotate.valueNow - 1);
 			this.domRotateThumb.focus();
 			break;
@@ -306,38 +269,38 @@ GUI.prototype.handleKeyUp = function (event) {
 	switch (event.keyCode) {
 		case 0x41: // A
 		case 0x61: // a
-			this.autoPilot.goUp();
+			this.autoPilot.buttonUp();
 			this.domMain.focus();
 			break;
 		case 0x44: // D
 		case 0x64: // d
-			this.paletteGroup.radioButtons[1].goUp();
+			this.paletteGroup.radioButtons[1].buttonUp();
 			this.domMain.focus();
 			break;
 		case 0x51: // Q
 		case 0x71: // q
-			this.power.goUp();
+			this.power.buttonUp();
 			this.domMain.focus();
 			break;
 		case 0x52: // R
 		case 0x62: // r
-			this.paletteGroup.radioButtons[0].goUp();
+			this.paletteGroup.radioButtons[0].buttonUp();
 			this.domMain.focus();
 			break;
-		case aria.KeyCode.HOME:
-			this.home.goUp();
+		case Aria.KeyCode.HOME:
+			this.home.buttonUp();
 			this.domMain.focus();
 			break;
-		case aria.KeyCode.UP:
+		case Aria.KeyCode.UP:
 			this.domMain.focus();
 			break;
-		case aria.KeyCode.DOWN:
+		case Aria.KeyCode.DOWN:
 			this.domMain.focus();
 			break;
-		case aria.KeyCode.PAGE_DOWN:
+		case Aria.KeyCode.PAGE_DOWN:
 			this.domMain.focus();
 			break;
-		case aria.KeyCode.PAGE_UP:
+		case Aria.KeyCode.PAGE_UP:
 			this.domMain.focus();
 			break;
 	}
