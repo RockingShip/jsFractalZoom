@@ -322,7 +322,7 @@ GUI.prototype.paintViewport = function () {
 	var pixels = this.pixels; // pixel data
 	var diameter = this.diameter; // pixel scanline width (it's square)
 	var rgba = (this.frameNr&1) ? this.imagedata1.data : this.imagedata2.data; // canvas pixel data
-	var i, j, x, y, ix, iy, ji, c;
+	var i, j, x, y, ix, iy, ji, yx, c;
 
 	// palette offset must be integer and may not be negative
 	var offset = Math.round(this.config.offset % paletteSize);
@@ -339,26 +339,46 @@ GUI.prototype.paintViewport = function () {
 	this.rsin = Math.sin(this.config.angle * Math.PI / 180);
 	this.rcos = Math.cos(this.config.angle * Math.PI / 180);
 
-	// viewport rotation
-	var sin = this.config.rsin; // sine for viewport angle
-	var cos = this.config.rcos; // cosine for viewport angle
-	var xstart = Math.floor((diameter - viewHeight * sin - viewWidth * cos) * 32768);
-	var ystart = Math.floor((diameter - viewHeight * cos + viewWidth * sin) * 32768);
-	var ixstep = Math.floor(cos * 65536);
-	var iystep = Math.floor(sin * -65536);
-	var jxstep = Math.floor(sin * 65536);
-	var jystep = Math.floor(cos * 65536);
+	if (this.config.angle === 0) {
+		// extract viewport
+		var xstart = Math.floor((diameter - viewWidth) / 2);
+		var ystart = Math.floor((diameter - viewHeight) / 2);
 
-	// copy pixels
-	ji = 0;
-	for (j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
-		for (i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
-			c = pixels[(iy >> 16) * diameter + (ix >> 16)];
+		// copy pixels
+		ji = 0;
+		for (j = 0, y = ystart; j < viewHeight; j++, y++) {
+			for (i = 0, yx = y * diameter + xstart; i < viewWidth; i++, yx++) {
+				c = pixels[yx];
 
-			rgba[ji++] = tmpRed[c];
-			rgba[ji++] = tmpGreen[c];
-			rgba[ji++] = tmpBlue[c];
-			rgba[ji++] = 255;
+				rgba[ji++] = tmpRed[c];
+				rgba[ji++] = tmpGreen[c];
+				rgba[ji++] = tmpBlue[c];
+				rgba[ji++] = 255;
+			}
+		}
+
+	} else {
+		// viewport rotation
+		var sin = this.config.rsin; // sine for viewport angle
+		var cos = this.config.rcos; // cosine for viewport angle
+		var xstart = Math.floor((diameter - viewHeight * sin - viewWidth * cos) * 32768);
+		var ystart = Math.floor((diameter - viewHeight * cos + viewWidth * sin) * 32768);
+		var ixstep = Math.floor(cos * 65536);
+		var iystep = Math.floor(sin * -65536);
+		var jxstep = Math.floor(sin * 65536);
+		var jystep = Math.floor(cos * 65536);
+
+		// copy pixels
+		ji = 0;
+		for (j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
+			for (i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
+				c = pixels[(iy >> 16) * diameter + (ix >> 16)];
+
+				rgba[ji++] = tmpRed[c];
+				rgba[ji++] = tmpGreen[c];
+				rgba[ji++] = tmpBlue[c];
+				rgba[ji++] = 255;
+			}
 		}
 	}
 };
@@ -622,8 +642,8 @@ GUI.prototype.mainloop = function() {
 		this.state = 1;
 
 		// yield and return as quick as possible
-		this.timerId = window.setTimeout(this.mainloop, 0);
-		return;
+		// this.timerId = window.setTimeout(this.mainloop, 0);
+		// return;
 	}
 
 	/*
