@@ -99,19 +99,25 @@ function GUI(config) {
 	this.timerId = 0;
 	/** @type {number} - Timestamp next vblank */
 	this.vblank = 0;
+	/** @type {number} - Number of frames painted */
+	this.frameNr = 0;
+	/** @type {number} - Number of scanlines calculated for current frame */
+	this.numLines = 0;
 
 	/** @type {number} - Damping coefficient low-pass filter for following fields */
 	this.coef = 0.05;
-	/** @type {number} - Average time in mSec spent in DOM/JS framework */
-	this.msecSys = 0;
-	/** @type {number} - Average time in mSec spent in jsFractalZoom framework */
-	this.msecUsr = 0;
-	/** @type {number} - Average time in mSec spent in stage1 (Draw) */
-	this.msecState1 = 0;
+		/** @type {number} - Average time in mSec spent in stage1 (Draw) */
+	this.statState1 = 0;
 	/** @type {number} - Average time in mSec spent in stage2 (Zoom) */
-	this.msecState2 = 0;
+	this.statState2 = 0;
 	/** @type {number} - Average time in mSec spent in stage3 (Lines) */
-	this.msecState3 = 0;
+	this.statState3 = 0;
+	// per second differences
+	this.mainloopNr = 0;
+	this.lastNow = 0;
+	this.lastFrame = 0;
+	this.lastLoop = 0;
+
 
 	/** @type {Uint8Array} - temporary red palette after rotating palette index */
 	this.tmpRed = new Uint8Array(256);
@@ -131,7 +137,9 @@ function GUI(config) {
 	/** @type {CanvasRenderingContext2D} */
 	this.ctx = undefined;
 	/** @type {ImageData} - direct access to canvas pixel data */
-	this.imagedata = undefined;
+	this.imagedata1 = undefined;
+	/** @type {ImageData} - direct access to canvas pixel data */
+	this.imagedata2 = undefined;
 
 	/*
 	 * Find the elements and replace the string names for DOM references
@@ -283,7 +291,9 @@ GUI.prototype.setViewport = function (domView) {
 
 	// access canvas pixels
 	this.ctx = domView.getContext("2d");
-	this.imagedata = this.ctx.getImageData(0, 0, this.viewWidth, this.viewHeight);
+
+	this.imagedata1 = this.ctx.createImageData(this.viewWidth, this.viewHeight);
+	this.imagedata2 = this.ctx.createImageData(this.viewWidth, this.viewHeight);
 
 	// update config
 	this.config.width = this.viewWidth;
@@ -311,7 +321,7 @@ GUI.prototype.paintViewport = function () {
 	var viewHeight = this.viewHeight; // viewport height
 	var pixels = this.pixels; // pixel data
 	var diameter = this.diameter; // pixel scanline width (it's square)
-	var rgba = this.imagedata.data; // canvas pixel data
+	var rgba = (this.frameNr&1) ? this.imagedata1.data : this.imagedata2.data; // canvas pixel data
 	var i, j, x, y, ix, iy, ji, c;
 
 	// palette offset must be integer and may not be negative
@@ -325,7 +335,6 @@ GUI.prototype.paintViewport = function () {
 		tmpGreen[i] = this.paletteGreen[(i + offset) % paletteSize];
 		tmpBlue[i] = this.paletteBlue[(i + offset) % paletteSize];
 	}
-	this.frame++;
 
 	this.rsin = Math.sin(this.config.angle * Math.PI / 180);
 	this.rcos = Math.cos(this.config.angle * Math.PI / 180);
@@ -352,16 +361,6 @@ GUI.prototype.paintViewport = function () {
 			rgba[ji++] = 255;
 		}
 	}
-};
-
-/**
- * Syncronise screen updates
- */
-GUI.prototype.animationFrame = function() {
-	this.ctx.putImageData(this.imagedata, 0, 0);
-
-	// update next vblank so `endtime` is more accurate
-	this.vblank += this.config.msecPerFrame;
 };
 
 /**
@@ -518,8 +517,10 @@ GUI.prototype.handleBlur = function (event) {
  * start the mainloop
  */
 GUI.prototype.start = function() {
-	this.vblank = Date.now() + this.config.msecPerFrame; // vblank wakeup time
-	this.msecState1 = this.msecState2 = this.msecState3 = this.config.msecPerFrame / 2;
+	this.state = 1;
+	this.vblank = performance.now() + this.config.msecPerFrame; // vblank wakeup time
+	this.numLines = 0;
+	this.statState1 = this.statState2 = this.statState3 = this.config.msecPerFrame / 2;
 	this.timerId = window.setTimeout(this.mainloop, 1);
 };
 
@@ -532,6 +533,20 @@ GUI.prototype.stop = function() {
 };
 
 /**
+ * Syncronise screen updates
+ *
+ * @param {number} time
+ */
+GUI.prototype.animationFrame = function(time) {
+	// paint image
+	// NOTE: opposite buffer than used in paintViewport()
+	if (this.frameNr&1)
+		this.ctx.putImageData(this.imagedata2, 0, 0);
+	else
+		this.ctx.putImageData(this.imagedata1, 0, 0);
+};
+
+/**
  * GUI mainloop called by timer event
  *
  * @returns {boolean}
@@ -540,31 +555,81 @@ GUI.prototype.mainloop = function() {
 	if (!this.timerId)
 		return false;
 
-	// make local for speec
+	this.mainloopNr++;
+
+	// make local for speed
 	var config = this.config;
 
 	// current time
-	var now = Date.now();
+	var now = performance.now();
 
-	// consider waking too late is framework overloaded
-	var sysload = Math.max(now-this.vblank, 0);
-	this.msecSys += (sysload - this.msecSys) * this.coef;
-
-	// update vertical blank
-	if (this.vblank + 2000 <= now) {
-		// hibernated too long (like when stepping during debugging)
-		this.vblank = now + config.msecPerFrame; // time of next vblank
-	} else {
-		this.vblank += config.msecPerFrame; // update next vblank
+	if (now > this.vblank + 2000) {
+		// Missed vblannk by more than 2 seconds, resync
+		this.vblank= now + config.msecPerFrame;
+		this.state = 1;
 	}
 
-	// endtime based on framerate and 2 mSec framework breathing space
-	var endtime = this.vblank + config.msecPerFrame - 2;
+	/*
+	 * Fast path
+	 */
+	if (this.state === 3) {
+		// end time is 2mSec before next vertical blank
+		var endtime = this.vblank - 2;
+		if (endtime > now + 2)
+			endtime = now + 2;
+
+		/*
+		 * Calculate lines
+		 */
+		while (now < endtime) {
+			// var cnt = navEngine.onquality(now, endtime-avg4);
+
+			now = performance.now();
+			this.numLines++;
+		}
+
+		/*
+		 * Wait for vblank
+		 */
+		if (now < endtime) {
+			// yield and return as quick as possible
+			this.timerId = window.setTimeout(this.mainloop, 0);
+			return true;
+		}
+		if (now < this.vblank) {
+			// wait
+			this.timerId = window.setTimeout(this.mainloop, 1);
+			return true;
+		}
+
+		/*
+		 * Update stats
+		 */
+		if (this.numLines > 0) {
+			this.statState3 += (this.numLines - this.statState3) * this.coef;
+		}
+
+		/*
+		 * Request to paint previously prepared frame
+		 */
+		this.frameNr++; // switch frames, must do before calling requestAnimationFrame()
+		this.vblank += config.msecPerFrame; // time of next vblank
+		window.requestAnimationFrame(this.animationFrame);
+
+		/*
+		 * Reset state
+		 */
+		this.state = 1;
+
+		// yield and return as quick as possible
+		this.timerId = window.setTimeout(this.mainloop, 0);
+		return;
+	}
 
 	/*
 	 * test for viewport resize
 	 */
-	if (this.domMain.clientWidth != this.viewWidth || this.domMain.clientHeight != this.viewHeight)
+	if (this.domMain.clientWidth !== this.viewWidth || this.domMain.clientHeight !== this.viewHeight)
 		this.setViewport(this.domMain);
 
 	/*
@@ -575,71 +640,48 @@ GUI.prototype.mainloop = function() {
 	if (config.rotateSpeed)
 		config.setAngle(config.angle + config.msecPerFrame * config.rotateIncrement * config.rotateSpeed);
 
-	var usrload = now;
-	var diff = undefined;
-
-	/*
-	 * State1: Paint viewport
-	 */
 	var last = now;
-	this.paintViewport();
-	window.requestAnimationFrame(this.animationFrame);
+	if (this.state === 1) {
+		/*
+		 * State1: Paint viewport
+		 */
 
-	now = Date.now();
-	diff = now - last;
-	this.msecState1 += (diff - this.msecState1) * this.coef;
+		this.paintViewport();
 
-	/*
-	 * State2: zoom/autopilot
-	 */
-	last = now;
-//	navEngine.ontick(now, endtime);
+		now = performance.now();
+		this.statState1 += ((now - last) - this.statState1) * this.coef;
 
-	now = Date.now();
-	diff = now - last;
-	this.msecState2 += (diff - this.msecState2) * this.coef;
+		this.state = 2;
 
-	/*
-	 * State3: redraw as many as possible scanlines
-	 */
-	last = now;
-	var numLines = 0;
-	var moreTodo = false;
-	while (now < endtime) {
-		// var cnt = navEngine.onquality(now, endtime-avg4);
+	} else if (this.state === 2) {
+		/*
+		 * State2: zoom/autopilot
+		 */
+//		navEngine.ontick(now, endtime);
 
-		// when all scanlines done, then image complete
-		this.dirty = true;
+		now = performance.now();
+		this.statState2 += ((now - last) - this.statState2) * this.coef;
 
-		now = Date.now();
-		numLines++;
+		this.state = 3;
 	}
-	if (numLines > 0) {
-		diff = (now - last) / numLines;
-		this.msecState3 += (diff - this.msecState3) * this.coef;
-	}
-
-	// update load
-	usrload = now - usrload;
-	this.msecUsr += (usrload - this.msecUsr) * this.coef;
 
 	// this.domMain.innerHTML = ((avgS+avgU)*100/config.frametime).toFixed()+'% (sys:'+avgS.toFixed()+'mSec+usr:'+avgU.toFixed()+'mSec) ['+stxt+']';
-	this.domStatusRect.innerHTML = ((this.msecSys + this.msecUsr) * 100 / config.msecPerFrame).toFixed() +
-		'% (sys:' + this.msecSys.toFixed() +
-		'mSec+usr:' + this.msecUsr.toFixed() +
-		'mSec) [' + this.msecState1.toFixed(3) +
-		',' +  this.msecState2.toFixed(6) +
-		',' +  this.msecState3.toFixed(6) +
-		']'
+	this.domStatusRect.innerHTML =
+		'paint:' + this.statState1.toFixed(3) +
+		'mSec('+ (this.statState1*100/config.msecPerFrame).toFixed(0) +
+		'%), zoom:' + this.statState2.toFixed(3) +
+		'mSec, lines:' + this.statState3.toFixed(0);
 	;
 
-	if (moreTodo) {
-		// more to do, sleep as short as possible
-		this.timerId = window.setTimeout(this.mainloop, 0);
-	} else {
-		// wait until next vertical blank
-		this.timerId = window.setTimeout(this.mainloop, Math.max(this.vblank - now, 0));
+	if (Math.floor(now/1000) !== this.lastNow) {
+		this.domStatusLoad.innerHTML = 'FPS:'+(this.frameNr - this.lastFrame) + ' IPS:' + (this.mainloopNr - this.lastLoop);
+		this.lastNow = 	Math.floor(now/1000);
+		this.lastFrame = this.frameNr;
+		this.lastLoop = this.mainloopNr;
 	}
+
+	// yield and return as quick as possible
+	this.timerId = window.setTimeout(this.mainloop, 0);
 
 	return true;
 };

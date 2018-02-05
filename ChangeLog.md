@@ -6,7 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- High precision timers
+- mainloop timings
+- double imagedata buffer
+
 ## [0.3.0] 2018-02-05
+
 ### Added
 - RadioButton/RadioGroup
 - JavaScript bindings
@@ -17,15 +23,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Unified ARIA
 
 ## [0.2.0] 2018-02-03
+
 ### Added
 - Redesigned user interface according to ARIA practices https://www.w3.org/TR/wai-aria-practices
 
 ## 0.1.0 2018-01-30
+
 ### Changed
 - General cleanup
 - Initial commit
 
 ## 0.0.0 2011-05-09
+
 ### Added
 - Initial creation
 
