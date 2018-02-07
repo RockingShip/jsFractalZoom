@@ -40,6 +40,17 @@ Aria.KeyCode = Object.freeze({
 });
 
 /**
+ * Mouse button constant definitions
+ *
+ * @constructor Aria.ButtonCode
+ */
+Aria.ButtonCode = Object.freeze({
+	BUTTON_LEFT: 0, // for righthanded mouse, left button
+	BUTTON_WHEEL: 2, // for righthanded mouse, wheel button
+	BUTTON_RIGHT: 1  // for righthanded mouse, right button
+});
+
+/**
  * Button object representing the state and interactions for a standalone (1 or 2 state) widget
  *
  * @constructor Aria.Button

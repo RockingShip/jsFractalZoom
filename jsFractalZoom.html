@@ -36,16 +36,19 @@
 		<span id="WxH"></span>
 		quality: <span id="idStatusQuality">100%100%</span>
 		load: <span id="idStatusLoad"></span>
-		rect: <span id="idStatusRect">{x:2, y:7, dx:0.2, dy:0.2}</span>
+		rect: <span id="idStatusRect"></span>
 	</div>
 </div>
 <div id="bot-wrapper" class="pane">
 	<div id="main-wrapper" class="pane">
-		<canvas id="main"
+		<canvas
+		     id="idViewport"
 		     class="pane"
 		     tabindex="0"
 		     role="region"
-		     aria-live="off">
+		     aria-live="off"
+		     width="0"
+		     height="0">
 		</canvas>
 	</div>
 	<div id="nav-wrapper" class="pane">
@@ -225,23 +228,23 @@
 				</div>
 			</div>
 
-			<div id="idSpeed" class="navRow navSlider">
-				<div id="idSpeedLabel" class="navLabel">Speed</div>
-				<div id="idSpeedLeft" class="navLeft"></div>
-				<div id="idSpeedValue" class="navValue">
-					<div id="idSpeedRail" class="rail">
-						<div id="idSpeedThumb"
+			<div id="idZoomSpeed" class="navRow navSlider">
+				<div id="idZoomSpeedLabel" class="navLabel">Speed</div>
+				<div id="idZoomSpeedLeft" class="navLeft"></div>
+				<div id="idZoomSpeedValue" class="navValue">
+					<div id="idZoomSpeedRail" class="rail">
+						<div id="idZoomSpeedThumb"
 						     role="slider"
 						     tabindex="0"
 						     class="thumb"
 						     aria-valuemin="1"
-						     aria-valuenow="35"
-						     aria-valuemax="255"
-						     aria-labelledby="idSpeedLabel">
+						     aria-valuenow="25"
+						     aria-valuemax="100"
+						     aria-labelledby="idZoomSpeedLabel">
 						</div>
 					</div>
 				</div>
-				<div id="idSpeedRight" class="navRight"><span class="navCaption">[UP/DOWN]</span></div>
+				<div id="idZoomSpeedRight" class="navRight"><span class="navCaption">[UP/DOWN]</span></div>
 			</div>
 
 			<div id="idRotate" class="navRow navSlider">
@@ -273,23 +276,23 @@
 				</div>
 			</div>
 
-			<div id="idCycle" class="navRow navSlider">
-				<div id="idCycleLabel" class="navLabel">Cycle speed</div>
-				<div id="idCycleLeft" class="navLeft"></div>
-				<div id="idCycleValue" class="navValue">
-					<div id="idCycleRail" class="rail">
-						<div id="idCycleThumb"
+			<div id="idCycleSpeed" class="navRow navSlider">
+				<div id="idCycleSpeedLabel" class="navLabel">Cycle speed</div>
+				<div id="idCycleSpeedLeft" class="navLeft"></div>
+				<div id="idCycleSpeedValue" class="navValue">
+					<div id="idCycleSpeedRail" class="rail">
+						<div id="idCycleSpeedThumb"
 						     role="slider"
 						     tabindex="0"
 						     class="thumb"
 						     aria-valuemin="-100"
-						     aria-valuenow="25"
+						     aria-valuenow="0"
 						     aria-valuemax="+100"
-						     aria-labelledby="idCycleLabel">
+						     aria-labelledby="idCycleSpeedLabel">
 						</div>
 					</div>
 				</div>
-				<div id="idCycleRight" class="navRight"><span class="navCaption">[]</span></div>
+				<div id="idCycleSpeedRight" class="navRight"><span class="navCaption">[]</span></div>
 			</div>
 
 			<div id="idPalette" class="navRow navButton">
@@ -403,11 +406,15 @@
 		cleanNode(document.body);
 
 		// setup and link top-level components
-		var config = new Config();
-		var gui = new GUI(config);
+		window.config = new Config();
+		window.gui = new GUI(window.config);
+		window.viewport = new Viewport(1, 1); // initial placeholder
 
 		// initial focus main view
-		gui.domMain.focus();
+		window.gui.domViewport.focus();
+		// restart mainloop because initialisation takes longer then mSecPerFrame
+		window.gui.stop();
+		window.gui.start();
 	});
 </script>
 </body>

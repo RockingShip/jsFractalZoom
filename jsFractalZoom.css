@@ -61,7 +61,7 @@ body {
 	padding: 4px;
 }
 
-#main {
+#idViewport {
 	/*padding: 4px;*/
 	/*border: 2px dotted transparent;*/
 	position: relative;
@@ -94,7 +94,7 @@ body {
  * Main view
  */
 
-#main.focus {
+#idViewport.focus {
 	/*border-color: #888;*/
 	outline: 2px dotted #000;
 }

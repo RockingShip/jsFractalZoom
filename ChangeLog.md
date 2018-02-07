@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- Relocate pixel data from GUI to newly created Viewport
+
 ## [0.4.0] 2018-02-05
 
 ### Changed
