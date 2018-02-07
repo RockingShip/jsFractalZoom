@@ -6,124 +6,94 @@
  * @constructor
  */
 function Config() {
-	this.tickLast = 0;
 
+	/*
+	 * GUI settings
+	 */
 	this.power = true;
 	this.autoPilot = false;
 
-	/** @type {number} - Frames per second */
-	this.Framerate = 20;
-	/** @type {number} - mSec per frame */
-	this.msecPerFrame = 1000 / this.Framerate;
+	/** @member {number} - zoom magnification slider Min */
+	this.magnificationMin = 1.0;
+	/** @member {number} - zoom magnification slider Max */
+	this.magnificationMax = 4.0;
+	/** @member {number} - zoom magnification slider Now */
+	this.magnificationNow = this.logTolinear(this.magnificationMin, this.magnificationMax, 1.5);
 
-	/** @type {number} - current viewport angle (degrees) */
+	/** @member {number} - rotate speed slider Min */
+	this.rotateSpeedMin = -1.0;
+	/** @member {number} - rotate speed slider Max */
+	this.rotateSpeedMax = +1.0;
+	/** @member {number} - rotate speed slider Now */
+	this.rotateSpeedNow = 0;
+
+	/** @member {number} - palette cycle slider Min */
+	this.paletteSpeedMin = -30.0;
+	/** @member {number} - palette cycle slider Max */
+	this.paletteSpeedMax = +30.0;
+	/** @member {number} - palette cycle slider Now */
+	this.paletteSpeedNow = 0;
+
+	/** @member {number} - calculation depth slider Min */
+	this.depthMin = 30;
+	/** @member {number} - calculation depth slider Max */
+	this.depthMax = 2000;
+	/** @member {number} - calculation depth slider Now */
+	this.depthNow = 350;
+
+	/** @member {number} - calculation depth slider Min */
+	this.framerateMin = 4;
+	/** @member {number} - calculation depth slider Max */
+	this.framerateMax = 60;
+	/** @member {number} - calculation depth slider Now */
+	this.framerateNow = 20;
+
+	/** @member {number} - current viewport angle (degrees) */
 	this.angle = 0;
-	/** @type {number} - user set rotation speed. range -1 <= x <= +1 */
-	this.rotateSpeed = 0;
-	/** @type {number} - angle increment per mSec given rotateSpeed=1 */
-	this.rotateIncrement = 360 / 1000.0; // max speed is 1 revolution per second
 
-	/** @type {number} - current viewport zoomspeed */
+	/** @member {number} - current palette offset */
+	this.paletteOffset = 0; // color palette cycle timer updated
+
+	/** @member {number} - current viewport zoomspeed */
 	this.zoomSpeed = 0;
-	/** @type {number} - GUI set maximum viewport zoomspeed. range -1 <= x <= +1 */
-	this.zoomSpeedMax = 0;
-	/** @type {number} - zoomspeed increment per second GUI given zoomSpeedMax=1 */
-	this.zoomSpeedIncrement = 1;
-	/** @type {number} - After 1sec, get 80% closer to target speed */
+	/** @member {number} - After 1sec, get 80% closer to target speed */
 	this.zoomSpeedCoef = 0.80;
 
-	
-	this.offsetSpeed = 0;
-	this.offsetIncrement = 0.1; // cycle increment
-	this.depth = 0;
 	this.formula = "";
 	this.incolour = "";
 	this.outcolour = "";
 	this.plane = "";
-	this.width = 1;
-	this.height = 1;
-	this.sec=0;
-
-	this.offset = 0; // color palette cycle timer updated
-
-}
-
-/**
- * Set colour palette cycle offset
- *
- * @param {number} newValue - range -1.0 <= newValue <= +1.0
- */
-Config.prototype.setOffset = function(newValue) {
-	this.offset = newValue;
-};
-
-/**
- * Set Framerate
- *
- * @param {number} newValue
- */
-Config.prototype.setFramerate = function(newValue) {
-	this.Framerate = newValue;
-	this.msecPerFrame = 1000 / this.Framerate;
-};
-
-/**
- * Set zoom speed
- *
- * @param {number} newValue - range 0 <= newValue <= +1.0
- */
-Config.prototype.setZoomSpeedMax = function(newValue) {
-	this.zoomSpeedMax = newValue;
-};
-
-/**
- * Set rotate speed
- *
- * @param {number} newValue - range -1.0 <= newValue <= +1.0
- */
-Config.prototype.setRotateSpeed = function(newValue) {
-	this.rotateSpeed = newValue;
-};
-
-/**
- * Set colour palette cycle speed
- *
- * @param {number} newValue - range -1.0 <= newValue <= +1.0
- */
-Config.prototype.setCycleSpeed = function(newValue) {
-	this.offsetSpeed = newValue;
-};
-
-/**
- * Update values to current time. Best called during vertical sync
- *
- * @param {number} tickNow
- * @param {number} buttons - OR-ed set of Aria.ButtonCode
- */
-Config.prototype.updateTick = function(tickNow, buttons) {
-
-	var diffTick = tickNow - this.tickLast;
-
-	if (this.offsetSpeed)
-		this.setOffset(this.offset + diffTick * this.offsetIncrement * this.offsetSpeed);
-	if (this.rotateSpeed)
-		this.angle += diffTick * this.rotateIncrement * this.rotateSpeed;
-
-	if (buttons === (1<<Aria.ButtonCode.BUTTON_LEFT)) {
-		// zoom-in only
-		this.zoomSpeed = +1 - (+1 - this.zoomSpeed) * Math.pow((1 - this.zoomSpeedCoef), diffTick / 1000);
-	} else if (buttons === (1<<Aria.ButtonCode.BUTTON_RIGHT)) {
-		// zoom-out only
-		this.zoomSpeed = -1 - (-1 - this.zoomSpeed) * Math.pow((1 - this.zoomSpeedCoef), diffTick / 1000);
-	} else if (buttons === 0) {
-		// buttons released
-		this.zoomSpeed = this.zoomSpeed * Math.pow((1 - this.zoomSpeedCoef), diffTick / 1000);
-
-		if (this.zoomSpeed >= -0.001 && this.zoomSpeed < +0.001)
-			this.zoomSpeed = 0; // full stop
 	}
 
-	this.tickLast = tickNow;
+/**
+ *  Slider helper, convert linear value `now` to logarithmic
+ *
+ * @param {number} min
+ * @param {number} max
+ * @param {number} now
+ * @returns {number}
+ */
+Config.prototype.linearToLog = function(min, max, now) {
+
+	var v = Math.exp((now - min) / (max - min)); // 1 <= result <= E
+
+	return min + (max - min) * (v - 1) / (Math.E - 1);
+
+};
+
+/**
+ *  Slider helper, convert logarithmic value `now` to linear
+ *
+ * @param {number} min
+ * @param {number} max
+ * @param {number} now
+ * @returns {number}
+ */
+Config.prototype.logTolinear = function(min, max, now) {
+
+	var v = 1 + (now - min) * (Math.E - 1) / (max - min);
+
+	return min + Math.log(v) * (max - min);
 };
 
 /**
@@ -144,31 +114,39 @@ function Viewport(width, height) {
 	if (height <= 0)
 		height = 1;
 
-	/** @type {Uint8Array} - temporary red palette after rotating palette index */
+	/** @member {number} - tick of last update */
+	this.tickLast = 0;
+
+	/** @member {Uint8Array} - temporary red palette after rotating palette index */
 	this.tmpRed = new Uint8Array(256);
-	/** @type {Uint8Array} - temporary red palette after rotating palette index */
+	/** @member {Uint8Array} - temporary red palette after rotating palette index */
 	this.tmpGreen = new Uint8Array(256);
-	/** @type {Uint8Array} - temporary red palette after rotating palette index */
+	/** @member {Uint8Array} - temporary red palette after rotating palette index */
 	this.tmpBlue = new Uint8Array(256);
 
-	/** @type {number} - width of viewport */
+	/** @member {number} - width of viewport */
 	this.viewWidth = width;
-	/** @type {number} - height of viewport */
+	/** @member {number} - height of viewport */
 	this.viewHeight = height;
-	/** @type {number} - diameter of the pixel data */
+	/** @member {number} - diameter of the pixel data */
 	this.diameter = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
-	/** @type {Uint8Array} - pixel data (must be square) */
+	/** @member {Uint8Array} - pixel data (must be square) */
 	this.pixels = new Uint8Array(this.diameter * this.diameter);
 
+	/** @member {number} - center X coordinate */
 	this.centerX = 0;
+	/** @member {number} - center Y coordinate */
 	this.centerY = 0;
+	/** @member {number} - distance between center and viewport corner */
+	this.radius = 0;
+	/** @member {number} - distance between center and horizontal viewport edge (derived from this.radius) */
 	this.radiusX = 0;
+	/** @member {number} - distance between center and vertical viewport edge  (derived from this.radius) */
 	this.radiusY = 0;
-	this.radius = 2;
 
-	/** @type {number} - sin(angle) */
+	/** @member {number} - sin(angle) */
 	this.rsin = Math.sin(this.angle * Math.PI / 180);
-	/** @type {number} - cos(angle) */
+	/** @member {number} - cos(angle) */
 	this.rcos = Math.cos(this.angle * Math.PI / 180);
 
 	this.lastTick = 0;
@@ -176,6 +154,8 @@ function Viewport(width, height) {
 	this.dragActiveX = 0;
 	this.dragActiveY = 0;
 	this.initY = 0;
+
+	this.setPosition(-0.75, 0, 2.5);
 }
 
 /**
@@ -183,16 +163,18 @@ function Viewport(width, height) {
  *
  * @param {number} x
  * @param {number} y
- * @param {number} r
+ * @param {number} radius
  */
-Viewport.prototype.setPosition = function(x, y, r) {
+Viewport.prototype.setPosition = function(x, y, radius) {
 	this.centerX = x;
 	this.centerY = y;
-	this.radius = r;
+	this.radius = radius;
 
-	var t = Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight);
-	this.radiusX = r * this.viewWidth / t;
-	this.radiusY = r * this.viewHeight / t;
+	var d = Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight);
+	this.radiusX = radius * this.viewWidth / d;
+	this.radiusY = radius * this.viewHeight / d;
+
+	// window.gui.domStatusQuality.innerHTML = JSON.stringify({x:x, y:y, r:radius});
 };
 
 /**
@@ -224,15 +206,20 @@ Viewport.prototype.paint = function(angle, paletteRed, paletteGreen, paletteBlue
 	this.rcos = Math.cos(angle * Math.PI / 180);
 
 	// palette offset must be integer and may not be negative
-	var offset = Math.round(window.config.offset % paletteSize);
+	var offset = Math.round(window.config.paletteOffset);
 	if (offset < 0)
-		offset += paletteSize;
+		offset = (paletteSize-1) - (1-offset) % (paletteSize-1);
+	else
+		offset = offset % (paletteSize-1);
 
-	// apply colour cycling
-	for (i = 0; i < paletteSize; i++) {
-		tmpRed[i] = paletteRed[(i + offset) % paletteSize];
-		tmpGreen[i] = paletteGreen[(i + offset) % paletteSize];
-		tmpBlue[i] = paletteBlue[(i + offset) % paletteSize];
+	// apply colour cycling (not for first colour)
+	tmpRed[0] = paletteRed[0];
+	tmpGreen[0] = paletteGreen[0];
+	tmpBlue[0] = paletteBlue[0];
+	for (i = 1; i < paletteSize; i++) {
+		tmpRed[i] = paletteRed[(i + offset) % (paletteSize - 1) + 1];
+		tmpGreen[i] = paletteGreen[(i + offset) % (paletteSize - 1) + 1];
+		tmpBlue[i] = paletteBlue[(i + offset) % (paletteSize - 1) + 1];
 	}
 
 	var xstart, ystart;
@@ -281,109 +268,149 @@ Viewport.prototype.paint = function(angle, paletteRed, paletteGreen, paletteBlue
 };
 
 /**
- * Update values to current time. Best called during vertical sync
- *
- * @param {number} tickNow
- * @param {number} buttons - OR-ed set of Aria.ButtonCode
- */
-Viewport.prototype.updateTick = function(tickNow, buttons) {
-
-	if (this.lastTick === 0) {
-		// sync on first call
-		this.lastTick = tickNow;
-		return;
-	}
-
-	var diffTick = tickNow - this.tickLast;
-
-	// if (this.offsetSpeed)
-	// 	this.setOffset(this.offset + diffTick * this.offsetIncrement * this.offsetSpeed);
-	// if (this.rotateSpeed)
-	// 	window.viewport.setAngle(this.angle + diffTick * this.rotateIncrement * this.rotateSpeed);
-
-	// if (buttons === (1<<Aria.ButtonCode.BUTTON_LEFT)) {
-		// zoom-in only
-		// this.zoomSpeed = +1 - (+1 - this.zoomSpeed) * Math.pow((1 - this.zoomSpeedCoef), diffTick / 1000);
-	// } else if (buttons === (1<<Aria.ButtonCode.BUTTON_RIGHT)) {
-		// zoom-out only
-		// this.zoomSpeed = -1 - (-1 - this.zoomSpeed) * Math.pow((1 - this.zoomSpeedCoef), diffTick / 1000);
-	// } else if (buttons === 0) {
-		// buttons released
-		// this.zoomSpeed = this.zoomSpeed * Math.pow((1 - this.zoomSpeedCoef), diffTick / 1000);
-		//
-		// if (this.zoomSpeed >= -0.001 && this.zoomSpeed < +0.001)
-		// 	this.zoomSpeed = 0; // full stop
-	// }
-
-	this.tickLast = tickNow;
-};
-
-/**
  * Handle mouse movement.
  * Left button - zoom in
  * Center button - drag
  * Right button - zoom out
  *
+ * @param {number} tickNow
  * @param {number} mouseX
  * @param {number} mouseY
  * @param {number} buttons - OR-ed set of Aria.ButtonCode
  */
-Viewport.prototype.handleMovement = function(mouseX, mouseY, buttons) {
+Viewport.prototype.handleChange = function(tickNow, mouseX, mouseY, buttons) {
+
+	/** @type {Config} */
+	var config = window.config;
+
+	if (this.tickLast === 0) {
+		// sync only
+		this.tickLast = tickNow;
+		return;
+	}
+
+	// seconds since last call
+	var diffSec = (tickNow - this.tickLast) / 1000;
+
+	/*
+	 * Update palette cycle offset
+	 */
+	if (config.paletteSpeedNow)
+		config.paletteOffset += diffSec * config.paletteSpeedNow;
+
+	/*
+	 * Update viewport angle
+	 */
+	if (config.rotateSpeedNow)
+		config.angle += diffSec * config.rotateSpeedNow * 360;
+
+	/*
+	 * Update zoom (de-)acceleration. -1 <= zoomSpeed <= +1
+	 */
+	if (buttons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
+		// zoom-in only
+		config.zoomSpeed = +1 - (+1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
+	} else if (buttons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
+		// zoom-out only
+		config.zoomSpeed = -1 - (-1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
+	} else if (buttons === 0) {
+		// buttons released
+		config.zoomSpeed = config.zoomSpeed * Math.pow((1 - config.zoomSpeedCoef), diffSec);
+
+		if (config.zoomSpeed >= -0.001 && config.zoomSpeed < +0.001)
+			config.zoomSpeed = 0; // full stop
+	}
+
+	/*
+	 *translate mouse to fractal coordinate
+	 */
+	// relative to viewport center
+	var dx = mouseX * this.radiusX * 2 / this.viewWidth - this.radiusX;
+	var dy = mouseY * this.radiusY * 2 / this.viewHeight - this.radiusY;
+	// undo rotation
+	var x = dy * this.rsin + dx * this.rcos + this.centerX;
+	var y = dy * this.rcos - dx * this.rsin + this.centerY;
+
 	/*
 	 * handle drag gesture (mouse wheel button)
 	 */
 	if (buttons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
-		// translate viewport coordinate to pixel coordinate
-		var x = mouseX * this.radiusX * 2 / this.viewWidth - this.radiusX;
-		var y = mouseY * this.radiusY * 2 / this.viewHeight - this.radiusY;
-		var t = x;
-		x = y * this.rsin + t * this.rcos + this.centerX;
-		y = y * this.rcos - t * this.rsin + this.centerY;
 
 		if (!this.dragActive) {
-			// save starting position
+			// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
 			this.dragActiveX = x;
 			this.dragActiveY = y;
 			this.dragActive = true;
-		} else {
-			this.setPosition(this.centerX - x + this.dragActiveX, this.centerY - y + this.dragActiveY, this.radius);
 		}
+
+		// update x/y but keep radius
+		this.setPosition(this.centerX - x + this.dragActiveX, this.centerY - y + this.dragActiveY, this.radius);
 	} else {
 		this.dragActive = false;
 	}
 
+	/*
+	 * Mouse button gestures. The mouse pointer coordinate should not change
+	 */
+	if (config.zoomSpeed) {
+		// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
+		var magnify = Math.pow(config.magnificationNow, config.zoomSpeed * diffSec);
+
+		// zoom, The mouse pointer coordinate should not change
+		this.setPosition((this.centerX - x) / magnify + x, (this.centerY - y) / magnify + y, this.radius / magnify);
+	}
+
+	// window.gui.domStatusQuality.innerHTML = JSON.stringify({zoomSpeed:this.zoomSpeed, radius: window.viewport.radius});
+
+	this.tickLast = tickNow;
 };
 
 /**
- * Background renderer. Simple image
+ * Simple implementation
+ *
+ * @param {number} zre
+ * @param {number} zim
+ * @param {number} pre
+ * @param {number} pim
+ * @returns {number}
+ */
+Viewport.prototype.mand_calc = function(zre, zim, pre, pim) {
+	var iter = 0, maxiter = window.config.depthNow;
+	var rp, ip;
+	
+	do {
+		rp = zre * zre;
+		ip = zim * zim;
+
+		zim = 2 * zre * zim + pim;
+		zre = rp - ip + pre;
+		if (rp + ip >= 4)
+			return iter;
+	} while (++iter < maxiter);
+
+	return 0;
+};
+
+/**
+ * Simple background renderer
  */
 Viewport.prototype.renderLines = function() {
 	if (this.initY >= this.diameter)
 		return;
 
-	var y = this.initY - this.diameter / 2;
-	var yx = this.initY * this.diameter;
+	var ji = this.initY * this.diameter;
 
-	for (var x = -this.diameter / 2; x < this.diameter / 2; x++) {
+	var minY = this.centerY - this.radiusY;
+	var maxY = this.centerY + this.radiusY;
+	var y = minY + (maxY-minY) * this.initY / this.diameter;
+
+	for (var i = 0; i < this.diameter; i++) {
 		// distance to center
-		var r = Math.sqrt(x * x + y * y);
+		var x = (this.centerX - this.radiusX) + this.radiusX*2 * i / this.diameter;
 
-		// get base t
-		var t = (Math.atan2(y, x) + Math.PI) / Math.PI / 2;
+		var z = this.mand_calc(0,0,x,y);
 
-		// find which modulo
-		var rhi = 0, rlo = 0;
-		for (var i = 12; i >= 0; i--) {
-			rhi = rlo;
-			rlo = Math.pow(Math.PI / 2, t + i);
-
-			if (r >= rlo && r < rhi)
-				break;
-		}
-
-		var z = (r - rlo) / (rhi - rlo);
-		z = Math.round(z * 16);
-		this.pixels[yx++] = z % 16;
+		this.pixels[ji++] = z % 16;
 	}
 
 	this.initY++;
@@ -396,7 +423,7 @@ Viewport.prototype.renderLines = function() {
  * @param config {Config}
  */
 function GUI(config) {
-	/** @type {Config} - Reference to config object */
+	/** @member {Config} - Reference to config object */
 	this.config = config;
 
 	/*
@@ -423,9 +450,9 @@ function GUI(config) {
 	this.domRotateLeft = "idRotateLeft";
 	this.domRotateRail = "idRotateRail";
 	this.domRotateThumb = "idRotateThumb";
-	this.domCycleSpeedLeft = "idCycleSpeedLeft";
-	this.domCycleSpeedRail = "idCycleSpeedRail";
-	this.domCycleSpeedThumb = "idCycleSpeedThumb";
+	this.domPaletteSpeedLeft = "idPaletteSpeedLeft";
+	this.domPaletteSpeedRail = "idPaletteSpeedRail";
+	this.domPaletteSpeedThumb = "idPaletteSpeedThumb";
 	this.domRandomPaletteButton = "idRandomPaletteButton";
 	this.domDefaultPaletteButton = "idDefaultPaletteButton";
 	this.domDepthLeft = "idDepthLeft";
@@ -436,30 +463,31 @@ function GUI(config) {
 	this.domFramerateThumb = "idFramerateThumb";
 	this.domWxH = "WxH";
 
-	/** @type {number} - viewport mouse X coordinate */
+	/** @member {number} - viewport mouse X coordinate */
 	this.mouseX = 0;
-	/** @type {number} - viewport mouse Y coordinate */
+	/** @member {number} - viewport mouse Y coordinate */
 	this.mouseY = 0;
-	/** @type {number} - viewport mouse button state. OR-ed set of Aria.ButtonCode */
+	/** @member {number} - viewport mouse button state. OR-ed set of Aria.ButtonCode */
 	this.buttons = 0;
 
-	/** @type {number} - Main loop timer id */
+	/** @member {number} - Main loop timer id */
 	this.timerId = 0;
-	/** @type {number} - Timestamp next vsync */
+	/** @member {number} - Timestamp next vsync */
 	this.vsync = 0;
-	/** @type {number} - Number of frames painted */
+	/** @member {number} - Number of frames painted */
 	this.frameNr = 0;
-	/** @type {number} - Number of scanlines calculated for current frame */
+	/** @member {number} - Number of scanlines calculated for current frame */
 	this.numLines = 0;
 
-	/** @type {number} - Damping coefficient low-pass filter for following fields */
+	/** @member {number} - Damping coefficient low-pass filter for following fields */
 	this.coef = 0.05;
-		/** @type {number} - Average time in mSec spent in stage1 (Draw) */
+		/** @member {number} - Average time in mSec spent in stage1 (Draw) */
 	this.statState1 = 0;
-	/** @type {number} - Average time in mSec spent in stage2 (Zoom) */
+	/** @member {number} - Average time in mSec spent in stage2 (Zoom) */
 	this.statState2 = 0;
-	/** @type {number} - Average time in mSec spent in stage3 (Lines) */
+	/** @member {number} - Average time in mSec spent in stage3 (Lines) */
 	this.statState3 = 0;
+
 	// per second differences
 	this.mainloopNr = 0;
 	this.lastNow = 0;
@@ -504,11 +532,16 @@ function GUI(config) {
 	window.addEventListener("message", this.handleMessage);
 
 	// construct sliders
-	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail);
-	this.rotate = new Aria.Slider(this.domRotateThumb, this.domRotateRail);
-	this.cycle = new Aria.Slider(this.domCycleSpeedThumb, this.domCycleSpeedRail);
-	this.depth = new Aria.Slider(this.domDepthThumb, this.domDepthRail);
-	this.Framerate = new Aria.Slider(this.domFramerateThumb, this.domFramerateRail);
+	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail, 
+		config.magnificationMin, config.magnificationMax, config.magnificationNow);
+	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
+		config.rotateSpeedMin, config.rotateSpeedMax, config.rotateSpeedNow);
+	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
+		config.paletteSpeedMin, config.paletteSpeedMax, config.paletteSpeedNow);
+	this.depth = new Aria.Slider(this.domDepthThumb, this.domDepthRail,
+		config.depthMin, config.depthMax, config.depthNow);
+	this.Framerate = new Aria.Slider(this.domFramerateThumb, this.domFramerateRail,
+		config.framerateMin, config.framerateMax, config.framerateNow);
 
 	// construct controlling listbox button
 	this.formula = new Aria.ListboxButton(this.domFormulaButton, this.domFormulaList);
@@ -531,41 +564,45 @@ function GUI(config) {
 
 	// sliders
 	this.speed.setCallbackValueChange(function(newValue) {
-		self.config.setZoomSpeedMax(newValue / 100); // scale to 0 <= newValue <= +1.0
-		self.domZoomSpeedLeft.innerHTML = newValue;
+		// scale exponentially
+		newValue = config.linearToLog(config.magnificationMin, config.magnificationMax, newValue);
+		config.magnificationNow = newValue;
+		self.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
 	});
-	this.rotate.setCallbackValueChange(function(newValue) {
-		self.config.setRotateSpeed(newValue / 100); // scale to -1.0 <= newValue <= +1.0
-		self.domRotateLeft.innerHTML = newValue;
+	this.rotateSpeed.setCallbackValueChange(function(newValue) {
+		config.rotateSpeedNow = newValue;
+		self.domRotateLeft.innerHTML = newValue.toFixed(1);
 	});
-	this.cycle.setCallbackValueChange(function(newValue) {
-		self.config.setCycleSpeed(newValue / 100); // scale to -1.0 <= newValue <= +1.0
-		self.domCycleSpeedLeft.innerHTML = newValue;
+	this.paletteSpeed.setCallbackValueChange(function(newValue) {
+		config.paletteSpeedNow = newValue;
+		self.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
 	});
 	this.depth.setCallbackValueChange(function(newValue) {
-		self.config.depth = newValue;
+		newValue = Math.round(newValue);
+		config.depthNow = newValue;
 		self.domDepthLeft.innerHTML = newValue;
 	});
 	this.Framerate.setCallbackValueChange(function(newValue) {
-		self.config.setFramerate(newValue);
+		newValue = Math.round(newValue);
+		config.framerateNow = newValue;
 		self.domFramerateLeft.innerHTML = newValue;
 	});
 
 	// listboxes
 	this.formula.listbox.setCallbackFocusChange(function(focusedItem) {
-		self.config.formula = focusedItem.id;
+		config.formula = focusedItem.id;
 		self.domFormulaButton.innerText = focusedItem.innerText;
 	});
 	this.incolour.listbox.setCallbackFocusChange(function(focusedItem) {
-		self.config.incolour = focusedItem.id;
+		config.incolour = focusedItem.id;
 		self.domIncolourButton.innerText = focusedItem.innerText;
 	});
 	this.outcolour.listbox.setCallbackFocusChange(function(focusedItem) {
-		self.config.outcolour = focusedItem.id;
+		config.outcolour = focusedItem.id;
 		self.domOutcolourButton.innerText = focusedItem.innerText;
 	});
 	this.plane.listbox.setCallbackFocusChange(function(focusedItem) {
-		self.config.plane = focusedItem.id;
+		config.plane = focusedItem.id;
 		self.domPlaneButton.innerText = focusedItem.innerText;
 	});
 
@@ -650,11 +687,11 @@ GUI.prototype.handleKeyDown = function (event) {
 			this.domZoomSpeedThumb.focus();
 			break;
 		case Aria.KeyCode.PAGE_UP:
-			this.rotate.moveSliderTo(this.rotate.valueNow + 1);
+			this.rotateSpeed.moveSliderTo(this.rotateSpeed.valueNow + 1);
 			this.domRotateThumb.focus();
 			break;
 		case Aria.KeyCode.PAGE_DOWN:
-			this.rotate.moveSliderTo(this.rotate.valueNow - 1);
+			this.rotateSpeed.moveSliderTo(this.rotateSpeed.valueNow - 1);
 			this.domRotateThumb.focus();
 			break;
 		default:
@@ -767,8 +804,6 @@ GUI.prototype.handleMouse = function(event) {
 		document.removeEventListener("contextmenu", this.handleMouse);
 	}
 
-	window.viewport.handleMovement(this.mouseX, this.mouseY, this.buttons);
-	
 	event.preventDefault();
 	event.stopPropagation();
 };
@@ -790,9 +825,9 @@ GUI.prototype.handleMessage = function(event) {
  */
 GUI.prototype.start = function() {
 	this.state = 1;
-	this.vsync = performance.now() + this.config.msecPerFrame; // vsync wakeup time
+	this.vsync = performance.now() + (1000 / this.config.framerateNow); // vsync wakeup time
 	this.numLines = 0;
-	this.statState1 = this.statState2 = this.statState3 = this.config.msecPerFrame / 2;
+	this.statState1 = this.statState2 = this.statState3 = 0;
 	this.config.tickLast = performance.now();
 	this.timerId = window.setTimeout(this.mainloop, 1);
 };
@@ -842,7 +877,7 @@ GUI.prototype.mainloop = function() {
 	if (this.mainloopNr === 1 || now > this.vsync + 2000) {
 		// first call has a long (70mSec) delay
 		// Missed vsync by more than 2 seconds, resync
-		this.vsync= now + config.msecPerFrame;
+		this.vsync = now + (1000 / config.framerateNow);
 		this.state = 1;
 	}
 
@@ -864,7 +899,7 @@ GUI.prototype.mainloop = function() {
 			 * Request to paint previously prepared frame
 			 */
 			this.frameNr++; // switch frames, must do before calling requestAnimationFrame()
-			this.vsync += config.msecPerFrame; // time of next vsync
+			this.vsync += (1000 / config.framerateNow); // time of next vsync
 			window.requestAnimationFrame(this.animationFrame);
 
 			/*
@@ -891,8 +926,9 @@ GUI.prototype.mainloop = function() {
 
 		if (window.viewport.initY >= window.viewport.diameter) {
 			// sleep abit
-			this.timerId = window.setTimeout(this.mainloop, 1);
-			return true;
+			// this.timerId = window.setTimeout(this.mainloop, 1);
+			// return true;
+			window.viewport.initY = 0;
 		}
 
 		/*
@@ -938,8 +974,7 @@ GUI.prototype.mainloop = function() {
 	/*
 	 * Update colour palette cycle offset and viewport angle
 	 */
-	config.updateTick(now, this.buttons);
-	window.viewport.handleMovement(this.mouseX, this.mouseY, this.buttons);
+	window.viewport.handleChange(now, this.mouseX, this.mouseY, this.buttons);
 
 	var last = now;
 	if (this.state === 1) {
@@ -972,7 +1007,7 @@ GUI.prototype.mainloop = function() {
 	// this.domViewport.innerHTML = ((avgS+avgU)*100/config.frametime).toFixed()+'% (sys:'+avgS.toFixed()+'mSec+usr:'+avgU.toFixed()+'mSec) ['+stxt+']';
 	this.domStatusRect.innerHTML =
 		"paint:" + this.statState1.toFixed(3) +
-		"mSec("+ (this.statState1*100/config.msecPerFrame).toFixed(0) +
+		"mSec("+ (this.statState1*100/(1000 / config.framerateNow)).toFixed(0) +
 		"%), zoom:" + this.statState2.toFixed(3) +
 		"mSec, lines:" + this.statState3.toFixed(0)
 	;
@@ -982,7 +1017,6 @@ GUI.prototype.mainloop = function() {
 		this.lastNow = 	Math.floor(now/1000);
 		this.lastFrame = this.frameNr;
 		this.lastLoop = this.mainloopNr;
-		config.sec++;
 	}
 
 	// yield and return as quick as possible

@@ -61,13 +61,13 @@ Aria.Button = function (domButton) {
 
 	/**
 	 * Attached DOM node
-	 * @type {Element}
+	 * @member {Element}
 	 */
 	this.domButton = domButton;
 
 	/**
 	 * True is button is being pushed down
-	 * @type {boolean}
+	 * @member {boolean}
 	 */
 	this.down = false;
 
@@ -231,37 +231,37 @@ Aria.Button.prototype.handleMouseUp = function(event) {
  * @param {Element} domThumb
  * @param {Element} domRail
  */
-Aria.Slider = function (domThumb, domRail) {
+Aria.Slider = function (domThumb, domRail, valueMin, valueMax, valueNow) {
 
 	/**
 	 * Attached DOM node to the movable thumb
-	 * @type {Element}
+	 * @member {Element}
 	 */
 	this.domThumb = domThumb;
 
 	/**
 	 * Attached DOM node to the background rail
-	 * @type {Element}
+	 * @member {Element}
 	 */
 	this.domRail = domRail;
 
 	/**
 	 * Minimum value
-	 * @type {number}
+	 * @member {number}
 	 */
-	this.valueMin = parseInt((this.domThumb.getAttribute('aria-valuemin')));
+	this.valueMin = valueMin;
 
 	/**
 	 * Maximum value
-	 * @type {number}
+	 * @member {number}
 	 */
-	this.valueMax = parseInt((this.domThumb.getAttribute('aria-valuemax')));
+	this.valueMax = valueMax;
 
 	/**
 	 * Current value
-	 * @type {number}
+	 * @member {number}
 	 */
-	this.valueNow = parseInt((this.domThumb.getAttribute('aria-valuenow')));
+	this.valueNow = valueNow;
 
 	/**
 	 * Called when button state/value changes
@@ -271,6 +271,13 @@ Aria.Slider = function (domThumb, domRail) {
 	 */
 	this.callbackValueChange = function (newValue) {
 	};
+
+	/*
+	 * Set attributes
+	 */
+	this.domThumb.setAttribute('aria-valuemin', this.valueMin);
+	this.domThumb.setAttribute('aria-valuemax', this.valueMax);
+	this.domThumb.setAttribute('aria-valuenow', this.valueNow);
 
 	/*
 	 * Register event listeners
@@ -314,9 +321,8 @@ Aria.Slider.prototype.moveSliderTo = function (value) {
 
 	this.domThumb.setAttribute('aria-valuenow', this.valueNow);
 
-	var pos = Math.round(((this.valueNow - this.valueMin) * this.domRail.clientWidth) / (this.valueMax - this.valueMin)) -
-		(this.domThumb.clientWidth / 2) ;
-	this.domThumb.style.left = pos + 'px';
+	var pos = ((this.valueNow - this.valueMin) * this.domRail.clientWidth) / (this.valueMax - this.valueMin) - (this.domThumb.clientWidth / 2) ;
+	this.domThumb.style.left = Math.round(pos) + 'px';
 
 	// trigger callback
 	this.callbackValueChange(this.valueNow);
@@ -427,7 +433,7 @@ Aria.Slider.prototype.handleMouseDownThumb = function (event) {
 		var rect = self.domRail.getBoundingClientRect();
 		var diffX = event.pageX - rect.left;
 
-		var newValue = Math.round(self.valueMin + ((self.valueMax - self.valueMin) * diffX) / self.domRail.clientWidth);
+		var newValue = self.valueMin + ((self.valueMax - self.valueMin) * diffX) / self.domRail.clientWidth;
 		self.moveSliderTo(newValue);
 
 		event.preventDefault();
@@ -468,7 +474,7 @@ Aria.Slider.prototype.handleMouseDownRail = function (event) {
 	var rect = this.domRail.getBoundingClientRect();
 	var diffX = event.pageX - rect.left;
 
-	var newValue = Math.round(this.valueMin + ((this.valueMax - this.valueMin) * diffX) / this.domRail.clientWidth);
+	var newValue = this.valueMin + ((this.valueMax - this.valueMin) * diffX) / this.domRail.clientWidth;
 	this.moveSliderTo(newValue);
 
 	event.preventDefault();
@@ -489,19 +495,19 @@ Aria.Slider.prototype.handleMouseDownRail = function (event) {
 Aria.ListboxButton = function (domButton, domList) {
 	/**
 	 * Attached DOM node to the activation button
-	 * @type {Element}
+	 * @member {Element}
 	 */
 	this.domButton = domButton;
 
 	/**
 	 * Attached DOM node to the dropdown list
-	 * @type {Element}
+	 * @member {Element}
 	 */
 	this.domList = domList;
 
 	/**
 	 * State object listbox
-	 * @type {Aria.Listbox}
+	 * @member {Aria.Listbox}
 	 */
 	this.listbox = new Aria.Listbox(domList);
 
@@ -632,17 +638,17 @@ Aria.Listbox = function (domList) {
 
 	/**
 	 * The DOM node pointing to the listbox
-	 * @type {Element}
+	 * @member {Element}
 	 */
 	this.domList = domList;
 
 	/**
-	 * @type {string | null}
+	 * @member {string | null}
 	 */
 	this.activeDescendant = this.domList.getAttribute('aria-activedescendant');
 
 	/**
-	 * @type {string}
+	 * @member {string}
 	 */
 	this.keysSoFar = '';
 
@@ -918,7 +924,7 @@ Aria.RadioButton = function (domButton, radioGroup) {
 
 	/**
 	 * Attached DOM node
-	 * @type {Element}
+	 * @member {Element}
 	 */
 	this.domButton = domButton;
 
@@ -929,7 +935,7 @@ Aria.RadioButton = function (domButton, radioGroup) {
 
 	/**
 	 * True is button is being pushed down
-	 * @type {boolean}
+	 * @member {boolean}
 	 */
 	this.down = false;
 
@@ -1078,27 +1084,27 @@ Aria.RadioButton.prototype.handleMouseUp = function(event) {
 Aria.RadioGroup = function (domGroup) {
 
 	/**
-	 * @type {Element}
+	 * @member {Element}
 	 */
 	this.domGroup = domGroup;
 
 	/**
-	 * @type {Aria.RadioButton[]}
+	 * @member {Aria.RadioButton[]}
 	 */
 	this.radioButtons = [];
 
 	/**
-	 * @type {Aria.RadioButton}
+	 * @member {Aria.RadioButton}
 	 */
 	this.firstRadioButton = null;
 
 	/**
-	 * @type {Aria.RadioButton}
+	 * @member {Aria.RadioButton}
 	 */
 	this.lastRadioButton = null;
 
 	/**
-	 * @type {Aria.RadioButton}
+	 * @member {Aria.RadioButton}
 	 */
 	this.checkedRadioButton = null;
 
