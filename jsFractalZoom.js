@@ -889,7 +889,6 @@ GUI.prototype.handleMessage = function(event) {
 GUI.prototype.start = function() {
 	this.state = 1;
 	this.vsync = performance.now() + (1000 / this.config.framerateNow); // vsync wakeup time
-	this.numLines = 0;
 	this.statStateCopy = this.statStateUpdate = this.statStatePaint = 0;
 	this.config.tickLast = performance.now();
 	window.postMessage("mainloop", "*");
@@ -949,10 +948,12 @@ GUI.prototype.mainloop = function() {
 	}
 
 	if (this.state === 2) {
-		this.counters[2]++;
 		/*
 		 * UPDATE-before-rAF. calculate inaccurate pixels
 		 */
+		this.counters[2]++;
+		last = now;
+
 		if (now >= this.vsync - 2) {
 			// don't even start if there is less than 2mSec left till next vsync
 			this.state = 3;
@@ -960,10 +961,8 @@ GUI.prototype.mainloop = function() {
 			/*
 			 * update inaccurate pixels
 			 */
-			if (window.viewport.initY >= window.viewport.diameter)
-				window.viewport.initY = 0;
 
-			var numLines = 0;
+			// end time is 2mSec before next vertical sync
 			var endtime = this.vsync - 2;
 			if (endtime > now + 2)
 				endtime = now + 2;
@@ -971,7 +970,10 @@ GUI.prototype.mainloop = function() {
 			/*
 			 * Calculate lines
 			 */
-			last = now;
+			if (window.viewport.initY >= window.viewport.diameter)
+				window.viewport.initY = 0;
+
+			var numLines = 0;
 			while (now < endtime) {
 				window.viewport.renderLines();
 
@@ -982,17 +984,17 @@ GUI.prototype.mainloop = function() {
 			// update stats
 			this.statStateUpdate += ((now - last) / numLines - this.statStateUpdate) * this.coef;
 
-			// yield and return as quick as possible
 			window.postMessage("mainloop", "*");
 			return true;
 		}
 	}
 
 	if (this.state === 3) {
-		this.counters[3]++;
 		/*
 		 * IDLE. Wait for vsync
 		 */
+		this.counters[3]++;
+
 		if (now >= this.vsync) {
 			// vsync is NOW
 			this.state = 4;
@@ -1002,10 +1004,10 @@ GUI.prototype.mainloop = function() {
 		}
 	}
 	if (this.state === 4) {
-		this.counters[4]++;
 		/*
 		 * requestAnimationFrame()
 		 */
+		this.counters[4]++;
 
 		this.state = 5; // !! This must be set before rAF is called
 		this.vsync += (1000 / config.framerateNow); // time of next vsync
@@ -1016,31 +1018,28 @@ GUI.prototype.mainloop = function() {
 		return true;
 	}
 	if (this.state === 5) {
-		this.counters[5]++;
 		/*
 		 * WAIT. UPDATE-after-rAF. Wait for animateFrame() to change state
 		 */
+		this.counters[5]++;
+		last = now;
 
 		if (window.viewport.initY >= window.viewport.diameter)
 			window.viewport.initY = 0;
-
-		last = now;
 		window.viewport.renderLines();
 
 		// update stats
 		now = performance.now();
 		this.statStateUpdate += ((now - last) - this.statStateUpdate) * this.coef;
 
-		// yield and return as quick as possible
 		window.postMessage("mainloop", "*");
 		return true;
 	}
 	if (this.state === 6) {
-		this.counters[6]++;
 		/*
 		 * PAINT. Finalize viewport so it can be presented immediately on the next vsync
 		 */
-
+		this.counters[6]++;
 		last = now;
 		if (this.frameNr&1)
 			window.viewport.paint(this.config.angle, this.paletteRed, this.paletteGreen, this.paletteBlue, this.imagedata1);
@@ -1051,24 +1050,21 @@ GUI.prototype.mainloop = function() {
 		now = performance.now();
 		this.statStatePaint += ((now - last) - this.statStatePaint) * this.coef;
 
-		// yield and return as quick as possible
 		this.state = 1;
 		window.postMessage("mainloop", "*");
 		return true;
 	}
 
-	if (this.state != 1)
-		alert('!1');
-
 	/*
 	 * COPY. update timed values and prepare viewport
 	 */
 	this.counters[1]++;
+	last = now;
 
 	/*
 	 * test for viewport resize
 	 */
-	if (this.domViewport.clientWidth !== window.viewport.viewWidth || this.domViewport.clientHeight !== window.viewport.viewHeight) {
+	if (this.domViewport.clientWidth !== this.domViewport.width || this.domViewport.clientHeight !== this.domViewport.height) {
 		// set property
 		this.domViewport.width = this.domViewport.clientWidth;
 		this.domViewport.height = this.domViewport.clientHeight;
@@ -1095,8 +1091,6 @@ GUI.prototype.mainloop = function() {
 	 */
 	window.viewport.handleChange(now, this.mouseX, this.mouseY, this.buttons);
 
-	last = now;
-
 	// ZOOM/COPY CODE GOES HERE
 	this.frameNr++;
 
@@ -1121,7 +1115,6 @@ GUI.prototype.mainloop = function() {
 		this.lastLoop = this.mainloopNr;
 	}
 
-	// yield and return as quick as possible
 	this.state = 2;
 	window.postMessage("mainloop", "*");
 
