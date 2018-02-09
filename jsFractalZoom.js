@@ -73,15 +73,15 @@ function Config() {
 	/*
 	 * GUI settings
 	 */
-	this.power = true;
+	this.power = false;
 	this.autoPilot = false;
 
 	/** @member {number} - zoom magnification slider Min */
 	this.magnificationMin = 1.0;
 	/** @member {number} - zoom magnification slider Max */
-	this.magnificationMax = 4.0;
+	this.magnificationMax = 100.0;
 	/** @member {number} - zoom magnification slider Now */
-	this.magnificationNow = this.logTolinear(this.magnificationMin, this.magnificationMax, 1.5);
+	this.magnificationNow = this.logTolinear(this.magnificationMin, this.magnificationMax, 4);
 
 	/** @member {number} - rotate speed slider Min */
 	this.rotateSpeedMin = -0.5;
@@ -100,9 +100,9 @@ function Config() {
 	/** @member {number} - calculation depth slider Min */
 	this.depthMin = 30;
 	/** @member {number} - calculation depth slider Max */
-	this.depthMax = 2000;
+	this.depthMax = 800;
 	/** @member {number} - calculation depth slider Now */
-	this.depthNow = 350;
+	this.depthNow = 600;
 
 	/** @member {number} - calculation depth slider Min */
 	this.framerateMin = 4;
@@ -223,8 +223,68 @@ function Viewport(width, height, imagedata) {
 	/** @member {number} - cos(angle) */
 	this.rcos = 1;
 
-	this.initY = 0;
+	this.xCoord = new Float64Array(this.diameter);
+	this.xNearest = new Float64Array(this.diameter);
+	this.xError = new Float64Array(this.diameter);
+	this.xFrom = new Int32Array(this.diameter);
+	this.yCoord = new Float64Array(this.diameter);
+	this.yNearest = new Float64Array(this.diameter);
+	this.yError = new Float64Array(this.diameter);
+	this.yFrom = new Int32Array(this.diameter);
 }
+
+/**
+ *
+ * @param {number} start - start coordinate
+ * @param {number} end - end coordinate
+ * @param {Float64Array} newCoord - coordinate stops
+ * @param {Float64Array} newNearest - nearest evaluated coordinate stop
+ * @param {Float64Array} newError - difference between newCoord[] and newNearest[]
+ * @param {Uint16Array} newFrom - matching oldNearest[] index
+ * @param {Float64Array} oldNearest - source ruler
+ */
+Viewport.prototype.makeRuler = function(start, end, newCoord, newNearest, newError, newFrom, oldNearest) {
+
+	var iOld, iNew, nextError, currError, currCoord;
+
+	/*
+	 *
+	 */
+	iOld = 0;
+	for (iNew = 0; iNew < newCoord.length && iOld < oldNearest.length; iNew++) {
+
+		// determine coordinate current tab stop
+		currCoord = (end - start) * iNew / newCoord.length + start;
+
+		// determine errors
+		currError = Math.abs(currCoord - oldNearest[iOld]);
+		nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
+
+		// bump if next source stop is better
+		while (nextError <= currError && iOld < oldNearest.length - 1) {
+			iOld++;
+			currError = nextError;
+			nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
+		}
+
+		// populate
+		newCoord[iNew] = currCoord;
+		newNearest[iNew] = oldNearest[iOld];
+		newError[iNew] = currError;
+		newFrom[iNew] = iOld;
+	}
+
+	// copy the only option
+	while (iNew < newCoord.length) {
+		newNearest[iNew] = oldNearest[iOld];
+		newError[iNew] = Math.abs(newCoord[iNew] - oldNearest[iOld]);
+		newFrom[iNew] = iOld;
+	}
+
+	// make sure the ends are precise
+	newCoord[0] = start;
+	newCoord[newCoord.length-1] = end;
+};
 
 /**
  * Set the center coordinate and radius.
@@ -233,8 +293,9 @@ function Viewport(width, height, imagedata) {
  * @param {number} y
  * @param {number} radius
  * @param {number} angle
+ * @param {Viewport} oldViewport
  */
-Viewport.prototype.setPosition = function(x, y, radius, angle) {
+Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 	this.centerX = x;
 	this.centerY = y;
 	this.radius = radius;
@@ -249,6 +310,52 @@ Viewport.prototype.setPosition = function(x, y, radius, angle) {
 	this.rcos = Math.cos(angle * Math.PI / 180);
 
 	// window.gui.domStatusQuality.innerHTML = JSON.stringify({x:x, y:y, r:radius, a:angle});
+
+	/*
+	 * setup new rulers
+	 */
+	this.makeRuler(this.centerX - this.radius, this.centerX + this.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, oldViewport.xNearest);
+	this.makeRuler(this.centerY - this.radius, this.centerY + this.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, oldViewport.yNearest);
+
+	/**
+	 **!
+	 **! The following loop is a severe performance hit
+	 **!
+	 **/
+
+	/*
+	 * copy pixels
+	 */
+	var j=0, i=0, k=0, ji = 0;
+	var ybase=0, ybaseLast;
+	var xFrom = this.xFrom;
+	var yFrom = this.yFrom;
+	var newDiameter = this.diameter;
+	var oldDiameter = oldViewport.diameter;
+	var newPixels = this.pixels;
+	var oldPixels = oldViewport.pixels;
+
+	// first line
+	ybase = yFrom[0] * oldDiameter;
+	for (i = 0; i < newDiameter; i++)
+		newPixels[ji++] = oldPixels[ybase + xFrom[i]];
+	// followups
+	for (j = 1; j < newDiameter; j++) {
+		ybaseLast = ybase;
+		ybase = yFrom[j] * oldDiameter;
+		if (ybase === ybaseLast) {
+			// this line is identical to the previous
+			k = ji - newDiameter;
+			for (i = 0; i < newDiameter; i++)
+				newPixels[ji++] = newPixels[k++];
+
+		} else {
+			// extract line from previous frame
+			for (i = 0; i < newDiameter; i++) {
+				newPixels[ji++] = oldPixels[ybase + xFrom[i]];
+			}
+		}
+	}
 };
 
 /**
@@ -258,9 +365,8 @@ Viewport.prototype.setPosition = function(x, y, radius, angle) {
  * @param {Uint8Array} paletteRed
  * @param {Uint8Array} paletteGreen
  * @param {Uint8Array} paletteBlue
- * @param {Uint8Array} imagedata
  */
-Viewport.prototype.paint = function(paletteRed, paletteGreen, paletteBlue, imagedata) {
+Viewport.prototype.draw = function(paletteRed, paletteGreen, paletteBlue) {
 
 	// make references local
 	var paletteSize = paletteRed.length;
@@ -290,6 +396,12 @@ Viewport.prototype.paint = function(paletteRed, paletteGreen, paletteBlue, image
 		tmpGreen[i] = paletteGreen[(i + offset) % (paletteSize - 1) + 1];
 		tmpBlue[i] = paletteBlue[(i + offset) % (paletteSize - 1) + 1];
 	}
+
+	/**
+	 **!
+	 **! The following loop is a severe performance hit
+	 **!
+	 **/
 
 	var xstart, ystart;
 	if (this.angle === 0) {
@@ -366,25 +478,171 @@ Viewport.prototype.mand_calc = function(zre, zim, pre, pim) {
  * Simple background renderer
  */
 Viewport.prototype.renderLines = function() {
-	if (this.initY >= this.diameter)
-		return;
+	// which tabstops have the worst error
 
-	var ji = this.initY * this.diameter;
+	var worstXval = this.xError[0];
+	var worstXinx = 0;
+	var worstYval = this.yError[0];
+	var worstYinx = 0;
+	var i, j, k, ji, x, y, err, last;
+	var diameter = this.diameter;
+	var diameter2 = this.diameter*this.diameter;
 
-	var minY = this.centerY - this.radius;
-	var maxY = this.centerY + this.radius;
-	var y = minY + (maxY-minY) * this.initY / this.diameter;
-
-	for (var i = 0; i < this.diameter; i++) {
-		// distance to center
-		var x = (this.centerX - this.radius) + this.radius*2 * i / this.diameter;
-
-		var z = this.mand_calc(0,0,x,y);
-
-		this.pixels[ji++] = z % 16;
+	for (i=1; i<diameter; i++) {
+		if (this.xError[i] > worstXval) {
+			worstXinx = i;
+			worstXval = this.xError[i];
+		}
+	}
+	for (j=1; j<diameter; j++) {
+		if (this.yError[j] > worstYval) {
+			worstYinx = j;
+			worstYval = this.yError[j];
+		}
 	}
 
-	this.initY++;
+	if (worstXval + worstYval === 0)
+		return; // nothing to do
+
+	/**
+	 **!
+	 **! The following loop is a severe performance hit
+	 **!
+	 **/
+
+	if (worstXval > worstYval) {
+
+		i = worstXinx;
+		x = this.xCoord[i];
+
+		// first tabstop
+		ji = 0 * diameter + i;
+		this.pixels[ji] = last = this.mand_calc(0, 0, x, this.yCoord[0]) % 16;
+		ji += diameter;
+
+		for (j = 1; j < diameter; j++) {
+			if (this.yError[j] === 0)
+				last = this.mand_calc(0, 0, x, this.yCoord[j]) % 16; // only calculate if tabstop is exact
+			this.pixels[ji] = last;
+			ji += diameter;
+		}
+		this.xNearest[i] = x;
+		this.xError[i] = 0;
+
+		// copy to neighbours if better
+		for (k=i+1; k<diameter; k++) {
+			err = Math.abs(this.xCoord[k]-x);
+			if (err >= this.xError[k])
+				break;
+
+			// copy all pixels
+			for (j=0; j<diameter2; j+=diameter) {
+				this.pixels[j + k] = this.pixels[j + i];
+			}
+
+			this.xNearest[k] = x;
+			this.xError[k] = err;
+		}
+		for (k=i-1; k>=0; k--) {
+			err = Math.abs(this.xCoord[k]-x);
+			if (err >= this.xError[k])
+				break;
+
+			// copy all pixels
+			for (j=0; j<diameter2; j+=diameter) {
+				this.pixels[j + k] = this.pixels[j + i];
+			}
+
+			this.xNearest[k] = x;
+			this.xError[k] = err;
+		}
+
+		for (i=1; i<diameter; i++)
+			if (this.xNearest[i-1] > this.xNearest[i])
+				console.log('X'+i);
+
+	} else {
+
+		j = worstYinx;
+		y = this.yCoord[j];
+
+		// first tabstop
+		ji = j * diameter + 0;
+		this.pixels[ji++] = last = this.mand_calc(0, 0, this.xCoord[0], y) % 16;
+
+		for (i = 1; i < diameter; i++) {
+			if (this.xError[i] === 0)
+				last = this.mand_calc(0, 0, this.xCoord[i], y) % 16; // only calculate if tabstop is exact
+			this.pixels[ji++] = last;
+		}
+		this.yNearest[j] = y;
+		this.yError[j] = 0;
+
+		// copy to neighbours if better
+		for (k=i+1; k<diameter; k++) {
+			err = Math.abs(this.yCoord[k]-y);
+			if (err >= this.yError[k])
+				break;
+
+			// copy all pixels
+			ji = j * diameter;
+			for (i=0; i<diameter; i++) {
+				this.pixels[ji + k] = this.pixels[ji + i];
+			}
+
+			this.yNearest[k] = y;
+			this.yError[k] = err;
+		}
+		for (k=i-1; k>=0; k--) {
+			err = Math.abs(this.yCoord[k]-y);
+			if (err >= this.yError[k])
+				break;
+
+			// copy all pixels
+			ji = j * diameter;
+			for (i=0; i<diameter; i++) {
+				this.pixels[ji + k] = this.pixels[ji + i];
+			}
+
+			this.yNearest[k] = y;
+			this.yError[k] = err;
+		}
+
+		for (j=1; j<diameter; j++)
+			if (this.yNearest[j-1] > this.yNearest[j])
+				console.log('Y'+j);
+	}
+};
+
+Viewport.prototype.fill = function() {
+
+	this.centerX = -0.75;
+	this.centerY = 0;
+	this.radius = 2.5;
+	this.angle = 0;
+
+	var d = Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight);
+	this.radiusX = this.radius * this.viewWidth / d;
+	this.radiusY = this.radius * this.viewHeight / d;
+
+	this.rsin = Math.sin(this.angle * Math.PI / 180);
+	this.rcos = Math.cos(this.angle * Math.PI / 180);
+
+
+	for (var i = 0; i < this.xCoord.length; i++)
+		this.xNearest[i] = this.xCoord[i] = ((this.centerX+this.radius) - (this.centerX-this.radius)) * i / this.xCoord.length + (this.centerX-this.radius);
+	for (var i = 0; i < this.xCoord.length; i++)
+		this.yNearest[i] = this.yCoord[i] = ((this.centerY+this.radius) - (this.centerY-this.radius)) * i / this.yCoord.length + (this.centerY-this.radius);
+
+	var ji = 0;
+	for (var j = 0; j < this.diameter; j++) {
+		var y = (this.centerY - this.radius) + this.radius * 2 * j / this.diameter;
+		for (var i = 0; i < this.diameter; i++) {
+			// distance to center
+			var x = (this.centerX - this.radius) + this.radius * 2 * i / this.diameter;
+			this.pixels[ji++] = this.mand_calc(0, 0, x, y) % 16;
+		}
+	}
 };
 
 /**
@@ -902,8 +1160,6 @@ GUI.prototype.mainloop = function() {
 			/*
 			 * Calculate lines
 			 */
-			if (viewport.initY >= viewport.diameter)
-				viewport.initY = 0;
 
 			var numLines = 0;
 			while (now < endtime) {
@@ -956,8 +1212,6 @@ GUI.prototype.mainloop = function() {
 		this.counters[5]++;
 		last = now;
 
-		if (viewport.initY >= viewport.diameter)
-			viewport.initY = 0;
 		viewport.renderLines();
 
 		// update stats
@@ -974,9 +1228,9 @@ GUI.prototype.mainloop = function() {
 		this.counters[6]++;
 		last = now;
 		if (this.frameNr&1)
-			this.viewport1.paint(this.paletteRed, this.paletteGreen, this.paletteBlue, this.viewport1.imagedata);
+			this.viewport1.draw(this.paletteRed, this.paletteGreen, this.paletteBlue);
 		else
-			this.viewport0.paint(this.paletteRed, this.paletteGreen, this.paletteBlue, this.viewport0.imagedata);
+			this.viewport0.draw(this.paletteRed, this.paletteGreen, this.paletteBlue);
 
 		// update stats
 		now = performance.now();
@@ -1019,10 +1273,11 @@ GUI.prototype.mainloop = function() {
 	/*
 	 * test for viewport resize
 	 */
-	if (this.domViewport.clientWidth !== this.domViewport.width || this.domViewport.clientHeight !== this.domViewport.height) {
+	var domViewport = this.domViewport;
+	if (domViewport.clientWidth !== domViewport.width || domViewport.clientHeight !== domViewport.height) {
 		// set property
-		this.domViewport.width = this.domViewport.clientWidth;
-		this.domViewport.height = this.domViewport.clientHeight;
+		domViewport.width = domViewport.clientWidth;
+		domViewport.height = domViewport.clientHeight;
 
 		var oldViewport0 = this.viewport0;
 		var oldViewport1 = this.viewport1;
@@ -1037,12 +1292,12 @@ GUI.prototype.mainloop = function() {
 
 		// copy the contents. However the start frame is empty because the input has none
 		if (this.frameNr & 1)
-			this.viewport1.setPosition(oldViewport0.centerX, oldViewport0.centerY, oldViewport0.radius, oldViewport0.angle, this.viewport1);
+			this.viewport1.setPosition(oldViewport1.centerX, oldViewport1.centerY, oldViewport1.radius, oldViewport1.angle, this.viewport1);
 		else
-			this.viewport0.setPosition(oldViewport1.centerX, oldViewport1.centerY, oldViewport1.radius, oldViewport1.angle, this.viewport0);
+			this.viewport0.setPosition(oldViewport0.centerX, oldViewport0.centerY, oldViewport0.radius, oldViewport0.angle, this.viewport0);
 
 		// update GUI
-		this.domWxH.innerHTML = "[" + newViewport.viewWidth + "x" + newViewport.viewHeight + "]";
+		this.domWxH.innerHTML = "[" + domViewport.clientWidth + "x" + domViewport.clientHeight + "]";
 	}
 
 	/*
@@ -1130,6 +1385,5 @@ GUI.prototype.mainloop = function() {
 
 	this.state = 2;
 	window.postMessage("mainloop", "*");
-
 	return true;
 };

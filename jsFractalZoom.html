@@ -59,7 +59,7 @@
 				     class="button"
 				     tabindex="0"
 				     role="button"
-				     aria-pressed="true">
+				     aria-pressed="false">
 					Power
 
 					<div class="light"></div>
@@ -398,11 +398,14 @@
 		config.radius = 2.5;
 		config.angle = 0;
 
+		var domViewport = window.gui.domViewport;
+		domViewport.width = domViewport.clientWidth;
+		domViewport.height = domViewport.clientHeight;
+
 		// initial focus main view
 		window.gui.domViewport.focus();
-		// restart mainloop because initialisation takes longer then mSecPerFrame
-		window.gui.stop();
-		window.gui.start();
+		// press power button
+		window.gui.power.buttonDown();
 	});
 </script>
 </body>

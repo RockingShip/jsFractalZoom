@@ -6,9 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Viewport mouse gestures
+- X/Y rulers
+
 ### Changed
 - Relocate pixel data from GUI to newly created Viewport
-- Add viewport mouse gestures
 
 ## [0.4.0] 2018-02-05
 
