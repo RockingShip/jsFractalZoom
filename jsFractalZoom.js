@@ -111,6 +111,12 @@ function Config() {
 	/** @member {number} - calculation depth slider Now */
 	this.framerateNow = 20;
 
+	/** @member {number} - center X coordinate */
+	this.centerX = 0;
+	/** @member {number} - center Y coordinate */
+	this.centerY = 0;
+	/** @member {number} - distance between center and viewport corner */
+	this.radius = 0;
 	/** @member {number} - current viewport angle (degrees) */
 	this.angle = 0;
 
@@ -168,8 +174,9 @@ Config.prototype.logTolinear = function(min, max, now) {
  * @constructor
  * @param {number} width
  * @param {number} height
+ * @param {ImageData} imagedata
  */
-function Viewport(width, height) {
+function Viewport(width, height, imagedata) {
 
 	// don't go zero
 	if (width <= 0)
@@ -195,6 +202,8 @@ function Viewport(width, height) {
 	this.diameter = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
 	/** @member {Uint8Array} - pixel data (must be square) */
 	this.pixels = new Uint8Array(this.diameter * this.diameter);
+	/** @member {ImageData} - canvas rgba buffer */
+	this.imagedata = imagedata;
 
 	/** @member {number} - center X coordinate */
 	this.centerX = 0;
@@ -207,15 +216,13 @@ function Viewport(width, height) {
 	/** @member {number} - distance between center and vertical viewport edge  (derived from this.radius) */
 	this.radiusY = 0;
 
+	/** @member {number} - angle */
+	this.angle = 0;
 	/** @member {number} - sin(angle) */
-	this.rsin = Math.sin(this.angle * Math.PI / 180);
+	this.rsin = 0;
 	/** @member {number} - cos(angle) */
-	this.rcos = Math.cos(this.angle * Math.PI / 180);
+	this.rcos = 1;
 
-	this.lastTick = 0;
-	this.dragActive = false;
-	this.dragActiveX = 0;
-	this.dragActiveY = 0;
 	this.initY = 0;
 }
 
@@ -225,8 +232,9 @@ function Viewport(width, height) {
  * @param {number} x
  * @param {number} y
  * @param {number} radius
+ * @param {number} angle
  */
-Viewport.prototype.setPosition = function(x, y, radius) {
+Viewport.prototype.setPosition = function(x, y, radius, angle) {
 	this.centerX = x;
 	this.centerY = y;
 	this.radius = radius;
@@ -235,20 +243,24 @@ Viewport.prototype.setPosition = function(x, y, radius) {
 	this.radiusX = radius * this.viewWidth / d;
 	this.radiusY = radius * this.viewHeight / d;
 
-	// window.gui.domStatusQuality.innerHTML = JSON.stringify({x:x, y:y, r:radius});
+	// set angle
+	this.angle = angle;
+	this.rsin = Math.sin(angle * Math.PI / 180);
+	this.rcos = Math.cos(angle * Math.PI / 180);
+
+	// window.gui.domStatusQuality.innerHTML = JSON.stringify({x:x, y:y, r:radius, a:angle});
 };
 
 /**
  * Extract rotated viewport from pixels and store them in specified imnagedata
  * The pixel data is palette based, the imagedata is RGB
  *
- * @param {number} angle
  * @param {Uint8Array} paletteRed
  * @param {Uint8Array} paletteGreen
  * @param {Uint8Array} paletteBlue
  * @param {Uint8Array} imagedata
  */
-Viewport.prototype.paint = function(angle, paletteRed, paletteGreen, paletteBlue, imagedata) {
+Viewport.prototype.paint = function(paletteRed, paletteGreen, paletteBlue, imagedata) {
 
 	// make references local
 	var paletteSize = paletteRed.length;
@@ -259,12 +271,8 @@ Viewport.prototype.paint = function(angle, paletteRed, paletteGreen, paletteBlue
 	var viewHeight = this.viewHeight; // viewport height
 	var pixels = this.pixels; // pixel data
 	var diameter = this.diameter; // pixel scanline width (it's square)
-	var rgba = imagedata.data; // canvas pixel data
+	var rgba = this.imagedata.data; // canvas pixel data
 	var i, j, x, y, ix, iy, ji, yx, c;
-
-	// set angle
-	this.rsin = Math.sin(angle * Math.PI / 180);
-	this.rcos = Math.cos(angle * Math.PI / 180);
 
 	// palette offset must be integer and may not be negative
 	var offset = Math.round(window.config.paletteOffset);
@@ -326,104 +334,6 @@ Viewport.prototype.paint = function(angle, paletteRed, paletteGreen, paletteBlue
 			}
 		}
 	}
-};
-
-/**
- * Handle mouse movement.
- * Left button - zoom in
- * Center button - drag
- * Right button - zoom out
- *
- * @param {number} tickNow
- * @param {number} mouseX
- * @param {number} mouseY
- * @param {number} buttons - OR-ed set of Aria.ButtonCode
- */
-Viewport.prototype.handleChange = function(tickNow, mouseX, mouseY, buttons) {
-
-	/** @type {Config} */
-	var config = window.config;
-
-	if (this.tickLast === 0) {
-		// sync only
-		this.tickLast = tickNow;
-		return;
-	}
-
-	// seconds since last call
-	var diffSec = (tickNow - this.tickLast) / 1000;
-
-	/*
-	 * Update palette cycle offset
-	 */
-	if (config.paletteSpeedNow)
-		config.paletteOffset += diffSec * config.paletteSpeedNow;
-
-	/*
-	 * Update viewport angle
-	 */
-	if (config.rotateSpeedNow)
-		config.angle += diffSec * config.rotateSpeedNow * 360;
-
-	/*
-	 * Update zoom (de-)acceleration. -1 <= zoomSpeed <= +1
-	 */
-	if (buttons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
-		// zoom-in only
-		config.zoomSpeed = +1 - (+1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
-	} else if (buttons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
-		// zoom-out only
-		config.zoomSpeed = -1 - (-1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
-	} else if (buttons === 0) {
-		// buttons released
-		config.zoomSpeed = config.zoomSpeed * Math.pow((1 - config.zoomSpeedCoef), diffSec);
-
-		if (config.zoomSpeed >= -0.001 && config.zoomSpeed < +0.001)
-			config.zoomSpeed = 0; // full stop
-	}
-
-	/*
-	 *translate mouse to fractal coordinate
-	 */
-	// relative to viewport center
-	var dx = mouseX * this.radiusX * 2 / this.viewWidth - this.radiusX;
-	var dy = mouseY * this.radiusY * 2 / this.viewHeight - this.radiusY;
-	// undo rotation
-	var x = dy * this.rsin + dx * this.rcos + this.centerX;
-	var y = dy * this.rcos - dx * this.rsin + this.centerY;
-
-	/*
-	 * handle drag gesture (mouse wheel button)
-	 */
-	if (buttons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
-
-		if (!this.dragActive) {
-			// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
-			this.dragActiveX = x;
-			this.dragActiveY = y;
-			this.dragActive = true;
-		}
-
-		// update x/y but keep radius
-		this.setPosition(this.centerX - x + this.dragActiveX, this.centerY - y + this.dragActiveY, this.radius);
-	} else {
-		this.dragActive = false;
-	}
-
-	/*
-	 * Mouse button gestures. The mouse pointer coordinate should not change
-	 */
-	if (config.zoomSpeed) {
-		// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
-		var magnify = Math.pow(config.magnificationNow, config.zoomSpeed * diffSec);
-
-		// zoom, The mouse pointer coordinate should not change
-		this.setPosition((this.centerX - x) / magnify + x, (this.centerY - y) / magnify + y, this.radius / magnify);
-	}
-
-	// window.gui.domStatusQuality.innerHTML = JSON.stringify({zoomSpeed:this.zoomSpeed, radius: window.viewport.radius});
-
-	this.tickLast = tickNow;
 };
 
 /**
@@ -551,12 +461,25 @@ function GUI(config) {
 	/** @member {number} - Average time in mSec waiting for rAF() */
 	this.statStateRAF = 0;
 
+	/** @member {boolean} - fractal coordinate of pointer when button first pressed */
+	this.dragActive = false;
+	/** @member {boolean} - fractal X coordinate of pointer */
+	this.dragActiveX = 0;
+	/** @member {boolean} - fractal Y coordinate of pointer */
+	this.dragActiveY = 0;
+
 	// per second differences
 	this.lastNow = 0;
 	this.lastFrame = 0;
 	this.lastLoop = 0;
 	this.counters = [0,0,0,0,0,0,0];
 	this.rafTime = 0;
+	this.cycleTime = 0;
+	this.ctx = undefined;
+	this.imagedata0 = undefined;
+	this.imagedata1 = undefined;
+	this.viewport0 = undefined;
+	this.viewport1 = undefined;
 
 	/*
 	 * Find the elements and replace the string names for DOM references
@@ -566,6 +489,13 @@ function GUI(config) {
 			this[property] = document.getElementById(this[property]);
 		}
 	}
+
+	// get context
+	this.ctx = this.domViewport.getContext("2d", { alpha: false });
+	this.imagedata0 = this.ctx.createImageData(this.domViewport.clientWidth, this.domViewport.clientHeight);
+	this.imagedata1 = this.ctx.createImageData(this.domViewport.clientWidth, this.domViewport.clientHeight);
+	this.viewport0 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight, this.imagedata0);
+	this.viewport1 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight, this.imagedata1);
 
 	// initial palette
 	this.paletteRed = [230, 135, 75, 254, 255, 246, 223, 255, 255, 197, 255, 255, 214, 108, 255, 255];
@@ -911,9 +841,9 @@ GUI.prototype.animationFrame = function(time) {
 
 	// write the buffer which is not being written
 	if (this.frameNr&1)
-		this.ctx.putImageData(this.imagedata0, 0, 0);
+		this.ctx.putImageData(this.viewport0.imagedata, 0, 0);
 	else
-		this.ctx.putImageData(this.imagedata1, 0, 0);
+		this.ctx.putImageData(this.viewport1.imagedata, 0, 0);
 
 	this.statStateRAF += ((performance.now() - this.rafTime) - this.statStateRAF) * this.coef;
 
@@ -935,15 +865,17 @@ GUI.prototype.mainloop = function() {
 
 	// make local for speed
 	var config = this.config;
+	var viewport = (this.frameNr&1) ? this.viewport1 : this.viewport0;
+
 
 	// current time
 	var last;
 	var now = performance.now();
 
-	if (this.mainloopNr === 1 || now > this.vsync + 2000) {
-		// first call has a long (70mSec) delay
+	if (this.vsync === 0 || now > this.vsync + 2000) {
 		// Missed vsync by more than 2 seconds, resync
 		this.vsync = now + (1000 / config.framerateNow);
+		this.cycleTime = now;
 		this.state = 1;
 	}
 
@@ -970,12 +902,12 @@ GUI.prototype.mainloop = function() {
 			/*
 			 * Calculate lines
 			 */
-			if (window.viewport.initY >= window.viewport.diameter)
-				window.viewport.initY = 0;
+			if (viewport.initY >= viewport.diameter)
+				viewport.initY = 0;
 
 			var numLines = 0;
 			while (now < endtime) {
-				window.viewport.renderLines();
+				viewport.renderLines();
 
 				now = performance.now();
 				numLines++;
@@ -1024,9 +956,9 @@ GUI.prototype.mainloop = function() {
 		this.counters[5]++;
 		last = now;
 
-		if (window.viewport.initY >= window.viewport.diameter)
-			window.viewport.initY = 0;
-		window.viewport.renderLines();
+		if (viewport.initY >= viewport.diameter)
+			viewport.initY = 0;
+		viewport.renderLines();
 
 		// update stats
 		now = performance.now();
@@ -1042,9 +974,9 @@ GUI.prototype.mainloop = function() {
 		this.counters[6]++;
 		last = now;
 		if (this.frameNr&1)
-			window.viewport.paint(this.config.angle, this.paletteRed, this.paletteGreen, this.paletteBlue, this.imagedata1);
+			this.viewport1.paint(this.paletteRed, this.paletteGreen, this.paletteBlue, this.viewport1.imagedata);
 		else
-			window.viewport.paint(this.config.angle, this.paletteRed, this.paletteGreen, this.paletteBlue, this.imagedata0);
+			this.viewport0.paint(this.paletteRed, this.paletteGreen, this.paletteBlue, this.viewport0.imagedata);
 
 		// update stats
 		now = performance.now();
@@ -1055,11 +987,34 @@ GUI.prototype.mainloop = function() {
 		return true;
 	}
 
-	/*
-	 * COPY. update timed values and prepare viewport
-	 */
+	/**
+	***
+	*** Start of new cycle
+	***
+	**/
 	this.counters[1]++;
 	last = now;
+
+	// seconds since last cycle
+	var diffSec = (now - this.cycleTime) / 1000;
+	this.cycleTime = now;
+
+	/*
+	 * Update zoom (de-)acceleration. -1 <= zoomSpeed <= +1
+	 */
+	if (this.buttons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
+		// zoom-in only
+		config.zoomSpeed = +1 - (+1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
+	} else if (this.buttons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
+		// zoom-out only
+		config.zoomSpeed = -1 - (-1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
+	} else if (this.buttons === 0) {
+		// buttons released
+		config.zoomSpeed = config.zoomSpeed * Math.pow((1 - config.zoomSpeedCoef), diffSec);
+
+		if (config.zoomSpeed >= -0.001 && config.zoomSpeed < +0.001)
+			config.zoomSpeed = 0; // full stop
+	}
 
 	/*
 	 * test for viewport resize
@@ -1069,36 +1024,94 @@ GUI.prototype.mainloop = function() {
 		this.domViewport.width = this.domViewport.clientWidth;
 		this.domViewport.height = this.domViewport.clientHeight;
 
-		// create new Viewport
-		var oldViewport = window.viewport;
-		var newViewport = new Viewport(this.domViewport.width, this.domViewport.height);
-		window.viewport = newViewport;
+		var oldViewport0 = this.viewport0;
+		var oldViewport1 = this.viewport1;
 
-		// inherit settings
-		newViewport.setPosition(oldViewport.centerX, oldViewport.centerY, oldViewport.radius);
+		// create new imagedata
+		this.imagedata0 = this.ctx.createImageData(domViewport.clientWidth, domViewport.clientHeight);
+		this.imagedata1 = this.ctx.createImageData(domViewport.clientWidth, domViewport.clientHeight);
+
+		// create new viewports
+		this.viewport0 = new Viewport(domViewport.clientWidth, domViewport.clientHeight, this.imagedata0);
+		this.viewport1 = new Viewport(domViewport.clientWidth, domViewport.clientHeight, this.imagedata1);
+
+		// copy the contents. However the start frame is empty because the input has none
+		if (this.frameNr & 1)
+			this.viewport1.setPosition(oldViewport0.centerX, oldViewport0.centerY, oldViewport0.radius, oldViewport0.angle, this.viewport1);
+		else
+			this.viewport0.setPosition(oldViewport1.centerX, oldViewport1.centerY, oldViewport1.radius, oldViewport1.angle, this.viewport0);
 
 		// update GUI
 		this.domWxH.innerHTML = "[" + newViewport.viewWidth + "x" + newViewport.viewHeight + "]";
-
-		// Create image buffers
-		this.ctx = this.domViewport.getContext("2d", { alpha: false });
-		this.imagedata0 = this.ctx.createImageData(newViewport.viewWidth, newViewport.viewHeight);
-		this.imagedata1 = this.ctx.createImageData(newViewport.viewWidth, newViewport.viewHeight);
 	}
 
 	/*
-	 * Update colour palette cycle offset and viewport angle
+	 * Update palette cycle offset
 	 */
-	window.viewport.handleChange(now, this.mouseX, this.mouseY, this.buttons);
+	if (config.paletteSpeedNow)
+		config.paletteOffset += diffSec * config.paletteSpeedNow;
 
-	// ZOOM/COPY CODE GOES HERE
+	/*
+	 * Update viewport angle (before zoom gestures)
+	 */
+	if (config.rotateSpeedNow)
+		config.angle += diffSec * config.rotateSpeedNow * 360;
+
+	/*
+	 *translate mouse to fractal coordinate
+	 */
+
+	// relative to viewport center
+	var dx = this.mouseX * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
+	var dy = this.mouseY * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
+	// undo rotation
+	var x = dy * viewport.rsin + dx * viewport.rcos + viewport.centerX;
+	var y = dy * viewport.rcos - dx * viewport.rsin + viewport.centerY;
+
+	// drag gesture
+	if (this.buttons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
+
+		if (!this.dragActive) {
+			// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
+			this.dragActiveX = x;
+			this.dragActiveY = y;
+			this.dragActive = true;
+		}
+
+		// update x/y but keep radius
+		config.centerX = config.centerX - x + this.dragActiveX;
+		config.centerY = config.centerY - y + this.dragActiveY;
+	} else {
+		this.dragActive = false;
+	}
+
+	// zoom-in/out gesture
+	if (config.zoomSpeed) {
+		// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
+		var magnify = Math.pow(config.magnificationNow, config.zoomSpeed * diffSec);
+
+		// zoom, The mouse pointer coordinate should not change
+		config.centerX = (config.centerX - x) / magnify + x;
+		config.centerY = (config.centerY - y) / magnify + y;
+		config.radius  = config.radius / magnify;
+	}
+
+	/*
+	 * COPY
+	 */
+
 	this.frameNr++;
+
+	if (this.frameNr & 1)
+		this.viewport1.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewport0);
+	else
+		this.viewport0.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewport1);
 
 	// update stats
 	now = performance.now();
 	this.statStateCopy += ((now - last) - this.statStateCopy) * this.coef;
 
-	window.gui.domStatusQuality.innerHTML = JSON.stringify(this.counters);
+	// window.gui.domStatusQuality.innerHTML = JSON.stringify(this.counters);
 
 	this.domStatusRect.innerHTML =
 		"zoom:" + this.statStateCopy.toFixed(3) +

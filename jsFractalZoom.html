@@ -34,7 +34,7 @@
 			<a href="https://www.rockingship.net/jsFractalZoom" tabindex="-1">jsFractalZoom</a>
 		</h1>
 		<span id="WxH"></span>
-		quality: <span id="idStatusQuality">100%100%</span>
+		quality: <span id="idStatusQuality"></span>
 		load: <span id="idStatusLoad"></span>
 		rect: <span id="idStatusRect"></span>
 	</div>
@@ -393,9 +393,10 @@
 		// setup and link top-level components
 		window.config = new Config();
 		window.gui = new GUI(window.config);
-		window.viewport = new Viewport(1, 1); // initial placeholder
-		window.viewport.setPosition(-0.75, 0, 2.5);
-
+		config.centerX = -0.75;
+		config.centerY = 0;
+		config.radius = 2.5;
+		config.angle = 0;
 
 		// initial focus main view
 		window.gui.domViewport.focus();
