@@ -1,3 +1,66 @@
+/*
+	Fractal zoomer written in javascript
+	https://github.com/xyzzy/jsFractalZoom
+
+	Copyright 2018 https://github.com/xyzzy
+
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Affero General Public License as published
+	by the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Affero General Public License for more details.
+
+	You should have received a copy of the GNU Affero General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/*
+ * Timing considerations
+ *
+ * Constructing a frame is a time consuming process that would severely impair the event/messaging queues and vsync.
+ * To make the code more responsive, frame constructing is split into 3 phases:
+ * - COPY, pre-fill a frame with data from a previous frame.
+ * 	The time required depends on window size and magnification factor (zoom speed).
+ * 	Times are unstable and can vary between 1 and 15mSec, typically 15mSec
+ * - PAINT, Create RGBA imagedata ready to be written to DOM canvas
+ * 	The time required depends on window size and rotation angle.
+ * 	Times are fairly stable and can vary between 5 and 15mSec, typically 12mSec.
+ * - UPDATE, improve quality by recalculating inaccurate pixels
+ * 	The time required depends on window size and magnification factor.
+ * 	Times are fairly short, typically well under 1mSec.
+ * 	In contrast to COPY/PAINT which are called once and take long
+ * 	UPDATES are many and take as short as possible to keep the system responsive.
+ *
+ * There is also an optional embedded IDLE state. No calculations are performed 2mSec before a vsync,
+ * so that the event/message queues are highly responsive to the handling of requestAnimationFrame()
+ * for worst case situations that a long UPDATE will miss the vsync.
+ *
+ * IDLEs may be omitted if updates are fast enough.
+ *
+ * There are also 2 sets of 2 alternating buffers, internal pixel data and context2D RGBA data.
+ *
+ * Read/write time diagram: R=Read, W=write, I=idle, rAF=requestAnimationFrame, AF=animationFrameCallback
+ *
+ *               COPY0  UPDATE0    PAINT0   COPY1  UPDATE1  PAINT1  COPY0  UPDATE0  PAINT0
+ * pixel0:      <--W--> WWWWIIWWWW <--R--> <--R-->                 <--W--> WWWWIIW <--R-->
+ * imagedata0               .      <--W-->                                     .   <--W-->
+ * pixel1       <--R-->     .              <--W--> WWWWIIW <--R--> <--R-->     .
+ * imagedata1:              .                          .   <--W-->             .
+ *                          ^wait-for-vsync            ^wait-for-vsync         ^wait-for-vsync
+ *                           ^rAF                       ^rAF                    ^rAF
+ *                                 ^AF imagedata1          ^AF imagedata0          ^AF imagedata1
+ *
+ * The rAF callback should signal the start of the next PAINT stage. Starting the next phase directly
+ * after rAF() would cause the callback to wait for the phase completion which would take at least 5mSec.
+ *
+ * The vsync also calculates zoom and angle for the next frame based on elapsed time so
+ * dropped frames will not cause glitches. Frame timing may be off, but movement should be on.
+ */
+
 "use strict";
 
 /*
@@ -21,9 +84,9 @@ function Config() {
 	this.magnificationNow = this.logTolinear(this.magnificationMin, this.magnificationMax, 1.5);
 
 	/** @member {number} - rotate speed slider Min */
-	this.rotateSpeedMin = -1.0;
+	this.rotateSpeedMin = -0.5;
 	/** @member {number} - rotate speed slider Max */
-	this.rotateSpeedMax = +1.0;
+	this.rotateSpeedMax = +0.5;
 	/** @member {number} - rotate speed slider Now */
 	this.rotateSpeedNow = 0;
 
@@ -103,8 +166,8 @@ Config.prototype.logTolinear = function(min, max, now) {
  * Coordinate system is the center x,y and radius.
  * 
  * @constructor
- * @param width
- * @param height
+ * @param {number} width
+ * @param {number} height
  */
 function Viewport(width, height) {
 
@@ -154,8 +217,6 @@ function Viewport(width, height) {
 	this.dragActiveX = 0;
 	this.dragActiveY = 0;
 	this.initY = 0;
-
-	this.setPosition(-0.75, 0, 2.5);
 }
 
 /**
@@ -182,10 +243,10 @@ Viewport.prototype.setPosition = function(x, y, radius) {
  * The pixel data is palette based, the imagedata is RGB
  *
  * @param {number} angle
- * @param {Uint8ClampedArray} paletteRed
- * @param {Uint8ClampedArray} paletteGreen
- * @param {Uint8ClampedArray} paletteBlue
- * @param {Uint8ClampedArray} imagedata
+ * @param {Uint8Array} paletteRed
+ * @param {Uint8Array} paletteGreen
+ * @param {Uint8Array} paletteBlue
+ * @param {Uint8Array} imagedata
  */
 Viewport.prototype.paint = function(angle, paletteRed, paletteGreen, paletteBlue, imagedata) {
 
@@ -224,7 +285,7 @@ Viewport.prototype.paint = function(angle, paletteRed, paletteGreen, paletteBlue
 
 	var xstart, ystart;
 	if (this.angle === 0) {
-		// extract viewport
+		// FAST extract viewport
 		xstart = Math.floor((diameter - viewWidth) / 2);
 		ystart = Math.floor((diameter - viewHeight) / 2);
 
@@ -242,7 +303,7 @@ Viewport.prototype.paint = function(angle, paletteRed, paletteGreen, paletteBlue
 		}
 
 	} else {
-		// viewport rotation
+		// SLOW viewport rotation
 		var rsin = this.rsin; // sine for viewport angle
 		var rcos = this.rcos; // cosine for viewport angle
 		xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
@@ -400,13 +461,13 @@ Viewport.prototype.renderLines = function() {
 
 	var ji = this.initY * this.diameter;
 
-	var minY = this.centerY - this.radiusY;
-	var maxY = this.centerY + this.radiusY;
+	var minY = this.centerY - this.radius;
+	var maxY = this.centerY + this.radius;
 	var y = minY + (maxY-minY) * this.initY / this.diameter;
 
 	for (var i = 0; i < this.diameter; i++) {
 		// distance to center
-		var x = (this.centerX - this.radiusX) + this.radiusX*2 * i / this.diameter;
+		var x = (this.centerX - this.radius) + this.radius*2 * i / this.diameter;
 
 		var z = this.mand_calc(0,0,x,y);
 
@@ -470,29 +531,32 @@ function GUI(config) {
 	/** @member {number} - viewport mouse button state. OR-ed set of Aria.ButtonCode */
 	this.buttons = 0;
 
-	/** @member {number} - Main loop timer id */
-	this.timerId = 0;
+	/** @member {number} -  0=STOP 1=COPY 2=UPDATE-before-rAF 3=IDLE 4=rAF 5=UPDATE-after-rAF 6=PAINT */
+	this.state = 0;
 	/** @member {number} - Timestamp next vsync */
 	this.vsync = 0;
 	/** @member {number} - Number of frames painted */
 	this.frameNr = 0;
-	/** @member {number} - Number of scanlines calculated for current frame */
-	this.numLines = 0;
+	/** @member {number} - Number of times mainloop called */
+	this.mainloopNr = 0;
 
 	/** @member {number} - Damping coefficient low-pass filter for following fields */
 	this.coef = 0.05;
-		/** @member {number} - Average time in mSec spent in stage1 (Draw) */
-	this.statState1 = 0;
-	/** @member {number} - Average time in mSec spent in stage2 (Zoom) */
-	this.statState2 = 0;
-	/** @member {number} - Average time in mSec spent in stage3 (Lines) */
-	this.statState3 = 0;
+	/** @member {number} - Average time in mSec spent in COPY */
+	this.statStateCopy = 0;
+	/** @member {number} - Average time in mSec spent in UPDATE */
+	this.statStateUpdate = 0;
+	/** @member {number} - Average time in mSec spent in PAINT */
+	this.statStatePaint = 0;
+	/** @member {number} - Average time in mSec waiting for rAF() */
+	this.statStateRAF = 0;
 
 	// per second differences
-	this.mainloopNr = 0;
 	this.lastNow = 0;
 	this.lastFrame = 0;
 	this.lastLoop = 0;
+	this.counters = [0,0,0,0,0,0,0];
+	this.rafTime = 0;
 
 	/*
 	 * Find the elements and replace the string names for DOM references
@@ -508,9 +572,9 @@ function GUI(config) {
 	this.paletteGreen = [179, 135, 75, 203, 244, 246, 223, 212, 224, 146, 235, 247, 214, 108, 255, 255];
 	this.paletteBlue = [78, 135, 75, 102, 142, 246, 223, 111, 123, 45, 133, 145, 214, 108, 153, 255];
 	// grayscale
-	this.paletteRed = [0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0];
-	this.paletteGreen = [0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0];
-	this.paletteBlue = [0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0];
+	this.paletteRed = new Uint8Array([0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0]);
+	this.paletteGreen = new Uint8Array([0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0]);
+	this.paletteBlue = new Uint8Array([0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0]);
 
 	// replace event handlers with a bound instance
 	this.mainloop = this.mainloop.bind(this);
@@ -619,7 +683,6 @@ function GUI(config) {
 	this.home.setCallbackValueChange(function(newValue) {
 	});
 
-	this.counter = 0;
 	this.paletteGroup.setCallbackFocusChange(function(newButton) {
 	});
 }
@@ -630,10 +693,10 @@ function GUI(config) {
  * @param {KeyboardEvent} event
  */
 GUI.prototype.handleKeyDown = function (event) {
-	var type = event.type;
+	var key = event.which || event.keyCode;
 
 	// Grab the keydown and click events
-	switch (event.keyCode) {
+	switch (key) {
 		case 0x41: // A
 		case 0x61: // a
 			this.autoPilot.buttonDown();
@@ -709,10 +772,10 @@ GUI.prototype.handleKeyDown = function (event) {
  * @param {KeyboardEvent} event
  */
 GUI.prototype.handleKeyUp = function (event) {
-	var type = event.type;
+	var key = event.which || event.keyCode;
 
 	// Grab the keydown and click events
-	switch (event.keyCode) {
+	switch (key) {
 		case 0x41: // A
 		case 0x61: // a
 			this.autoPilot.buttonUp();
@@ -827,17 +890,15 @@ GUI.prototype.start = function() {
 	this.state = 1;
 	this.vsync = performance.now() + (1000 / this.config.framerateNow); // vsync wakeup time
 	this.numLines = 0;
-	this.statState1 = this.statState2 = this.statState3 = 0;
+	this.statStateCopy = this.statStateUpdate = this.statStatePaint = 0;
 	this.config.tickLast = performance.now();
-	this.timerId = window.setTimeout(this.mainloop, 1);
+	window.postMessage("mainloop", "*");
 };
 
 /**
  * stop the mainloop
  */
 GUI.prototype.stop = function() {
-	clearTimeout(this.timerId);
-	this.timerId = null;
 	this.state = 0;
 };
 
@@ -847,13 +908,18 @@ GUI.prototype.stop = function() {
  * @param {number} time
  */
 GUI.prototype.animationFrame = function(time) {
-	// paint image
-	// NOTE: opposite buffer than used in paintViewport()
+	// paint image onto canvas
 
+	// write the buffer which is not being written
 	if (this.frameNr&1)
-		this.ctx.putImageData(this.imagedata2, 0, 0);
+		this.ctx.putImageData(this.imagedata0, 0, 0);
 	else
 		this.ctx.putImageData(this.imagedata1, 0, 0);
+
+	this.statStateRAF += ((performance.now() - this.rafTime) - this.statStateRAF) * this.coef;
+
+	// bump to PAINT state
+	this.state = 6;
 };
 
 
@@ -872,6 +938,7 @@ GUI.prototype.mainloop = function() {
 	var config = this.config;
 
 	// current time
+	var last;
 	var now = performance.now();
 
 	if (this.mainloopNr === 1 || now > this.vsync + 2000) {
@@ -881,75 +948,127 @@ GUI.prototype.mainloop = function() {
 		this.state = 1;
 	}
 
-	/*
-	 * Fast path
-	 */
-	if (this.state === 3) {
-		// test for vsync
-		if (now >= this.vsync) {
+	if (this.state === 2) {
+		this.counters[2]++;
+		/*
+		 * UPDATE-before-rAF. calculate inaccurate pixels
+		 */
+		if (now >= this.vsync - 2) {
+			// don't even start if there is less than 2mSec left till next vsync
+			this.state = 3;
+		} else {
 			/*
-			 * Update stats
+			 * update inaccurate pixels
 			 */
-			if (this.numLines > 0) {
-				this.statState3 += (this.numLines - this.statState3) * this.coef;
-				this.numLines = 0;
+			if (window.viewport.initY >= window.viewport.diameter)
+				window.viewport.initY = 0;
+
+			var numLines = 0;
+			var endtime = this.vsync - 2;
+			if (endtime > now + 2)
+				endtime = now + 2;
+
+			/*
+			 * Calculate lines
+			 */
+			last = now;
+			while (now < endtime) {
+				window.viewport.renderLines();
+
+				now = performance.now();
+				numLines++;
 			}
 
-			/*
-			 * Request to paint previously prepared frame
-			 */
-			this.frameNr++; // switch frames, must do before calling requestAnimationFrame()
-			this.vsync += (1000 / config.framerateNow); // time of next vsync
-			window.requestAnimationFrame(this.animationFrame);
-
-			/*
-			 * Reset state
-			 */
-			this.state = 1;
+			// update stats
+			this.statStateUpdate += ((now - last) / numLines - this.statStateUpdate) * this.coef;
 
 			// yield and return as quick as possible
 			window.postMessage("mainloop", "*");
 			return true;
 		}
-		// don't even start if there is less than 2mSec left till next vsync
-		if (now >= this.vsync-2) {
-			// todo: which queue to choose
-			this.timerId = window.setTimeout(this.mainloop, 1);
-			// window.postMessage("mainloop", "*");
+	}
+
+	if (this.state === 3) {
+		this.counters[3]++;
+		/*
+		 * IDLE. Wait for vsync
+		 */
+		if (now >= this.vsync) {
+			// vsync is NOW
+			this.state = 4;
+		} else {
+			window.postMessage("mainloop", "*");
 			return true;
 		}
-
-		// end time is 2mSec before next vertical sync
-		var endtime = this.vsync - 2;
-		if (endtime > now + 2)
-			endtime = now + 2;
-
-		if (window.viewport.initY >= window.viewport.diameter) {
-			// sleep abit
-			// this.timerId = window.setTimeout(this.mainloop, 1);
-			// return true;
-			window.viewport.initY = 0;
-		}
-
+	}
+	if (this.state === 4) {
+		this.counters[4]++;
 		/*
-		 * Calculate lines
+		 * requestAnimationFrame()
 		 */
-		while (now < endtime) {
-			window.viewport.renderLines();
 
-			now = performance.now();
-			this.numLines++;
-		}
+		this.state = 5; // !! This must be set before rAF is called
+		this.vsync += (1000 / config.framerateNow); // time of next vsync
+		this.rafTime = now;
+		window.requestAnimationFrame(this.animationFrame);
+
+		window.postMessage("mainloop", "*");
+		return true;
+	}
+	if (this.state === 5) {
+		this.counters[5]++;
+		/*
+		 * WAIT. UPDATE-after-rAF. Wait for animateFrame() to change state
+		 */
+
+		if (window.viewport.initY >= window.viewport.diameter)
+			window.viewport.initY = 0;
+
+		last = now;
+		window.viewport.renderLines();
+
+		// update stats
+		now = performance.now();
+		this.statStateUpdate += ((now - last) - this.statStateUpdate) * this.coef;
 
 		// yield and return as quick as possible
 		window.postMessage("mainloop", "*");
 		return true;
 	}
+	if (this.state === 6) {
+		this.counters[6]++;
+		/*
+		 * PAINT. Finalize viewport so it can be presented immediately on the next vsync
+		 */
+
+		last = now;
+		if (this.frameNr&1)
+			window.viewport.paint(this.config.angle, this.paletteRed, this.paletteGreen, this.paletteBlue, this.imagedata1);
+		else
+			window.viewport.paint(this.config.angle, this.paletteRed, this.paletteGreen, this.paletteBlue, this.imagedata0);
+
+		// update stats
+		now = performance.now();
+		this.statStatePaint += ((now - last) - this.statStatePaint) * this.coef;
+
+		// yield and return as quick as possible
+		this.state = 1;
+		window.postMessage("mainloop", "*");
+		return true;
+	}
+
+	if (this.state != 1)
+		alert('!1');
+
+	/*
+	 * COPY. update timed values and prepare viewport
+	 */
+	this.counters[1]++;
 
 	/*
 	 * test for viewport resize
 	 */
-	if (this.domViewport.clientWidth !== this.domViewport.width || this.domViewport.clientHeight !== this.domViewport.height) {
+	if (this.domViewport.clientWidth !== window.viewport.viewWidth || this.domViewport.clientHeight !== window.viewport.viewHeight) {
 		// set property
 		this.domViewport.width = this.domViewport.clientWidth;
 		this.domViewport.height = this.domViewport.clientHeight;
@@ -966,9 +1085,9 @@ GUI.prototype.mainloop = function() {
 		this.domWxH.innerHTML = "[" + newViewport.viewWidth + "x" + newViewport.viewHeight + "]";
 
 		// Create image buffers
-		this.ctx = this.domViewport.getContext("2d");
+		this.ctx = this.domViewport.getContext("2d", { alpha: false });
+		this.imagedata0 = this.ctx.createImageData(newViewport.viewWidth, newViewport.viewHeight);
 		this.imagedata1 = this.ctx.createImageData(newViewport.viewWidth, newViewport.viewHeight);
-		this.imagedata2 = this.ctx.createImageData(newViewport.viewWidth, newViewport.viewHeight);
 	}
 
 	/*
@@ -976,41 +1095,24 @@ GUI.prototype.mainloop = function() {
 	 */
 	window.viewport.handleChange(now, this.mouseX, this.mouseY, this.buttons);
 
-	var last = now;
-	if (this.state === 1) {
-		/*
-		 * State1: Paint viewport
-		 */
+	last = now;
 
-		if (this.frameNr&1)
-			window.viewport.paint(this.config.angle, this.paletteRed, this.paletteGreen, this.paletteBlue, this.imagedata1);
-		else
-			window.viewport.paint(this.config.angle, this.paletteRed, this.paletteGreen, this.paletteBlue, this.imagedata2);
+	// ZOOM/COPY CODE GOES HERE
+	this.frameNr++;
 
-		now = performance.now();
-		this.statState1 += ((now - last) - this.statState1) * this.coef;
+	// update stats
+	now = performance.now();
+	this.statStateCopy += ((now - last) - this.statStateCopy) * this.coef;
 
-		this.state = 2;
+	window.gui.domStatusQuality.innerHTML = JSON.stringify(this.counters);
 
-	} else if (this.state === 2) {
-		/*
-		 * State2: zoom/autopilot
-		 */
-//		navEngine.ontick(now, endtime);
-
-		now = performance.now();
-		this.statState2 += ((now - last) - this.statState2) * this.coef;
-
-		this.state = 3;
-	}
-
-	// this.domViewport.innerHTML = ((avgS+avgU)*100/config.frametime).toFixed()+'% (sys:'+avgS.toFixed()+'mSec+usr:'+avgU.toFixed()+'mSec) ['+stxt+']';
 	this.domStatusRect.innerHTML =
-		"paint:" + this.statState1.toFixed(3) +
-		"mSec("+ (this.statState1*100/(1000 / config.framerateNow)).toFixed(0) +
-		"%), zoom:" + this.statState2.toFixed(3) +
-		"mSec, lines:" + this.statState3.toFixed(0)
-	;
+		"zoom:" + this.statStateCopy.toFixed(3) +
+		"mSec("+ (this.statStateCopy*100/(1000 / config.framerateNow)).toFixed(0) +
+		"%), update:" + this.statStateUpdate.toFixed(3) +
+		"mSec, paint:" + this.statStatePaint.toFixed(3) +
+		"mSec("+ (this.statStatePaint*100/(1000 / config.framerateNow)).toFixed(0) +
+		"%), rAF:" + this.statStateRAF.toFixed(3) ;
 
 	if (Math.floor(now/1000) !== this.lastNow) {
 		this.domStatusLoad.innerHTML = "FPS:"+(this.frameNr - this.lastFrame) + " IPS:" + (this.mainloopNr - this.lastLoop);
@@ -1020,7 +1122,8 @@ GUI.prototype.mainloop = function() {
 	}
 
 	// yield and return as quick as possible
-	this.timerId = window.setTimeout(this.mainloop, 0);
+	this.state = 2;
+	window.postMessage("mainloop", "*");
 
 	return true;
 };
