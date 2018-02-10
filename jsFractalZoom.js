@@ -869,6 +869,10 @@ function GUI(config) {
 		self.config.autoPilot = newValue;
 	});
 	this.home.setCallbackValueChange(function(newValue) {
+		self.config.centerX = -0.75;
+		self.config.centerY = 0;
+		self.config.radius = 2.5;
+		self.config.angle = 0;
 	});
 
 	this.paletteGroup.setCallbackFocusChange(function(newButton) {

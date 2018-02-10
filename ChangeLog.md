@@ -6,10 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Home gesture
+
 ## [0.5.0] 2018-02-09
 
 ### Added
 - Viewport mouse gestures
+- Double viewports
 - X/Y rulers
 
 ### Changed
