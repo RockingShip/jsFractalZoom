@@ -174,6 +174,10 @@ function Palette()
 	/** member {Uint8Array} */
 	this.blue = undefined;
 
+	this.backgroundRed = 0;
+	this.backgroundGreen = 0;
+	this.backgroundBlue = 0;
+
 	this.random = function(n) {
 		return Math.floor(Math.random() * n);
 	};
@@ -617,14 +621,14 @@ Viewport.prototype.draw = function(paletteRed, paletteGreen, paletteBlue) {
 	// palette offset must be integer and may not be negative
 	var offset = Math.round(window.config.paletteOffset);
 	if (offset < 0)
-		offset = paletteSize - (1-offset) % paletteSize;
+		offset = (paletteSize-1) - (-offset-1) % paletteSize;
 	else
 		offset = offset % paletteSize;
 
 	// apply colour cycling (not for first colour)
-	tmpRed[0] = paletteRed[0];
-	tmpGreen[0] = paletteGreen[0];
-	tmpBlue[0] = paletteBlue[0];
+	tmpRed[0] = window.palette.backgroundRed;
+	tmpGreen[0] = window.palette.backgroundGreen;
+	tmpBlue[0] = window.palette.backgroundBlue;
 	for (i = 1; i < tmpRed.length; i++) {
 		tmpRed[i] = paletteRed[(i-1 + offset) % paletteSize + 1];
 		tmpGreen[i] = paletteGreen[(i-1 + offset) % paletteSize + 1];
@@ -802,7 +806,7 @@ Viewport.prototype.renderLines = function() {
 
 		// first tabstop
 		ji = j * diameter + 0;
-		this.pixels[ji++] = last = this.mand_calc(0, 0, this.xCoord[0], y) % 16;
+		this.pixels[ji++] = last = this.mand_calc(0, 0, this.xCoord[0], y);
 
 		for (i = 1; i < diameter; i++) {
 			if (this.xError[i] === 0)
