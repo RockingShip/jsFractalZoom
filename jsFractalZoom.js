@@ -100,7 +100,7 @@ function Config() {
 	/** @member {number} - calculation depth slider Min */
 	this.depthMin = 30;
 	/** @member {number} - calculation depth slider Max */
-	this.depthMax = 800;
+	this.depthMax = 1500;
 	/** @member {number} - calculation depth slider Now */
 	this.depthNow = 600;
 
@@ -164,6 +164,154 @@ Config.prototype.logTolinear = function(min, max, now) {
 
 	return min + Math.log(v) * (max - min);
 };
+
+function rrandom(i) { return Math.floor(Math.random()*i); }
+
+function Palette()
+{
+	var _ = this;
+	_.size = 0;
+	_.red = new Uint8Array(256);
+	_.green = new Uint8Array(256);
+	_.blue = new Uint8Array(256);
+
+	function mksmooth(nsegments, segmentsize, R, G, B)
+	{
+		_.size = 0;
+		for (var i = 0; i<nsegments; i++) {
+
+			var r = R[i % nsegments];
+			var g = G[i % nsegments];
+			var b = B[i % nsegments];
+			var rs = (R[(i + 1) % nsegments] - r) / segmentsize;
+			var gs = (G[(i + 1) % nsegments] - g) / segmentsize;
+			var bs = (B[(i + 1) % nsegments] - b) / segmentsize;
+
+			for (var j = 0; j < segmentsize; j++) {
+
+				_.red[_.size] = Math.floor(r);
+				_.green[_.size] = Math.floor(g);
+				_.blue[_.size] = Math.floor(b);
+				_.size++;
+
+				r += rs;
+				g += gs;
+				b += bs;
+			}
+		}
+	};
+
+	function randomize_segments1(whitemode, nsegments, R, G, B)
+	{
+		if (whitemode) {
+			R[0] = 255, G[0] = 255, B[0] = 255;
+			for (var i = 0; i < nsegments; i += 2) {
+				if (i != 0) {
+					R[i] = rrandom(256), G[i] = rrandom(256), B[i] = rrandom(256);
+				}
+				if (i + 1 < nsegments) {
+					R[i + 1] = rrandom(35), G[i + 1] = rrandom(35), B[i + 1] = rrandom(35);
+				}
+			}
+		} else {
+			for (var i = 0; i < nsegments; i += 2) {
+				R[i] = rrandom(35), G[i] = rrandom(35), B[i] = rrandom(35);
+				if (i + 1 < nsegments) {
+					R[i + 1] = rrandom(256), G[i + 1] = rrandom(256), B[i + 1] = rrandom(256);
+				}
+			}
+		}
+	}
+
+	function randomize_segments2(whitemode, nsegments, R, G, B)
+	{
+		for (var i=0; i<nsegments; i++) {
+			R[i] = (!whitemode) * 255, G[i] = (!whitemode) * 255, B[i] = (!whitemode) * 255;
+			if (++i >= nsegments) break;
+			R[i] = rrandom(256), G[i] = rrandom(256), B[i] = rrandom(256);
+			if (++i >= nsegments) break;
+			R[i] = whitemode * 255, G[i] = whitemode * 255, B[i] = whitemode * 255;
+		}
+	}
+
+	function randomize_segments3(whitemode, nsegments, R, G, B)
+	{
+		var h, s, v;
+
+		for (var i = 0; i < nsegments; i++) {
+			if (i % 6 == 0) {
+				R[i] = 0, G[i] = 0, B[i] = 0;
+			} else if (i % 3 == 0) {
+				R[i] = 255, G[i] = 255, B[i] = 255;
+			} else {
+				s = rrandom(256);
+				h = rrandom(128 - 32);
+				v = rrandom(128);
+				if ((i % 6 > 3) ^ (i % 3 == 1))
+					h += 42 + 16;
+				else
+					h += 42 + 128 + 16, v += 128 + 64;
+				h %= 256;
+				v %= 256;
+
+				// hsv to rgb
+				if (s == 0) {
+					R[i] = G[i] = B[i] = v;
+				} else {
+					var hue = h * 6;
+
+					var f = hue & 255;
+					var p = v * (256 - s) >> 8;
+					var q = v * (256 - ((s * f) >> 8)) >> 8;
+					var t = v * (256 * 256 - (s * (256 - f))) >> 16;
+					switch (Math.floor(hue / 256)) {
+						case 0: R[i] = v; G[i] = t; B[i] = p; break;
+						case 1: R[i] = q; G[i] = v; B[i] = p; break;
+						case 2: R[i] = p; G[i] = v; B[i] = t; break;
+						case 3: R[i] = p; G[i] = q; B[i] = v; break;
+						case 4: R[i] = t; G[i] = p; B[i] = v; break;
+						case 5: R[i] = v; G[i] = p; B[i] = q; break;
+					}
+				}
+
+			}
+		}
+	}
+
+	_.mkrandom = function(paletteSize)
+	{
+		var whitemode = Math.floor(Math.random() * 2);
+		var R = new Uint8Array(self.config.depthNow);
+		var G = new Uint8Array(self.config.depthNow);
+		var B = new Uint8Array(self.config.depthNow);
+		_.red = new Uint8Array(self.config.depthNow);
+		_.green = new Uint8Array(self.config.depthNow);
+		_.blue = new Uint8Array(self.config.depthNow);
+
+		switch (Math.floor(Math.random() * 3)) {
+			case 0:
+				randomize_segments1(whitemode, self.config.depthNow, R, G, B);
+				break;
+			case 1:
+				randomize_segments2(whitemode, self.config.depthNow, R, G, B);
+				break;
+			case 2:
+				randomize_segments3(whitemode, self.config.depthNow, R, G, B);
+				break;
+		}
+		mksmooth(self.config.depthNow, 1, R, G, B);
+	};
+
+	_.mkdefault = function()
+	{
+		_.red = new Uint8Array([0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0]);
+		_.green = new Uint8Array([0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0]);
+		_.blue = new Uint8Array([0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0]);
+	};
+
+}
+
+window.palette = new Palette();
 
 /**
  * Viewport to the fractal world.
@@ -876,6 +1024,14 @@ function GUI(config) {
 	});
 
 	this.paletteGroup.setCallbackFocusChange(function(newButton) {
+		if (newButton.domButton.id === "idRandomPaletteButton") {
+			window.palette.mkrandom(self.config.depthNow);
+		} else {
+			window.palette.mkdefault();
+		}
+		self.paletteRed = window.palette.red;
+		self.paletteGreen = window.palette.green;
+		self.paletteBlue = window.palette.blue;
 	});
 }
 
