@@ -578,7 +578,6 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 	 * copy pixels
 	 */
 	var j=0, i=0, k=0, ji = 0;
-	var ybase=0, ybaseLast;
 	var xFrom = this.xFrom;
 	var yFrom = this.yFrom;
 	var newDiameter = this.diameter;
@@ -587,14 +586,12 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 	var oldPixels = oldViewport.pixels;
 
 	// first line
-	ybase = yFrom[0] * oldDiameter;
+	k = yFrom[0] * oldDiameter;
 	for (i = 0; i < newDiameter; i++)
-		newPixels[ji++] = oldPixels[ybase + xFrom[i]];
+		newPixels[ji++] = oldPixels[k + xFrom[i]];
 	// followups
 	for (j = 1; j < newDiameter; j++) {
-		ybaseLast = ybase;
-		ybase = yFrom[j] * oldDiameter;
-		if (ybase === ybaseLast) {
+		if (yFrom[j] === yFrom[j-1]) {
 			// this line is identical to the previous
 			k = ji - newDiameter;
 			for (i = 0; i < newDiameter; i++)
@@ -602,11 +599,11 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 
 		} else {
 			// extract line from previous frame
-			for (i = 0; i < newDiameter; i++) {
-				newPixels[ji++] = oldPixels[ybase + xFrom[i]];
+			k = yFrom[j] * oldDiameter;
+			for (i = 0; i < newDiameter; i++)
+				newPixels[ji++] = oldPixels[k + xFrom[i]];
 			}
 		}
-	}
 };
 
 /**
