@@ -795,10 +795,6 @@ Viewport.prototype.renderLines = function() {
 			this.xError[k] = err;
 		}
 
-		for (i=1; i<diameter; i++)
-			if (this.xNearest[i-1] > this.xNearest[i])
-				console.log('X'+i);
-
 	} else {
 
 		j = worstYinx;
@@ -831,7 +827,7 @@ Viewport.prototype.renderLines = function() {
 			this.yNearest[k] = y;
 			this.yError[k] = err;
 		}
-		for (k=i-1; k>=0; k--) {
+		for (k = j - 1; k >= 0; k--) {
 			err = Math.abs(this.yCoord[k]-y);
 			if (err >= this.yError[k])
 				break;
@@ -992,6 +988,9 @@ function GUI(config) {
 	this.imagedata1 = this.ctx.createImageData(this.domViewport.clientWidth, this.domViewport.clientHeight);
 	this.viewport0 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight, this.imagedata0);
 	this.viewport1 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight, this.imagedata1);
+	// small viewport for initial image
+	this.imagedataInit = this.ctx.createImageData(64, 64);
+	this.viewportInit = new Viewport(64, 64, this.imagedataInit);
 
 	// initial palette
 	this.paletteRed = [230, 135, 75, 254, 255, 246, 223, 255, 255, 197, 255, 255, 214, 108, 255, 255];
@@ -1123,6 +1122,10 @@ function GUI(config) {
 		self.paletteGreen = window.palette.green;
 		self.paletteBlue = window.palette.blue;
 	});
+
+	// set initial coordinate
+	this.viewportInit.fill();
+	this.viewport0.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewportInit);
 }
 
 /**
@@ -1366,9 +1369,10 @@ GUI.prototype.animationFrame = function(time) {
  * @returns {boolean}
  */
 GUI.prototype.mainloop = function() {
-	if (!this.state)
+	if (!this.state) {
+		console.log("STOP");
 		return false;
-
+	}
 	this.mainloopNr++;
 
 	// make local for speed
