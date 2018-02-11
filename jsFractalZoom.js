@@ -731,28 +731,28 @@ Viewport.prototype.mand_calc = function(zre, zim, pre, pim) {
 Viewport.prototype.renderLines = function() {
 	// which tabstops have the worst error
 
-	var worstXval = this.xError[0];
-	var worstXinx = 0;
-	var worstYval = this.yError[0];
-	var worstYinx = 0;
+	var worstXerr = this.xError[0];
+	var worstXi = 0;
+	var worstYerr = this.yError[0];
+	var worstYj = 0;
 	var i, j, k, ji, x, y, err, last;
 	var diameter = this.diameter;
 	var diameter2 = this.diameter*this.diameter;
 
 	for (i=1; i<diameter; i++) {
-		if (this.xError[i] > worstXval) {
-			worstXinx = i;
-			worstXval = this.xError[i];
+		if (this.xError[i] > worstXerr) {
+			worstXi = i;
+			worstXerr = this.xError[i];
 		}
 	}
 	for (j=1; j<diameter; j++) {
-		if (this.yError[j] > worstYval) {
-			worstYinx = j;
-			worstYval = this.yError[j];
+		if (this.yError[j] > worstYerr) {
+			worstYj = j;
+			worstYerr = this.yError[j];
 		}
 	}
 
-	if (worstXval + worstYval === 0)
+	if (worstXerr + worstYerr === 0)
 		return; // nothing to do
 
 	/**
@@ -761,22 +761,50 @@ Viewport.prototype.renderLines = function() {
 	 **!
 	 **/
 
-	if (worstXval > worstYval) {
+	var lo, hi, lasti, lastj;
+	if (worstXerr > worstYerr) {
 
-		i = worstXinx;
+		i = worstXi;
 		x = this.xCoord[i];
 
-		// first tabstop
-		ji = 0 * diameter + i;
-		this.pixels[ji] = last = this.mand_calc(0, 0, x, this.yCoord[0]);
+		// find first tab stop
+		for (j = 0; j < diameter; j++) {
+			// only calculate if tabstop is exact
+			if (this.yError[j] === 0) {
+				lo = j >> 1;
+				lastj = j;
+				last = this.mand_calc(0, 0, x, this.yCoord[j]);
+				break;
+			}
+		}
+		if (j < diameter) {
+			// on next tab plot previous value filling half space each side
+			for (++j; j < diameter; j++) {
+				// only calculate if tabstop is exact
+				if (this.yError[j] === 0) {
+					hi = (lastj + j) >> 1;
+					ji = lo * diameter + i;
+					while (lo < hi) {
+						this.pixels[ji] = last;
+						lo++;
 		ji += diameter;
+					}
 
-		for (j = 1; j < diameter; j++) {
-			if (this.yError[j] === 0)
-				last = this.mand_calc(0, 0, x, this.yCoord[j]); // only calculate if tabstop is exact
+					lo = hi;
+					lastj = j;
+					last = this.mand_calc(0, 0, x, this.yCoord[j]);
+				}
+			}
+			// fill till halfway end ruler
+			hi = (lastj + diameter) >> 1;
+			ji = lo * diameter + i;
+			while (lo < hi) {
 			this.pixels[ji] = last;
+				lo++;
 			ji += diameter;
 		}
+		}
+
 		this.xNearest[i] = x;
 		this.xError[i] = 0;
 
@@ -810,23 +838,52 @@ Viewport.prototype.renderLines = function() {
 
 	} else {
 
-		j = worstYinx;
+		j = worstYj;
 		y = this.yCoord[j];
 
-		// first tabstop
-		ji = j * diameter + 0;
-		this.pixels[ji++] = last = this.mand_calc(0, 0, this.xCoord[0], y);
-
-		for (i = 1; i < diameter; i++) {
-			if (this.xError[i] === 0)
-				last = this.mand_calc(0, 0, this.xCoord[i], y); // only calculate if tabstop is exact
-			this.pixels[ji++] = last;
+		// find first tab stop
+		for (i = 0; i < diameter; i++) {
+			// only calculate if tabstop is exact
+			if (this.xError[i] === 0) {
+				lo = i >> 1;
+				lasti = i;
+				last = this.mand_calc(0, 0, this.xCoord[i], y);
+				break;
+			}
 		}
+		if (i < diameter) {
+			// on next tab plot previous value filling half space each side
+			for (++i; i < diameter; i++) {
+				// only calculate if tabstop is exact
+				if (this.xError[i] === 0) {
+					hi = (lasti + i) >> 1;
+					ji = j * diameter + lo;
+					while (lo < hi) {
+						this.pixels[ji] = last;
+						lo++;
+						ji++;
+					}
+
+					lo = hi;
+					lasti = i;
+					last = this.mand_calc(0, 0, this.xCoord[i], y);
+				}
+		}
+			// fill till halfway end ruler
+			hi = (lasti + diameter) >> 1;
+			ji = j * diameter + lo;
+			while (lo < hi) {
+				this.pixels[ji] = last;
+				lo++;
+				ji++;
+			}
+		}
+
 		this.yNearest[j] = y;
 		this.yError[j] = 0;
 
 		// copy to neighbours if better
-		for (k=i+1; k<diameter; k++) {
+		for (k = j + 1; k < diameter; k++) {
 			err = Math.abs(this.yCoord[k]-y);
 			if (err >= this.yError[k])
 				break;
@@ -877,9 +934,9 @@ Viewport.prototype.fill = function() {
 
 
 	for (var i = 0; i < this.xCoord.length; i++)
-		this.xNearest[i] = this.xCoord[i] = ((this.centerX+this.radius) - (this.centerX-this.radius)) * i / this.xCoord.length + (this.centerX-this.radius);
+		this.xNearest[i] = this.xCoord[i] = ((this.centerX + this.radius) - (this.centerX - this.radius)) * i / (this.xCoord.length - 1) + (this.centerX - this.radius);
 	for (var i = 0; i < this.xCoord.length; i++)
-		this.yNearest[i] = this.yCoord[i] = ((this.centerY+this.radius) - (this.centerY-this.radius)) * i / this.yCoord.length + (this.centerY-this.radius);
+		this.yNearest[i] = this.yCoord[i] = ((this.centerY + this.radius) - (this.centerY - this.radius)) * i / (this.yCoord.length - 1) + (this.centerY - this.radius);
 
 	var ji = 0;
 	for (var j = 0; j < this.diameter; j++) {
