@@ -10,8 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Home gesture
 - Palette
 - Starting thumbnail
-- makeRuler() error weights
-- renderLines() neighbor spreading
+- `makeRuler()` error weights
+- `renderLines()` neighbor spreading
+- Automatic max iteration depth
 
 ## Changed
 - xyCoord[] calculation was causing out of sync.  

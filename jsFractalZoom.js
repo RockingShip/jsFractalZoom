@@ -97,18 +97,14 @@ function Config() {
 	/** @member {number} - palette cycle slider Now */
 	this.paletteSpeedNow = 0;
 
-	/** @member {number} - calculation depth slider Min */
-	this.depthMin = 30;
-	/** @member {number} - calculation depth slider Max */
-	this.depthMax = 1500;
-	/** @member {number} - calculation depth slider Now */
+	/** @member {number} - calculation maxiteration depth */
 	this.depthNow = 600;
 
-	/** @member {number} - calculation depth slider Min */
+	/** @member {number} - calculation frame rate Min */
 	this.framerateMin = 4;
-	/** @member {number} - calculation depth slider Max */
+	/** @member {number} - calculation frame rate Max */
 	this.framerateMax = 60;
-	/** @member {number} - calculation depth slider Now */
+	/** @member {number} - calculation frame rate Now */
 	this.framerateNow = 20;
 
 	/** @member {number} - center X coordinate */
@@ -469,6 +465,9 @@ function Viewport(width, height, imagedata) {
 	this.yNearest = new Float64Array(this.diameter);
 	this.yError = new Float64Array(this.diameter);
 	this.yFrom = new Int32Array(this.diameter);
+
+	/** @member {number} - maximum iter recorded */
+	this.iterHiWater = 0;
 }
 
 /**
@@ -715,8 +714,11 @@ Viewport.prototype.mand_calc = function(zre, zim, pre, pim) {
 
 		zim = 2 * zre * zim + pim;
 		zre = rp - ip + pre;
-		if (rp + ip >= 4)
+		if (rp + ip >= 4) {
+			if (iter > this.iterHiWater)
+				this.iterHiWater = iter;
 			return iter;
+		}
 	} while (++iter < maxiter);
 
 	return 0;
@@ -908,11 +910,9 @@ Viewport.prototype.renderLines = function() {
 			this.yNearest[k] = y;
 			this.yError[k] = err;
 		}
-
-		for (j=1; j<diameter; j++)
-			if (this.yNearest[j-1] > this.yNearest[j])
-				console.log('Y'+j);
 	}
+
+	this.statStateRAF += ((performance.now() - this.rafTime) - this.statStateRAF) * this.coef;
 };
 
 Viewport.prototype.fill = function() {
@@ -961,6 +961,7 @@ function GUI(config) {
 	 */
 	this.domViewport = "idViewport";
 	this.domStatusQuality = "idStatusQuality";
+	this.domStatusDepth = "idStatusDepth";
 	this.domStatusLoad = "idStatusLoad";
 	this.domStatusRect = "idStatusRect";
 	this.domPowerButton = "idPowerButton";
@@ -985,9 +986,6 @@ function GUI(config) {
 	this.domPaletteSpeedThumb = "idPaletteSpeedThumb";
 	this.domRandomPaletteButton = "idRandomPaletteButton";
 	this.domDefaultPaletteButton = "idDefaultPaletteButton";
-	this.domDepthLeft = "idDepthLeft";
-	this.domDepthRail = "idDepthRail";
-	this.domDepthThumb = "idDepthThumb";
 	this.domFramerateLeft = "idFramerateLeft";
 	this.domFramerateRail = "idFramerateRail";
 	this.domFramerateThumb = "idFramerateThumb";
@@ -1019,6 +1017,8 @@ function GUI(config) {
 	this.statStatePaint = 0;
 	/** @member {number} - Average time in mSec waiting for rAF() */
 	this.statStateRAF = 0;
+	/** @member {number} - Average iteration depth */
+	this.statDepth = 0;
 
 	/** @member {boolean} - fractal coordinate of pointer when button first pressed */
 	this.dragActive = false;
@@ -1094,8 +1094,6 @@ function GUI(config) {
 		config.rotateSpeedMin, config.rotateSpeedMax, config.rotateSpeedNow);
 	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
 		config.paletteSpeedMin, config.paletteSpeedMax, config.paletteSpeedNow);
-	this.depth = new Aria.Slider(this.domDepthThumb, this.domDepthRail,
-		config.depthMin, config.depthMax, config.depthNow);
 	this.Framerate = new Aria.Slider(this.domFramerateThumb, this.domFramerateRail,
 		config.framerateMin, config.framerateMax, config.framerateNow);
 
@@ -1132,11 +1130,6 @@ function GUI(config) {
 	this.paletteSpeed.setCallbackValueChange(function(newValue) {
 		config.paletteSpeedNow = newValue;
 		self.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
-	});
-	this.depth.setCallbackValueChange(function(newValue) {
-		newValue = Math.round(newValue);
-		config.depthNow = newValue;
-		self.domDepthLeft.innerHTML = newValue;
 	});
 	this.Framerate.setCallbackValueChange(function(newValue) {
 		newValue = Math.round(newValue);
@@ -1678,10 +1671,17 @@ GUI.prototype.mainloop = function() {
 
 	this.frameNr++;
 
-	if (this.frameNr & 1)
+	if (this.frameNr & 1) {
+		this.statDepth += (this.viewport0.iterHiWater - this.statDepth) * this.coef;
 		this.viewport1.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewport0);
-	else
+		this.viewport1.iterHiWater = 0;
+	} else {
+		this.statDepth += (this.viewport1.iterHiWater - this.statDepth) * this.coef;
 		this.viewport0.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewport1);
+		this.viewport0.iterHiWater = 0;
+	}
+	this.domStatusDepth.innerHTML = this.statDepth.toFixed(0);
+	config.depthNow = this.statDepth + 100;
 
 	// update stats
 	now = performance.now();
