@@ -10,7 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Home gesture
 - Palette
 - Starting thumbnail
+- makeRuler() error weights
 
+## Changed
+- xyCoord[] calculation was causing out of sync.  
+ 
 ## [0.5.0] 2018-02-09
 
 ### Added

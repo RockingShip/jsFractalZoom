@@ -480,48 +480,61 @@ function Viewport(width, height, imagedata) {
  * @param {Float64Array} newError - difference between newCoord[] and newNearest[]
  * @param {Uint16Array} newFrom - matching oldNearest[] index
  * @param {Float64Array} oldNearest - source ruler
+ * @param {Float64Array} oldError - source ruler
  */
-Viewport.prototype.makeRuler = function(start, end, newCoord, newNearest, newError, newFrom, oldNearest) {
+Viewport.prototype.makeRuler = function(start, end, newCoord, newNearest, newError, newFrom, oldNearest, oldError) {
 
-	var iOld, iNew, nextError, currError, currCoord;
+	var iOld, iFrom, iNew, nextError, currError, currCoord;
 
 	/*
-	 *
+	 * Find best member first group (iFrom) and start next group (iOld)
 	 */
-	iOld = 0;
+	iFrom = iOld = 0;
+	while (iOld < oldNearest.length && oldNearest[iOld] === oldNearest[iFrom]) {
+		if (oldError[iOld] < oldError[iFrom])
+			iFrom = iOld;
+		++iOld;
+	}
+
 	for (iNew = 0; iNew < newCoord.length && iOld < oldNearest.length; iNew++) {
 
 		// determine coordinate current tab stop
-		currCoord = (end - start) * iNew / newCoord.length + start;
+		currCoord = (end - start) * iNew / (newCoord.length - 1) + start;
 
 		// determine errors
-		currError = Math.abs(currCoord - oldNearest[iOld]);
-		nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
+		currError = Math.abs(currCoord - oldNearest[iFrom]);
+		nextError = Math.abs(currCoord - oldNearest[iOld]);
 
 		// bump if next source stop is better
-		while (nextError <= currError && iOld < oldNearest.length - 1) {
-			iOld++;
+		while (nextError <= currError) {
+			iFrom = iOld++;
+			while (iOld < oldNearest.length && oldNearest[iOld] === oldNearest[iFrom]) {
+				if (oldError[iOld] < oldError[iFrom])
+					iFrom = iOld; // member of same group with lowest error
+				++iOld;
+			}
+
 			currError = nextError;
-			nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
+			if (iOld >= oldNearest.length)
+				break;
+			nextError = Math.abs(currCoord - oldNearest[iOld]);
 		}
 
 		// populate
 		newCoord[iNew] = currCoord;
-		newNearest[iNew] = oldNearest[iOld];
+		newNearest[iNew] = oldNearest[iFrom];
 		newError[iNew] = currError;
-		newFrom[iNew] = iOld;
+		newFrom[iNew] = iFrom;
 	}
 
-	// copy the only option
+	// no more next, copy the only option
 	while (iNew < newCoord.length) {
-		newNearest[iNew] = oldNearest[iOld];
-		newError[iNew] = Math.abs(newCoord[iNew] - oldNearest[iOld]);
-		newFrom[iNew] = iOld;
+		newCoord[iNew] = (end - start) * iNew / (newCoord.length - 1) + start;
+		newNearest[iNew] = oldNearest[iFrom];
+		newError[iNew] = Math.abs(newCoord[iNew] - oldNearest[iFrom]);
+		newFrom[iNew] = iFrom;
+		iNew++;
 	}
-
-	// make sure the ends are precise
-	newCoord[0] = start;
-	newCoord[newCoord.length-1] = end;
 };
 
 /**
@@ -552,8 +565,8 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 	/*
 	 * setup new rulers
 	 */
-	this.makeRuler(this.centerX - this.radius, this.centerX + this.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, oldViewport.xNearest);
-	this.makeRuler(this.centerY - this.radius, this.centerY + this.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, oldViewport.yNearest);
+	this.makeRuler(this.centerX - this.radius, this.centerX + this.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, oldViewport.xNearest, oldViewport.xError);
+	this.makeRuler(this.centerY - this.radius, this.centerY + this.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, oldViewport.yNearest, oldViewport.yError);
 
 	/**
 	 **!
