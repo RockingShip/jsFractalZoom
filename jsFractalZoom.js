@@ -132,6 +132,14 @@ function Config() {
 	this.incolour = "";
 	this.outcolour = "";
 	this.plane = "";
+
+	/** @member {number} */
+	this.autopilotX = 0;
+	/** @member {number} */
+	this.autopilotY = 0;
+	/** @member {number} */
+	this.autopilotButtons = 0;
+
 	}
 
 /**
@@ -607,6 +615,22 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 };
 
 /**
+ * Test if rulers have reached resolution limits
+ *
+ * @returns {boolean}
+ */
+Viewport.prototype.reachedLimits = function() {
+	var ij;
+
+	for (ij=1; ij<this.diameter; ij++) {
+		if (this.xCoord[ij-1] === this.xCoord[ij] || this.yCoord[ij-1] === this.yCoord[ij])
+			return true;
+
+	}
+	return false;
+};
+
+/**
  * Extract rotated viewport from pixels and store them in specified imnagedata
  * The pixel data is palette based, the imagedata is RGB
  *
@@ -988,13 +1012,16 @@ function GUI(config) {
 	this.domFramerateRail = "idFramerateRail";
 	this.domFramerateThumb = "idFramerateThumb";
 	this.domWxH = "WxH";
+	this.domAutopilot = "idAutopilot";
 
 	/** @member {number} - viewport mouse X coordinate */
+	this.mouseI = 0;
 	this.mouseX = 0;
 	/** @member {number} - viewport mouse Y coordinate */
+	this.mouseJ = 0;
 	this.mouseY = 0;
 	/** @member {number} - viewport mouse button state. OR-ed set of Aria.ButtonCode */
-	this.buttons = 0;
+	this.mouseButtons = 0;
 
 	/** @member {number} -  0=STOP 1=COPY 2=UPDATE-before-rAF 3=IDLE 4=rAF 5=UPDATE-after-rAF 6=PAINT */
 	this.state = 0;
@@ -1084,7 +1111,7 @@ function GUI(config) {
 	window.addEventListener("message", this.handleMessage);
 
 	// construct sliders
-	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail, 
+	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
 		config.magnificationMin, config.magnificationMax, config.magnificationNow);
 	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
 		config.rotateSpeedMin, config.rotateSpeedMax, config.rotateSpeedNow);
@@ -1167,6 +1194,11 @@ function GUI(config) {
 	});
 	this.autoPilot.setCallbackValueChange(function(newValue) {
 		self.config.autoPilot = newValue;
+		if (newValue) {
+			self.autopilotOn();
+		} else {
+			self.autopilotOff();
+		}
 	});
 	this.home.setCallbackValueChange(function(newValue) {
 		self.config.centerX = -0.75;
@@ -1353,16 +1385,26 @@ GUI.prototype.handleMouse = function(event) {
 	/*
 	 * On first button press set a document listener to catch releases outside target element
 	 */
-	if (this.buttons === 0 && event.buttons !== 0) {
+	if (this.mouseButtons === 0 && event.buttons !== 0) {
 		// on first button press set release listeners
 		document.addEventListener("mousemove", this.handleMouse);
 		document.addEventListener("mouseup", this.handleMouse);
 		document.addEventListener("contextmenu", this.handleMouse);
 	}
 
-	this.mouseX = event.pageX - rect.left;
-	this.mouseY = event.pageY - rect.top;
-	this.buttons = event.buttons;
+	this.mouseI = event.pageX - rect.left;
+	this.mouseJ = event.pageY - rect.top;
+
+	var viewport = (this.frameNr&1) ? this.viewport1 : this.viewport0;
+
+	// relative to viewport center
+	var dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
+	var dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
+	// undo rotation
+	this.mouseX = dy * viewport.rsin + dx * viewport.rcos + viewport.centerX;
+	this.mouseY = dy * viewport.rcos - dx * viewport.rsin + viewport.centerY;
+
+	this.mouseButtons = event.buttons;
 
 	if (event.buttons === 0) {
 		// remove listeners when last button released
@@ -1570,16 +1612,46 @@ GUI.prototype.mainloop = function() {
 	var diffSec = (now - this.cycleTime) / 1000;
 	this.cycleTime = now;
 
+	if (config.autoPilot) {
+		if (this.frameNr & 1) {
+			if (this.viewport1.reachedLimits()) {
+				config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+				window.gui.domAutopilot.style.border = '4px solid orange';
+			} else {
+				this.domStatusQuality.innerHTML = "";
+				if (!this.viewport1.updateAutopilot(4, 16))
+					if (!this.viewport1.updateAutopilot(60, 16))
+						if (!this.viewport1.updateAutopilot(this.viewport1.diameter >> 1, 16))
+							config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+			}
+		} else {
+			if (this.viewport0.reachedLimits()) {
+				config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+				window.gui.domAutopilot.style.border = '4px solid orange';
+			} else {
+				this.domStatusQuality.innerHTML = "";
+				if (!this.viewport0.updateAutopilot(4, 16))
+					if (!this.viewport0.updateAutopilot(60, 16))
+						if (!this.viewport0.updateAutopilot(this.viewport0.diameter >> 1, 16))
+							config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+			}
+		}
+
+		this.mouseX = config.autopilotX;
+		this.mouseY = config.autopilotY;
+		this.mouseButtons = config.autopilotButtons;
+	}
+
 	/*
 	 * Update zoom (de-)acceleration. -1 <= zoomSpeed <= +1
 	 */
-	if (this.buttons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
+	if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
 		// zoom-in only
 		config.zoomSpeed = +1 - (+1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
-	} else if (this.buttons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
+	} else if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
 		// zoom-out only
 		config.zoomSpeed = -1 - (-1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
-	} else if (this.buttons === 0) {
+	} else if (this.mouseButtons === 0) {
 		// buttons released
 		config.zoomSpeed = config.zoomSpeed * Math.pow((1 - config.zoomSpeedCoef), diffSec);
 
@@ -1629,19 +1701,15 @@ GUI.prototype.mainloop = function() {
 	if (config.rotateSpeedNow)
 		config.angle += diffSec * config.rotateSpeedNow * 360;
 
-	/*
-	 *translate mouse to fractal coordinate
-	 */
-
-	// relative to viewport center
-	var dx = this.mouseX * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
-	var dy = this.mouseY * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
-	// undo rotation
-	var x = dy * viewport.rsin + dx * viewport.rcos + viewport.centerX;
-	var y = dy * viewport.rcos - dx * viewport.rsin + viewport.centerY;
-
 	// drag gesture
-	if (this.buttons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
+	if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
+		// need screen coordinates to avoid drifting
+		// relative to viewport center
+		var dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
+		var dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
+		// undo rotation
+		var x = dy * viewport.rsin + dx * viewport.rcos + viewport.centerX;
+		var y = dy * viewport.rcos - dx * viewport.rsin + viewport.centerY;
 
 		if (!this.dragActive) {
 			// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
@@ -1663,8 +1731,8 @@ GUI.prototype.mainloop = function() {
 		var magnify = Math.pow(config.magnificationNow, config.zoomSpeed * diffSec);
 
 		// zoom, The mouse pointer coordinate should not change
-		config.centerX = (config.centerX - x) / magnify + x;
-		config.centerY = (config.centerY - y) / magnify + y;
+		config.centerX = (config.centerX - this.mouseX) / magnify + this.mouseX;
+		config.centerY = (config.centerY - this.mouseY) / magnify + this.mouseY;
 		config.radius  = config.radius / magnify;
 	}
 
@@ -1703,4 +1771,84 @@ GUI.prototype.mainloop = function() {
 	this.state = 2;
 	window.postMessage("mainloop", "*");
 	return true;
+};
+
+/**
+ * @param {number} lookPixelRadius
+ * @param {number} borderPixelRadius
+ * @returns {boolean}
+ */
+Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius) {
+
+	var config = window.config;
+	var pixels = this.pixels;
+
+	// use '>>1' as integer '/2'
+
+	// coordinate within pixel data pointed to by mouse
+	// todo: compensate rotation
+	var api = ((config.autopilotX - this.centerX) / this.radius + 1) * this.diameter >> 1;
+	var apj = ((config.autopilotY - this.centerY) / this.radius + 1) * this.diameter >> 1;
+
+	var min = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
+	var max = min * 3;
+
+
+		// outside center rectangle, adjust autopilot heading
+		for (var k = 0; k < 450; k++) {
+			var i0 = api + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+			var j0 = apj + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+			// convert to x/y
+			var x = (i0 / this.diameter * 2 - 1) * this.radius + this.centerX;
+			var y = (j0 / this.diameter * 2 - 1) * this.radius + this.centerY;
+			// convert to viewport coords (use '>>1' as integer '/2'
+			var i = (((x - this.centerX) * this.rcos - (y - this.centerY) * this.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
+			var j = (((x - this.centerX) * this.rsin + (y - this.centerY) * this.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
+			// must be visable
+			if (i < borderPixelRadius || j < borderPixelRadius || i >= this.viewWidth-borderPixelRadius || j >= this.viewHeight-borderPixelRadius)
+				continue;
+
+			var c = 0;
+			for (j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
+				for (i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
+					if (pixels[j * this.diameter + i] === 0)
+						c++;
+			if (c >= min && c <= max) {
+				config.autopilotX = x;
+				config.autopilotY = y;
+				config.autopilotButtons = 1<<Aria.ButtonCode.BUTTON_LEFT;
+
+				var i = (((x - this.centerX) * this.rcos - (y - this.centerY) * this.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
+				var j = (((x - this.centerX) * this.rsin + (y - this.centerY) * this.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
+				window.gui.domAutopilot.style.top = (j - borderPixelRadius)+"px";
+				window.gui.domAutopilot.style.left = (i - borderPixelRadius)+"px";
+				window.gui.domAutopilot.style.width = (borderPixelRadius*2)+"px";
+				window.gui.domAutopilot.style.height = (borderPixelRadius*2)+"px";
+				window.gui.domAutopilot.style.border = '4px solid green';
+				return true;
+			}
+		}
+
+	config.autopilotButtons = 0;
+	window.gui.domAutopilot.style.border = '4px solid red';
+	return false;
+};
+
+GUI.prototype.autopilotOn = function() {
+
+	var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+
+	var lookPixelRadius = viewport.diameter >> 1;
+	var borderPixelRadius = viewport.diameter >> 5;
+	do {
+		if (!viewport.updateAutopilot(lookPixelRadius, 32))
+			break;
+		lookPixelRadius >>= 1;
+	} while (lookPixelRadius > 2);
+};
+
+GUI.prototype.autopilotOff = function() {
+	this.mouseButtons = 0;
+	this.domAutopilot.style.border = 'none';
+
 };

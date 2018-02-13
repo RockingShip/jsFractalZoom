@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Palette
 - Starting thumbnail
 - `makeRuler()` error weights
-- `renderLines()` neighbor spreading
+- `renderLines()` neighbour spreading
+- Autopilot
 
 ## Changed
 - xyCoord[] calculation was causing out of sync.  
