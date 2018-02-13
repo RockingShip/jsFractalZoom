@@ -18,12 +18,12 @@ body {
 	border: none;
 	margin: 0;
 	padding: 0;
-	top: 2px;
+	top: 0;
 	height: auto;
-	bottom: 2px;
-	left: 2px;
+	bottom: 0;
+	left: 0;
 	width: auto;
-	right: 2px;
+	right: 0;
 	overflow: hidden; /* layout is pixel precise. don't let whitespace between tags FIU */
 }
 
@@ -40,31 +40,11 @@ body {
 	right: 0;
 }
 
-#top-wrapper {
-	height: 5em;
-}
-
-#bot-wrapper {
-	top: 5em;
-}
-
-#main-wrapper {
-	right: 32em;
-}
-
-#nav-wrapper {
-	left: auto;
-	width: 32em;
-}
-
-#top {
-	padding: 4px;
-}
-
 #idViewport {
-	/*padding: 4px;*/
-	/*border: 2px dotted transparent;*/
-	position: relative;
+	padding: 0;
+	margin : 0;
+	border: none;
+	position: absolute;
 	width: 100%;
 	height: 100%;
 
@@ -72,11 +52,29 @@ body {
 
 #idAutopilot {
 	position: absolute;
-	border: none;
+}
+
+#top {
+	position: absolute;
+	padding: 4px;
+	background: rgba(255,255,255,.5);
+	height: 5em;
+	top: 1em;
+	left: 1em;
+	right: 1em;
+	bottom: auto;
 }
 
 #nav {
+	position: absolute;
+	padding: 4px;
 	overflow: hidden;
+	background: rgba(255,255,255,.5);
+	width: 32em;
+	top: 7em;
+	left: auto;
+	right: 1em;
+	bottom: auto;
 }
 
 /*

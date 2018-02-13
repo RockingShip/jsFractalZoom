@@ -28,7 +28,16 @@
 	<script type="text/javascript" src="jsFractalZoom.js"></script>
 </head>
 <body>
-<div id="top-wrapper" class="pane">
+<canvas
+	id="idViewport"
+	class="pane"
+	tabindex="0"
+	role="region"
+	aria-live="off"
+	width="100%"
+	height="100%">
+</canvas>
+<div id="idAutopilot"></div>
 	<div id="top" class="pane">
 		<h1>
 			<a href="https://www.rockingship.net/jsFractalZoom" tabindex="-1">jsFractalZoom</a>
@@ -38,21 +47,6 @@
 		load: <span id="idStatusLoad"></span>
 		<span id="idStatusRect"></span>
 	</div>
-</div>
-<div id="bot-wrapper" class="pane">
-	<div id="main-wrapper" class="pane">
-		<canvas
-		     id="idViewport"
-		     class="pane"
-		     tabindex="0"
-		     role="region"
-		     aria-live="off"
-		     width="0"
-		     height="0">
-		</canvas>
-		<div id="idAutopilot"></div>
-	</div>
-	<div id="nav-wrapper" class="pane">
 		<div id="nav" class="pane" aria-controls="main">
 
 			<div class="navRow navButton">
@@ -364,10 +358,15 @@
 				<div id="idFramerateRight" class="navRight"><span class="navCaption">[]</span></div>
 			</div>
 
-			<div id="idProjectPage">Visit <a href="https://www.rockingship.net/jsFractalZoom" >jsFractalZoom</a> project page</div>
+	<div id="idProjectPage">
+		mouse-left: zoom in<br/>
+		mouse-right: zoom out<br/>
+		mouse-wheel: drag<br/>
+		<br/>
+		Visit <a href="https://www.rockingship.net/jsFractalZoom" >jsFractalZoom</a> project page
 		</div>
 	</div>
-</div>
+
 <script type="text/javascript">
 
 	/*
@@ -407,7 +406,8 @@
 		// initial focus main view
 		window.gui.domViewport.focus();
 		// press power button
-		window.gui.power.buttonDown();
+		window.gui.power.buttonDown(); // push
+		window.gui.power.buttonUp(); // and release
 	});
 </script>
 </body>

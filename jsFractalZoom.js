@@ -79,9 +79,9 @@ function Config() {
 	/** @member {number} - zoom magnification slider Min */
 	this.magnificationMin = 1.0;
 	/** @member {number} - zoom magnification slider Max */
-	this.magnificationMax = 100.0;
+	this.magnificationMax = 1000.0;
 	/** @member {number} - zoom magnification slider Now */
-	this.magnificationNow = this.logTolinear(this.magnificationMin, this.magnificationMax, 4);
+	this.magnificationNow = this.logTolinear(this.magnificationMin, this.magnificationMax, 1000);
 
 	/** @member {number} - rotate speed slider Min */
 	this.rotateSpeedMin = -0.5;
@@ -105,7 +105,7 @@ function Config() {
 	this.depthNow = 1200;
 
 	/** @member {number} - calculation depth slider Min */
-	this.framerateMin = 4;
+	this.framerateMin = 1;
 	/** @member {number} - calculation depth slider Max */
 	this.framerateMax = 60;
 	/** @member {number} - calculation depth slider Now */
@@ -1693,7 +1693,7 @@ GUI.prototype.mainloop = function() {
 	 * Update palette cycle offset
 	 */
 	if (config.paletteSpeedNow)
-		config.paletteOffset += diffSec * config.paletteSpeedNow;
+		config.paletteOffset -= diffSec * config.paletteSpeedNow;
 
 	/*
 	 * Update viewport angle (before zoom gestures)
