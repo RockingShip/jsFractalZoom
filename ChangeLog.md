@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `makeRuler()` error weights
 - `renderLines()` neighbour spreading
 - Autopilot
+- Fullscreen mode
 
 ## Changed
 - xyCoord[] calculation was causing out of sync.  
