@@ -477,6 +477,10 @@ function Viewport(width, height, imagedata) {
 	this.yNearest = new Float64Array(this.diameter);
 	this.yError = new Float64Array(this.diameter);
 	this.yFrom = new Int32Array(this.diameter);
+
+	this.doneX = 0;
+	this.doneY = 0;
+	this.doneCalc = 0;
 }
 
 /**
@@ -492,56 +496,40 @@ function Viewport(width, height, imagedata) {
  */
 Viewport.prototype.makeRuler = function(start, end, newCoord, newNearest, newError, newFrom, oldNearest, oldError) {
 
-	var iOld, iFrom, iNew, nextError, currError, currCoord;
+	var iOld, iNew, nextError, currError, currCoord;
 
 	/*
-	 * Find best member first group (iFrom) and start next group (iOld)
+	 *
 	 */
-	iFrom = iOld = 0;
-	while (iOld < oldNearest.length && oldNearest[iOld] === oldNearest[iFrom]) {
-		if (oldError[iOld] < oldError[iFrom])
-			iFrom = iOld;
-		++iOld;
-	}
-
+	iOld = 0;
 	for (iNew = 0; iNew < newCoord.length && iOld < oldNearest.length; iNew++) {
 
 		// determine coordinate current tab stop
-		currCoord = (end - start) * iNew / (newCoord.length - 1) + start;
+		currCoord = (end - start) * iNew / newCoord.length + start;
 
 		// determine errors
-		currError = Math.abs(currCoord - oldNearest[iFrom]);
-		nextError = Math.abs(currCoord - oldNearest[iOld]);
+		currError = Math.abs(currCoord - oldNearest[iOld]);
+		nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
 
 		// bump if next source stop is better
-		while (nextError <= currError) {
-			iFrom = iOld++;
-			while (iOld < oldNearest.length && oldNearest[iOld] === oldNearest[iFrom]) {
-				if (oldError[iOld] < oldError[iFrom])
-					iFrom = iOld; // member of same group with lowest error
-				++iOld;
-			}
-
+		while (nextError <= currError && iOld < oldNearest.length - 1) {
+			iOld++;
 			currError = nextError;
-			if (iOld >= oldNearest.length)
-				break;
-			nextError = Math.abs(currCoord - oldNearest[iOld]);
+			nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
 		}
 
 		// populate
 		newCoord[iNew] = currCoord;
-		newNearest[iNew] = oldNearest[iFrom];
+		newNearest[iNew] = oldNearest[iOld];
 		newError[iNew] = currError;
-		newFrom[iNew] = iFrom;
+		newFrom[iNew] = iOld;
 	}
 
-	// no more next, copy the only option
+	// copy the only option
 	while (iNew < newCoord.length) {
-		newCoord[iNew] = (end - start) * iNew / (newCoord.length - 1) + start;
-		newNearest[iNew] = oldNearest[iFrom];
-		newError[iNew] = Math.abs(newCoord[iNew] - oldNearest[iFrom]);
-		newFrom[iNew] = iFrom;
-		iNew++;
+		newNearest[iNew] = oldNearest[iOld];
+		newError[iNew] = Math.abs(newCoord[iNew] - oldNearest[iOld]);
+		newFrom[iNew] = iOld;
 	}
 };
 
@@ -599,7 +587,7 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 		newPixels[ji++] = oldPixels[k + xFrom[i]];
 	// followups
 	for (j = 1; j < newDiameter; j++) {
-		if (yFrom[j] === yFrom[j-1]) {
+		if (yFrom[j] === yFrom[j - 1]) {
 			// this line is identical to the previous
 			k = ji - newDiameter;
 			for (i = 0; i < newDiameter; i++)
@@ -610,8 +598,22 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 			k = yFrom[j] * oldDiameter;
 			for (i = 0; i < newDiameter; i++)
 				newPixels[ji++] = oldPixels[k + xFrom[i]];
-			}
 		}
+	}
+
+	// keep the froms with lowest error
+	for (i = 1; i < newDiameter; i++) {
+		if (xFrom[i-1] === xFrom[i] && this.xError[i-1] > this.xError[i])
+			xFrom[i-1] = -1;
+		if (yFrom[i-1] === yFrom[i] && this.yError[i-1] > this.yError[i])
+			yFrom[i-1] = -1;
+	}
+	for (i = newDiameter-2; i >= 0; i--) {
+		if (xFrom[i+1] === xFrom[i] && this.xError[i+1] > this.xError[i])
+			xFrom[i+1] = -1;
+		if (yFrom[i+1] === yFrom[i] && this.yError[i+1] > this.yError[i])
+			yFrom[i+1] = -1;
+	}
 };
 
 /**
@@ -746,6 +748,8 @@ Viewport.prototype.mand_calc = function(zre, zim, pre, pim) {
 	return 0;
 };
 
+Viewport.prototype.calculate = Viewport.prototype.mand_calc;
+
 /**
  * Simple background renderer
  */
@@ -758,15 +762,14 @@ Viewport.prototype.renderLines = function() {
 	var worstYj = 0;
 	var i, j, k, ji, x, y, err, last;
 	var diameter = this.diameter;
-	var diameter2 = this.diameter*this.diameter;
 
-	for (i=1; i<diameter; i++) {
+	for (i = 1; i < diameter; i++) {
 		if (this.xError[i] > worstXerr) {
 			worstXi = i;
 			worstXerr = this.xError[i];
 		}
 	}
-	for (j=1; j<diameter; j++) {
+	for (j = 1; j < diameter; j++) {
 		if (this.yError[j] > worstYerr) {
 			worstYj = j;
 			worstYerr = this.yError[j];
@@ -782,156 +785,82 @@ Viewport.prototype.renderLines = function() {
 	 **!
 	 **/
 
-	var lo, hi, lasti, lastj;
+	var lo, hi, lasti, lastj, last, oldpx;
+	var u, v;
+	var xCoord = this.xCoord;
+	var xNearest = this.xNearest;
+	var xError = this.xError;
+	var xFrom = this.xFrom;
+	var yCoord = this.yCoord;
+	var yNearest = this.yNearest;
+	var yError = this.yError;
+	var yFrom = this.yFrom;
+	var pixels = this.pixels;
+	var calculate = this.calculate;
+
 	if (worstXerr > worstYerr) {
 
 		i = worstXi;
 		x = this.xCoord[i];
 
-		// find first tab stop
-		for (j = 0; j < diameter; j++) {
-			// only calculate if tabstop is exact
-			if (this.yError[j] === 0) {
-				lo = j >> 1;
-				lastj = j;
-				last = this.mand_calc(0, 0, x, this.yCoord[j]);
-				break;
+		ji = 0 * diameter + i;
+		last = calculate(0, 0, x, this.yCoord[0]);
+		pixels[ji++] = last;
+		this.doneCalc++;
+		for (j = 1; j < diameter; j++) {
+			/*
+			 * Logic would say 'this.yFrom[j] === -1', but haven't been able to figure out why this works better
+			 * ..and 3 other places
+			 */
+			if (yError[j] === 0 || yFrom[j] !== -1) {
+				last = calculate(0, 0, x, yCoord[j]);
+				this.doneCalc++;
 			}
-		}
-		if (j < diameter) {
-			// on next tab plot previous value filling half space each side
-			for (++j; j < diameter; j++) {
-				// only calculate if tabstop is exact
-				if (this.yError[j] === 0) {
-					hi = (lastj + j) >> 1;
-					ji = lo * diameter + i;
-					while (lo < hi) {
-						this.pixels[ji] = last;
-						lo++;
-		ji += diameter;
-					}
-
-					lo = hi;
-					lastj = j;
-					last = this.mand_calc(0, 0, x, this.yCoord[j]);
-				}
-			}
-			// fill till halfway end ruler
-			hi = (lastj + diameter) >> 1;
-			ji = lo * diameter + i;
-			while (lo < hi) {
-			this.pixels[ji] = last;
-				lo++;
-			ji += diameter;
-		}
+			pixels[ji++] = last;
 		}
 
-		this.xNearest[i] = x;
-		this.xError[i] = 0;
-
-		// copy to neighbours if better
-		for (k=i+1; k<diameter; k++) {
-			err = Math.abs(this.xCoord[k]-x);
-			if (err >= this.xError[k])
+		for (u=i+1; u < diameter; u++) {
+			if (xError[u] === 0 || xFrom[u] !== -1)
 				break;
 
-			// copy all pixels
-			for (j=0; j<diameter2; j+=diameter) {
-				this.pixels[j + k] = this.pixels[j + i];
+			for (v = 0; v < diameter; v++) {
+				pixels[v * diameter + u] = pixels[v * diameter + i];
 			}
-
-			this.xNearest[k] = x;
-			this.xError[k] = err;
 		}
-		for (k=i-1; k>=0; k--) {
-			err = Math.abs(this.xCoord[k]-x);
-			if (err >= this.xError[k])
-				break;
 
-			// copy all pixels
-			for (j=0; j<diameter2; j+=diameter) {
-				this.pixels[j + k] = this.pixels[j + i];
-			}
-
-			this.xNearest[k] = x;
-			this.xError[k] = err;
-		}
+		xNearest[i] = x;
+		xError[i] = 0;
+		this.doneX++;
 
 	} else {
 
+
 		j = worstYj;
-		y = this.yCoord[j];
+		y = yCoord[j];
 
-		// find first tab stop
+		last = pixels[j * diameter + 0];
+		last = calculate(0, 0, xCoord[0], y);
+		this.doneCalc++;
 		for (i = 0; i < diameter; i++) {
-			// only calculate if tabstop is exact
-			if (this.xError[i] === 0) {
-				lo = i >> 1;
-				lasti = i;
-				last = this.mand_calc(0, 0, this.xCoord[i], y);
-				break;
+			if (xError[i] === 0 || xFrom[i] !== -1) {
+				last = calculate(0, 0, xCoord[i], y);
+				this.doneCalc++;
 			}
-		}
-		if (i < diameter) {
-			// on next tab plot previous value filling half space each side
-			for (++i; i < diameter; i++) {
-				// only calculate if tabstop is exact
-				if (this.xError[i] === 0) {
-					hi = (lasti + i) >> 1;
-					ji = j * diameter + lo;
-					while (lo < hi) {
-						this.pixels[ji] = last;
-						lo++;
-						ji++;
-					}
-
-					lo = hi;
-					lasti = i;
-					last = this.mand_calc(0, 0, this.xCoord[i], y);
-				}
-		}
-			// fill till halfway end ruler
-			hi = (lasti + diameter) >> 1;
-			ji = j * diameter + lo;
-			while (lo < hi) {
-				this.pixels[ji] = last;
-				lo++;
-				ji++;
-			}
+			pixels[j * diameter + i] = last;
 		}
 
-		this.yNearest[j] = y;
-		this.yError[j] = 0;
-
-		// copy to neighbours if better
-		for (k = j + 1; k < diameter; k++) {
-			err = Math.abs(this.yCoord[k]-y);
-			if (err >= this.yError[k])
+		for (v=j+1; v < diameter; v++) {
+			if (yError[v] === 0 || yFrom[v] !== -1)
 				break;
 
-			// copy all pixels
-			ji = j * diameter;
-			for (i=0; i<diameter; i++) {
-				this.pixels[ji + k] = this.pixels[ji + i];
+			for (u = 0; u < diameter; u++) {
+				pixels[v * diameter + u] = pixels[j * diameter + u];
 			}
-
-			this.yNearest[k] = y;
-			this.yError[k] = err;
 		}
-		for (k = j - 1; k >= 0; k--) {
-			err = Math.abs(this.yCoord[k]-y);
-			if (err >= this.yError[k])
-				break;
 
-			// copy all pixels
-			ji = j * diameter;
-			for (i=0; i<diameter; i++) {
-				this.pixels[ji + k] = this.pixels[ji + i];
-			}
-
-			this.yNearest[k] = y;
-			this.yError[k] = err;
-		}
+		yNearest[j] = y;
+		yError[j] = 0;
+		this.doneY++;
 	}
 };
 
@@ -961,7 +890,7 @@ Viewport.prototype.fill = function() {
 		for (var i = 0; i < this.diameter; i++) {
 			// distance to center
 			var x = (this.centerX - this.radius) + this.radius * 2 * i / this.diameter;
-			this.pixels[ji++] = this.mand_calc(0, 0, x, y);
+			this.pixels[ji++] = this.calculate(0, 0, x, y);
 		}
 	}
 };
@@ -1031,6 +960,8 @@ function GUI(config) {
 	this.frameNr = 0;
 	/** @member {number} - Number of times mainloop called */
 	this.mainloopNr = 0;
+	/** @member {Viewport} - active viewport */
+	this.currentViewport = undefined;
 
 	/** @member {number} - Damping coefficient low-pass filter for following fields */
 	this.coef = 0.05;
@@ -1078,6 +1009,7 @@ function GUI(config) {
 	this.imagedata1 = this.ctx.createImageData(this.domViewport.clientWidth, this.domViewport.clientHeight);
 	this.viewport0 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight, this.imagedata0);
 	this.viewport1 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight, this.imagedata1);
+	this.currentViewport = this.viewport0;
 	// small viewport for initial image
 	this.imagedataInit = this.ctx.createImageData(64, 64);
 	this.viewportInit = new Viewport(64, 64, this.imagedataInit);
@@ -1220,7 +1152,7 @@ function GUI(config) {
 
 	// set initial coordinate
 	this.viewportInit.fill();
-	this.viewport0.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewportInit);
+	this.currentViewport.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewportInit);
 }
 
 /**
@@ -1736,16 +1668,24 @@ GUI.prototype.mainloop = function() {
 		config.radius  = config.radius / magnify;
 	}
 
+	this.domStatusQuality.innerHTML = JSON.stringify({lines:this.currentViewport.doneX+this.currentViewport.doneY, calc: this.currentViewport.doneCalc});
+	this.currentViewport.doneX = 0;
+	this.currentViewport.doneY = 0;
+	this.currentViewport.doneCalc = 0;
+
 	/*
 	 * COPY
 	 */
 
 	this.frameNr++;
 
-	if (this.frameNr & 1)
+	if (this.frameNr & 1) {
 		this.viewport1.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewport0);
-	else
+		this.currentViewport = this.viewport1;
+	} else {
 		this.viewport0.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewport1);
+		this.currentViewport = this.viewport0;
+	}
 
 	// update stats
 	now = performance.now();
@@ -1841,7 +1781,7 @@ GUI.prototype.autopilotOn = function() {
 	var lookPixelRadius = viewport.diameter >> 1;
 	var borderPixelRadius = viewport.diameter >> 5;
 	do {
-		if (!viewport.updateAutopilot(lookPixelRadius, 32))
+		if (!viewport.updateAutopilot(lookPixelRadius, 16))
 			break;
 		lookPixelRadius >>= 1;
 	} while (lookPixelRadius > 2);
