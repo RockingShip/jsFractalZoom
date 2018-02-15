@@ -805,7 +805,8 @@ Viewport.prototype.renderLines = function() {
 
 		ji = 0 * diameter + i;
 		last = calculate(0, 0, x, this.yCoord[0]);
-		pixels[ji++] = last;
+		pixels[ji] = last;
+		ji += diameter;
 		this.doneCalc++;
 		for (j = 1; j < diameter; j++) {
 			/*
@@ -816,7 +817,8 @@ Viewport.prototype.renderLines = function() {
 				last = calculate(0, 0, x, yCoord[j]);
 				this.doneCalc++;
 			}
-			pixels[ji++] = last;
+			pixels[ji] = last;
+			ji += diameter;
 		}
 
 		for (u=i+1; u < diameter; u++) {
@@ -838,15 +840,16 @@ Viewport.prototype.renderLines = function() {
 		j = worstYj;
 		y = yCoord[j];
 
-		last = pixels[j * diameter + 0];
+		ji = j * diameter + 0;
 		last = calculate(0, 0, xCoord[0], y);
+		pixels[ji++] = last;
 		this.doneCalc++;
-		for (i = 0; i < diameter; i++) {
+		for (i = 1; i < diameter; i++) {
 			if (xError[i] === 0 || xFrom[i] !== -1) {
 				last = calculate(0, 0, xCoord[i], y);
 				this.doneCalc++;
 			}
-			pixels[j * diameter + i] = last;
+			pixels[ji++] = last;
 		}
 
 		for (v=j+1; v < diameter; v++) {
@@ -1777,6 +1780,8 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 GUI.prototype.autopilotOn = function() {
 
 	var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+	config.autopilotX = config.centerX;
+	config.autopilotY = config.centerY;
 
 	var lookPixelRadius = viewport.diameter >> 1;
 	var borderPixelRadius = viewport.diameter >> 5;
