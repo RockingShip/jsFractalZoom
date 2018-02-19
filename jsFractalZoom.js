@@ -1046,12 +1046,17 @@ function GUI(config) {
 		}
 	}
 
+	var w2 = 1920*2; // this.domViewport.clientWidth
+	var h2 = 1080*2; // this.domViewport.clientHeight
+	w2 = this.domViewport.clientWidth;
+	h2 = this.domViewport.clientHeight;
+
 	// get context
 	this.ctx = this.domViewport.getContext("2d", { alpha: false });
-	this.imagedata0 = this.ctx.createImageData(this.domViewport.clientWidth, this.domViewport.clientHeight);
-	this.imagedata1 = this.ctx.createImageData(this.domViewport.clientWidth, this.domViewport.clientHeight);
-	this.viewport0 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight, this.imagedata0);
-	this.viewport1 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight, this.imagedata1);
+	this.imagedata0 = this.ctx.createImageData(w2, h2);
+	this.imagedata1 = this.ctx.createImageData(w2, h2);
+	this.viewport0 = new Viewport(w2, h2, this.imagedata0);
+	this.viewport1 = new Viewport(w2, h2, this.imagedata1);
 	this.currentViewport = this.viewport0;
 	// small viewport for initial image
 	this.imagedataInit = this.ctx.createImageData(64, 64);
@@ -1222,7 +1227,7 @@ function GUI(config) {
 
 	// set initial coordinate
 	this.viewportInit.fill();
-	this.currentViewport.setPosition(new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight), config.centerX, config.centerY, config.radius, config.angle, this.viewportInit);
+	this.currentViewport.setPosition(new Frame(w2, h2), config.centerX, config.centerY, config.radius, config.angle, this.viewportInit);
 }
 
 /**
@@ -1634,31 +1639,6 @@ GUI.prototype.mainloop = function() {
 	 * test for viewport resize
 	 */
 	var domViewport = this.domViewport;
-	if (domViewport.clientWidth !== domViewport.width || domViewport.clientHeight !== domViewport.height) {
-		// set property
-		domViewport.width = domViewport.clientWidth;
-		domViewport.height = domViewport.clientHeight;
-
-		var oldViewport0 = this.viewport0;
-		var oldViewport1 = this.viewport1;
-
-		// create new imagedata
-		this.imagedata0 = this.ctx.createImageData(domViewport.clientWidth, domViewport.clientHeight);
-		this.imagedata1 = this.ctx.createImageData(domViewport.clientWidth, domViewport.clientHeight);
-
-		// create new viewports
-		this.viewport0 = new Viewport(domViewport.clientWidth, domViewport.clientHeight, this.imagedata0);
-		this.viewport1 = new Viewport(domViewport.clientWidth, domViewport.clientHeight, this.imagedata1);
-
-		// copy the contents. However the start frame is empty because the input has none
-		if (this.frameNr & 1)
-			this.viewport1.setPosition(oldViewport1.centerX, oldViewport1.centerY, oldViewport1.radius, oldViewport1.angle, this.viewport1);
-		else
-			this.viewport0.setPosition(oldViewport0.centerX, oldViewport0.centerY, oldViewport0.radius, oldViewport0.angle, this.viewport0);
-
-		// update GUI
-		this.domWxH.innerHTML = "[" + domViewport.clientWidth + "x" + domViewport.clientHeight + "]";
-	}
 
 	/*
 	 * Update palette cycle offset
