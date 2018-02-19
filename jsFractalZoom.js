@@ -45,20 +45,15 @@
  *
  * Read/write time diagram: R=Read, W=write, I=idle, rAF=requestAnimationFrame, AF=animationFrameCallback
  *
- *               COPY0  UPDATE0    PAINT0   COPY1  UPDATE1  PAINT1  COPY0  UPDATE0  PAINT0
- * pixel0:      <--W--> WWWWIIWWWW <--R--> <--R-->                 <--W--> WWWWIIW <--R-->
- * imagedata0               .      <--W-->                                     .   <--W-->
- * pixel1       <--R-->     .              <--W--> WWWWIIW <--R--> <--R-->     .
- * imagedata1:              .                          .   <--W-->             .
- *                          ^wait-for-vsync            ^wait-for-vsync         ^wait-for-vsync
- *                           ^rAF                       ^rAF                    ^rAF
- *                                 ^AF imagedata1          ^AF imagedata0          ^AF imagedata1
- *
- * The rAF callback should signal the start of the next PAINT stage. Starting the next phase directly
- * after rAF() would cause the callback to wait for the phase completion which would take at least 5mSec.
- *
- * The vsync also calculates zoom and angle for the next frame based on elapsed time so
- * dropped frames will not cause glitches. Frame timing may be off, but movement should be on.
+ *               COPY0  UPDATE0     COPY1  UPDATE1     COPY2  UPDATE2     COPY0  UPDATE0     COPY1  UPDATE1
+ * pixel0:      <--W--> WWWWIIWWWW <--R-->                               <--W--> WWWWIIWWWW <--R-->
+ * worker0                                <----paint---->                                          <----paint---->
+ * pixel1:                         <--W--> WWWWIIWWWW <--R-->                               <--W--> WWWWIIWWWW
+ * worker1                                                   <----paint---->
+ * pixel2:      <--R-->                               <--W--> WWWWIIWWWW <--R-->
+ * worker2             <----paint---->                                          <----paint---->
+ *                 ^rAF               ^rAF               ^rAF               ^rAF               ^rAF
+ *                    ^AF imagedata2     ^AF imagedata0      ^AF imagedata1     ^AF imagedata2     ^AF imagedata0
  */
 
 "use strict";
@@ -173,6 +168,48 @@ Config.prototype.logTolinear = function(min, max, now) {
 	return min + Math.log(v) * (max - min);
 };
 
+/**
+ * Frame, used to transport data between workers
+ *
+ * @constructor
+ * @param viewWidth
+ * @param viewHeight
+ */
+function Frame(viewWidth, viewHeight) {
+
+	/** @member {number} - start of round-trip */
+	this.now = 0;
+	/** @member {number} - duration in worker (not full round-reip) */
+	this.msec = 0;
+
+	/** @member {number} - width */
+	this.viewWidth = viewWidth;
+	/** @member {number} - height */
+	this.diameter = Math.ceil(Math.sqrt(viewWidth * viewWidth + viewHeight * viewHeight));
+	/** @member {number} - diameter */
+	this.viewHeight = viewHeight;
+	/** @member {number} - angle */
+	this.angle = 0;
+
+	/** @member {ArrayBuffer} - (BYTE) red */
+	this.redBuffer = new ArrayBuffer(2000);
+	/** @member {ArrayBuffer} - (BYTE) green */
+	this.greenBuffer = new ArrayBuffer(2000);
+	/** @member {ArrayBuffer} - (BYTE) blue */
+	this.blueBuffer = new ArrayBuffer(2000);
+
+	/** @member {ArrayBuffer} - (WORD) pixels */
+	this.pixelBuffer = new ArrayBuffer(this.diameter * this.diameter * 2);
+
+	/** @member {ArrayBuffer} - (BYTEx4) RGBA for canvas */
+	this.rgbaBuffer = new ArrayBuffer(viewWidth * viewHeight * 4);
+}
+
+/**
+ * Palette creation
+ *
+ * @constructor
+ */
 function Palette()
 {
 	/** member {Uint8Array} */
@@ -447,7 +484,7 @@ function Viewport(width, height, imagedata) {
 	/** @member {number} - diameter of the pixel data */
 	this.diameter = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
 	/** @member {Uint8Array} - pixel data (must be square) */
-	this.pixels = new Uint8Array(this.diameter * this.diameter);
+	this.pixels = new Uint16Array(this.diameter * this.diameter);
 	/** @member {ImageData} - canvas rgba buffer */
 	this.imagedata = imagedata;
 
@@ -536,13 +573,18 @@ Viewport.prototype.makeRuler = function(start, end, newCoord, newNearest, newErr
 /**
  * Set the center coordinate and radius.
  *
+ * @param {Frame} wworker
  * @param {number} x
  * @param {number} y
  * @param {number} radius
  * @param {number} angle
  * @param {Viewport} oldViewport
  */
-Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
+Viewport.prototype.setPosition = function(wworker, x, y, radius, angle, oldViewport) {
+	this.wworker = wworker;
+	this.pixels = new Uint16Array(wworker.pixelBuffer);
+	wworker.angle = angle;
+
 	this.centerX = x;
 	this.centerY = y;
 	this.radius = radius;
@@ -632,95 +674,83 @@ Viewport.prototype.reachedLimits = function() {
 	return false;
 };
 
-/**
- * Extract rotated viewport from pixels and store them in specified imnagedata
- * The pixel data is palette based, the imagedata is RGB
- *
- * @param {Uint8Array} paletteRed
- * @param {Uint8Array} paletteGreen
- * @param {Uint8Array} paletteBlue
- */
-Viewport.prototype.draw = function(paletteRed, paletteGreen, paletteBlue) {
-
-	// make references local
-	var paletteSize = paletteRed.length;
-	var tmpRed = this.tmpRed;
-	var tmpGreen = this.tmpGreen;
-	var tmpBlue = this.tmpBlue;
-	var viewWidth = this.viewWidth; // viewport width
-	var viewHeight = this.viewHeight; // viewport height
-	var pixels = this.pixels; // pixel data
-	var diameter = this.diameter; // pixel scanline width (it's square)
-	var rgba = this.imagedata.data; // canvas pixel data
-	var i, j, x, y, ix, iy, ji, yx, c;
-
-	// palette offset must be integer and may not be negative
-	var offset = Math.round(window.config.paletteOffset);
-	if (offset < 0)
-		offset = (paletteSize-1) - (-offset-1) % paletteSize;
-	else
-		offset = offset % paletteSize;
-
-	// apply colour cycling (not for first colour)
-	tmpRed[0] = window.palette.backgroundRed;
-	tmpGreen[0] = window.palette.backgroundGreen;
-	tmpBlue[0] = window.palette.backgroundBlue;
-	for (i = 1; i < tmpRed.length; i++) {
-		tmpRed[i] = paletteRed[(i-1 + offset) % paletteSize + 1];
-		tmpGreen[i] = paletteGreen[(i-1 + offset) % paletteSize + 1];
-		tmpBlue[i] = paletteBlue[(i-1 + offset) % paletteSize + 1];
-	}
-
+function workerPaint() {
 	/**
-	 **!
-	 **! The following loop is a severe performance hit
-	 **!
-	 **/
+	 * Extract rotated viewport from pixels and store them in specified imnagedata
+	 * The pixel data is palette based, the imagedata is RGB
+	 *
+	 * @param {MessageEvent} e
+	 */
+	this.onmessage = function (e) {
+		var now = performance.now();
+		/** @var {Frame} */
+		var request = e.data;
 
-	var xstart, ystart;
-	if (this.angle === 0) {
-		// FAST extract viewport
-		xstart = Math.floor((diameter - viewWidth) / 2);
-		ystart = Math.floor((diameter - viewHeight) / 2);
+		// typed wrappers for Arrays
+		var red = new Uint8Array(request.redBuffer);
+		var green = new Uint8Array(request.greenBuffer);
+		var blue = new Uint8Array(request.blueBuffer);
+		var pixels = new Uint16Array(request.pixelBuffer);
+		var rgba = new Uint8Array(request.rgbaBuffer);
 
-		// copy pixels
-		ji = 0;
-		for (j = 0, y = ystart; j < viewHeight; j++, y++) {
-			for (i = 0, yx = y * diameter + xstart; i < viewWidth; i++, yx++) {
-				c = pixels[yx];
+		var diameter = request.diameter;
+		var viewWidth = request.viewWidth;
+		var viewHeight = request.viewHeight;
+		var angle = request.angle;
 
-				rgba[ji++] = tmpRed[c];
-				rgba[ji++] = tmpGreen[c];
-				rgba[ji++] = tmpBlue[c];
-				rgba[ji++] = 255;
+		var i, j, u, v, ji, vu, yx, px;
+		if (angle === 0) {
+			// FAST extract viewport
+			i = (diameter - viewWidth) >> 1;
+			j = (diameter - viewHeight) >> 1;
+
+			// copy pixels
+			ji = j * diameter + i;
+			vu = 0;
+			for (v = 0; v < viewHeight; v++) {
+				for (u = 0; u < viewWidth; u++) {
+					px = pixels[ji++];
+
+					rgba[vu++] = red[px];
+					rgba[vu++] = green[px];
+					rgba[vu++] = blue[px];
+					rgba[vu++] = 255;
+				}
+				ji += diameter - viewWidth;
+			}
+
+		} else {
+			// SLOW viewport rotation
+			var rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
+			var rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
+			var xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
+			var ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
+			var ixstep = Math.floor(rcos * 65536);
+			var iystep = Math.floor(rsin * -65536);
+			var jxstep = Math.floor(rsin * 65536);
+			var jystep = Math.floor(rcos * 65536);
+			var x, y, ix, iy;
+
+			// copy pixels
+			vu = 0;
+			for (j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
+				for (i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
+					px = pixels[(iy >> 16) * diameter + (ix >> 16)];
+
+					rgba[vu++] = red[px];
+					rgba[vu++] = green[px];
+					rgba[vu++] = blue[px];
+					rgba[vu++] = 255;
+				}
 			}
 		}
 
-	} else {
-		// SLOW viewport rotation
-		var rsin = this.rsin; // sine for viewport angle
-		var rcos = this.rcos; // cosine for viewport angle
-		xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
-		ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
-		var ixstep = Math.floor(rcos * 65536);
-		var iystep = Math.floor(rsin * -65536);
-		var jxstep = Math.floor(rsin * 65536);
-		var jystep = Math.floor(rcos * 65536);
+		request.msec = performance.now() - now;
 
-		// copy pixels
-		ji = 0;
-		for (j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
-			for (i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
-				c = pixels[(iy >> 16) * diameter + (ix >> 16)];
+		this.postMessage(request, [request.redBuffer, request.greenBuffer, request.blueBuffer, request.pixelBuffer, request.rgbaBuffer]);
 
-				rgba[ji++] = tmpRed[c];
-				rgba[ji++] = tmpGreen[c];
-				rgba[ji++] = tmpBlue[c];
-				rgba[ji++] = 255;
-			}
-		}
 	}
-};
+}
 
 /**
  * Simple implementation
@@ -997,6 +1027,16 @@ function GUI(config) {
 	this.viewport0 = undefined;
 	this.viewport1 = undefined;
 
+	// lists for passing the threadworker requests
+	// arrays transfer ownership and are stored here to be reused
+	// once sent to worker, no further feedback is required, so it can be completely async
+	// send request to the worker
+	this.wworkers = [];
+	// requestAnimationFrame to paint the content
+	this.wrequests = [];
+	// the content put into putImageData()
+	this.wraf = [];
+
 	/*
 	 * Find the elements and replace the string names for DOM references
 	 */
@@ -1140,6 +1180,8 @@ function GUI(config) {
 		self.config.centerY = 0;
 		self.config.radius = 2.5;
 		self.config.angle = 0;
+		self.config.autopilotX = 0;
+		self.config.autopilotY = 0;
 	});
 
 	this.paletteGroup.setCallbackFocusChange(function(newButton) {
@@ -1153,9 +1195,34 @@ function GUI(config) {
 		self.paletteBlue = window.palette.blue;
 	});
 
+	/*
+	 * create 4 workers
+	 */
+	var dataObj = '(' + workerPaint + ')();'; // here is the trick to convert the above function to string
+	var blob = new Blob([dataObj]);
+	var blobURL = (window.URL ? URL : webkitURL).createObjectURL(blob);
+
+	// create 4 workers
+	for (var i=0; i<4; i++) {
+		this.wworkers[i] = new Worker(blobURL);
+
+		this.wworkers[i].onmessage = function (e) {
+			/** @var {Frame} */
+			var response = e.data;
+
+			// move request to pending requestAnimationFrames()
+			this.wraf.push(response);
+			// request animation
+			window.requestAnimationFrame(this.animationFrame);
+
+			// keep track of round trip time
+			this.statStatePaint += ((performance.now() - response.now) - this.statStatePaint) * this.coef;
+		}.bind(this);
+	}
+
 	// set initial coordinate
 	this.viewportInit.fill();
-	this.currentViewport.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewportInit);
+	this.currentViewport.setPosition(new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight), config.centerX, config.centerY, config.radius, config.angle, this.viewportInit);
 }
 
 /**
@@ -1390,16 +1457,20 @@ GUI.prototype.stop = function() {
 GUI.prototype.animationFrame = function(time) {
 	// paint image onto canvas
 
-	// write the buffer which is not being written
-	if (this.frameNr&1)
-		this.ctx.putImageData(this.viewport0.imagedata, 0, 0);
-	else
-		this.ctx.putImageData(this.viewport1.imagedata, 0, 0);
+	// move request to pending requestAnimationFrames()
+	while (this.wraf.length) {
+
+		var request = this.wraf.shift();
+		var frame = new ImageData(new Uint8ClampedArray(request.rgbaBuffer), request.viewWidth, request.viewHeight);
+
+		// draw frame onto canvas
+		this.ctx.putImageData(frame, 0, 0);
+
+		// move request to free list
+		this.wrequests.push(request);
+	}
 
 	this.statStateRAF += ((performance.now() - this.rafTime) - this.statStateRAF) * this.coef;
-
-	// bump to PAINT state
-	this.state = 6;
 };
 
 
@@ -1491,48 +1562,13 @@ GUI.prototype.mainloop = function() {
 		 */
 		this.counters[4]++;
 
-		this.state = 5; // !! This must be set before rAF is called
+		this.state = 1; // !! This must be set before rAF is called
 		this.vsync += (1000 / config.framerateNow); // time of next vsync
 		this.rafTime = now;
-		window.requestAnimationFrame(this.animationFrame);
+		// window.requestAnimationFrame(this.animationFrame);
 
-		window.postMessage("mainloop", "*");
-		return true;
-	}
-	if (this.state === 5) {
-		/*
-		 * WAIT. UPDATE-after-rAF. Wait for animateFrame() to change state
-		 */
-		this.counters[5]++;
-		last = now;
-
-		viewport.renderLines();
-
-		// update stats
-		now = performance.now();
-		this.statStateUpdate += ((now - last) - this.statStateUpdate) * this.coef;
-
-		window.postMessage("mainloop", "*");
-		return true;
-	}
-	if (this.state === 6) {
-		/*
-		 * PAINT. Finalize viewport so it can be presented immediately on the next vsync
-		 */
-		this.counters[6]++;
-		last = now;
-		if (this.frameNr&1)
-			this.viewport1.draw(this.paletteRed, this.paletteGreen, this.paletteBlue);
-		else
-			this.viewport0.draw(this.paletteRed, this.paletteGreen, this.paletteBlue);
-
-		// update stats
-		now = performance.now();
-		this.statStatePaint += ((now - last) - this.statStatePaint) * this.coef;
-
-		this.state = 1;
-		window.postMessage("mainloop", "*");
-		return true;
+		// window.postMessage("mainloop", "*");
+		// return true;
 	}
 
 	/**
@@ -1677,18 +1713,60 @@ GUI.prototype.mainloop = function() {
 	this.currentViewport.doneCalc = 0;
 
 	/*
+	 * finalize for offloading
+	 */
+
+	var oldViewport = this.currentViewport;
+	var oldRequest = oldViewport.wworker;
+
+	var tmpRed = new Uint8Array(oldRequest.redBuffer);
+	var tmpGreen = new Uint8Array(oldRequest.greenBuffer);
+	var tmpBlue = new Uint8Array(oldRequest.blueBuffer);
+	var paletteRed = palette.red;
+	var paletteGreen = palette.green;
+	var paletteBlue = palette.blue;
+	var paletteSize = paletteRed.length;
+
+	// palette offset must be integer and may not be negative
+	var offset = Math.round(window.config.paletteOffset);
+	if (offset < 0)
+		offset = (paletteSize-1) - (-offset-1) % paletteSize;
+	else
+		offset = offset % paletteSize;
+
+	// apply colour cycling (not for first colour)
+	tmpRed[0] = window.palette.backgroundRed;
+	tmpGreen[0] = window.palette.backgroundGreen;
+	tmpBlue[0] = window.palette.backgroundBlue;
+	for (var i = 1; i < config.depthNow; i++) {
+		tmpRed[i] = paletteRed[(i-1 + offset) % paletteSize + 1];
+		tmpGreen[i] = paletteGreen[(i-1 + offset) % paletteSize + 1];
+		tmpBlue[i] = paletteBlue[(i-1 + offset) % paletteSize + 1];
+	}
+
+	/*
 	 * COPY
 	 */
 
 	this.frameNr++;
 
+	var newRequest = this.wrequests.shift();
+	if (!newRequest)
+		newRequest = new Frame(oldViewport.viewWidth, oldViewport.viewHeight);
+
 	if (this.frameNr & 1) {
-		this.viewport1.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewport0);
+		this.viewport1.setPosition(newRequest, config.centerX, config.centerY, config.radius, config.angle, this.viewport0);
 		this.currentViewport = this.viewport1;
 	} else {
-		this.viewport0.setPosition(config.centerX, config.centerY, config.radius, config.angle, this.viewport1);
+		this.viewport0.setPosition(newRequest, config.centerX, config.centerY, config.radius, config.angle, this.viewport1);
 		this.currentViewport = this.viewport0;
 	}
+
+	/*
+	 * Offload to worker
+	 */
+	oldRequest.now = performance.now();
+	this.wworkers[this.frameNr&3].postMessage(oldRequest, [oldRequest.redBuffer, oldRequest.greenBuffer, oldRequest.blueBuffer, oldRequest.pixelBuffer, oldRequest.rgbaBuffer]);
 
 	// update stats
 	now = performance.now();
