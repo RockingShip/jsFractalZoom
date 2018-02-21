@@ -832,15 +832,18 @@ Viewport.prototype.draw = function(paletteBuffer, pixelBuffer, rgbaBuffer) {
 };
 
 /**
- * Simple implementation
+ * Simple mandelbrot implementation
  *
- * @param {number} zre
- * @param {number} zim
- * @param {number} pre
- * @param {number} pim
+ * @param {number} x
+ * @param {number} y
  * @returns {number}
  */
-Viewport.prototype.mand_calc = function(zre, zim, pre, pim) {
+Viewport.prototype.calculate = function(x, y) {
+	var zre = 0;
+	var zim = 0;
+	var pre = x;
+	var pim = y;
+
 	var iter = 1, maxiter = window.config.depthNow;
 	var rp, ip;
 
@@ -856,8 +859,6 @@ Viewport.prototype.mand_calc = function(zre, zim, pre, pim) {
 
 	return 0;
 };
-
-Viewport.prototype.calculate = Viewport.prototype.mand_calc;
 
 /**
  * Simple background renderer
@@ -905,7 +906,7 @@ Viewport.prototype.renderLines = function() {
 	var yError = this.yError;
 	var yFrom = this.yFrom;
 	var pixels = this.pixels;
-	var calculate = this.calculate;
+	var calculate = Formula.prototype.calculate;
 
 	if (worstXerr > worstYerr) {
 
@@ -913,7 +914,7 @@ Viewport.prototype.renderLines = function() {
 		x = this.xCoord[i];
 
 		ji = 0 * diameter + i;
-		last = calculate(0, 0, x, this.yCoord[0]);
+		last = calculate(x, this.yCoord[0]);
 		pixels[ji] = last;
 		ji += diameter;
 		this.doneCalc++;
@@ -923,7 +924,7 @@ Viewport.prototype.renderLines = function() {
 			 * ..and 3 other places
 			 */
 			if (yError[j] === 0 || yFrom[j] !== -1) {
-				last = calculate(0, 0, x, yCoord[j]);
+				last = calculate(x, yCoord[j]);
 				this.doneCalc++;
 			}
 			pixels[ji] = last;
@@ -950,12 +951,12 @@ Viewport.prototype.renderLines = function() {
 		y = yCoord[j];
 
 		ji = j * diameter + 0;
-		last = calculate(0, 0, xCoord[0], y);
+		last = calculate(xCoord[0], y);
 		pixels[ji++] = last;
 		this.doneCalc++;
 		for (i = 1; i < diameter; i++) {
 			if (xError[i] === 0 || xFrom[i] !== -1) {
-				last = calculate(0, 0, xCoord[i], y);
+				last = calculate(xCoord[i], y);
 				this.doneCalc++;
 			}
 			pixels[ji++] = last;
@@ -1005,7 +1006,7 @@ Viewport.prototype.fill = function() {
 		for (var i = 0; i < this.diameter; i++) {
 			// distance to center
 			var x = (this.centerX - this.radius) + this.radius * 2 * i / this.diameter;
-			this.pixels[ji++] = this.calculate(0, 0, x, y);
+			this.pixels[ji++] = this.calculate(x, y);
 		}
 	}
 };
@@ -1135,6 +1136,9 @@ function GUI(config) {
 	this.viewportInit.fill();
 	this.currentViewport.setPosition(new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight), config.centerX, config.centerY, config.radius, config.angle, this.viewportInit);
 
+	// create formula engine
+	this.calculator = new Formula();
+
 	// replace event handlers with a bound instance
 	this.mainloop = this.mainloop.bind(this);
 	this.animationFrame = this.animationFrame.bind(this);
@@ -1215,18 +1219,28 @@ function GUI(config) {
 	this.formula.listbox.setCallbackFocusChange(function(focusedItem) {
 		config.formula = focusedItem.id;
 		self.domFormulaButton.innerText = focusedItem.innerText;
+		var formula = focusedItem.id.substr(8) | 0;
+		Formula.prototype.formula = formula;
 	});
 	this.incolour.listbox.setCallbackFocusChange(function(focusedItem) {
 		config.incolour = focusedItem.id;
 		self.domIncolourButton.innerText = focusedItem.innerText;
+		var incolour = focusedItem.id.substr(9) | 0;
+		Formula.prototype.incolour = incolour;
+
 	});
 	this.outcolour.listbox.setCallbackFocusChange(function(focusedItem) {
 		config.outcolour = focusedItem.id;
 		self.domOutcolourButton.innerText = focusedItem.innerText;
+		var outcolour = focusedItem.id.substr(10) | 0;
+		Formula.prototype.outcolour = outcolour;
 	});
 	this.plane.listbox.setCallbackFocusChange(function(focusedItem) {
 		config.plane = focusedItem.id;
 		self.domPlaneButton.innerText = focusedItem.innerText;
+		var plane = focusedItem.id.substr(6) | 0;
+		Formula.prototype.plane = plane;
+
 	});
 
 	// buttons
