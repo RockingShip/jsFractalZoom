@@ -58,84 +58,83 @@
 
 "use strict";
 
-/*
+/**
  * Globals settings and values
  *
- * @constructor
+ * @namespace
  */
 function Config() {
 
 	/*
 	 * GUI settings
 	 */
-	this.power = false;
-	this.autoPilot = false;
+	Config.power = false;
+	Config.autoPilot = false;
 
 	/** @member {number} - zoom magnification slider Min */
-	this.magnificationMin = 1.0;
+	Config.magnificationMin = 1.0;
 	/** @member {number} - zoom magnification slider Max */
-	this.magnificationMax = 1000.0;
+	Config.magnificationMax = 1000.0;
 	/** @member {number} - zoom magnification slider Now */
-	this.magnificationNow = this.logTolinear(this.magnificationMin, this.magnificationMax, 1000);
+	Config.magnificationNow = Config.logTolinear(Config.magnificationMin, Config.magnificationMax, 1000);
 
 	/** @member {number} - rotate speed slider Min */
-	this.rotateSpeedMin = -0.5;
+	Config.rotateSpeedMin = -0.5;
 	/** @member {number} - rotate speed slider Max */
-	this.rotateSpeedMax = +0.5;
+	Config.rotateSpeedMax = +0.5;
 	/** @member {number} - rotate speed slider Now */
-	this.rotateSpeedNow = 0;
+	Config.rotateSpeedNow = 0;
 
 	/** @member {number} - palette cycle slider Min */
-	this.paletteSpeedMin = -30.0;
+	Config.paletteSpeedMin = -30.0;
 	/** @member {number} - palette cycle slider Max */
-	this.paletteSpeedMax = +30.0;
+	Config.paletteSpeedMax = +30.0;
 	/** @member {number} - palette cycle slider Now */
-	this.paletteSpeedNow = 0;
+	Config.paletteSpeedNow = 0;
 
 	/** @member {number} - calculation depth slider Min */
-	this.depthMin = 30;
+	Config.depthMin = 30;
 	/** @member {number} - calculation depth slider Max */
-	this.depthMax = 1500;
+	Config.depthMax = 1500;
 	/** @member {number} - calculation depth slider Now */
-	this.depthNow = 1200;
+	Config.depthNow = 1200;
 
 	/** @member {number} - calculation depth slider Min */
-	this.framerateMin = 1;
+	Config.framerateMin = 1;
 	/** @member {number} - calculation depth slider Max */
-	this.framerateMax = 60;
+	Config.framerateMax = 60;
 	/** @member {number} - calculation depth slider Now */
-	this.framerateNow = 20;
+	Config.framerateNow = 20;
 
 	/** @member {number} - center X coordinate */
-	this.centerX = 0;
+	Config.centerX = 0;
 	/** @member {number} - center Y coordinate */
-	this.centerY = 0;
+	Config.centerY = 0;
 	/** @member {number} - distance between center and viewport corner */
-	this.radius = 0;
+	Config.radius = 0;
 	/** @member {number} - current viewport angle (degrees) */
-	this.angle = 0;
+	Config.angle = 0;
 
 	/** @member {number} - current palette offset */
-	this.paletteOffset = 0; // color palette cycle timer updated
+	Config.paletteOffset = 0; // color palette cycle timer updated
 
 	/** @member {number} - current viewport zoomspeed */
-	this.zoomSpeed = 0;
+	Config.zoomSpeed = 0;
 	/** @member {number} - After 1sec, get 80% closer to target speed */
-	this.zoomSpeedCoef = 0.80;
+	Config.zoomSpeedCoef = 0.80;
 
-	this.formula = "";
-	this.incolour = "";
-	this.outcolour = "";
-	this.plane = "";
+	Config.formula = "";
+	Config.incolour = "";
+	Config.outcolour = "";
+	Config.plane = "";
 
 	/** @member {number} */
-	this.autopilotX = 0;
+	Config.autopilotX = 0;
 	/** @member {number} */
-	this.autopilotY = 0;
+	Config.autopilotY = 0;
 	/** @member {number} */
-	this.autopilotButtons = 0;
-
-	}
+	Config.autopilotButtons = 0;
+}
 
 /**
  *  Slider helper, convert linear value `now` to logarithmic
@@ -145,7 +144,7 @@ function Config() {
  * @param {number} now
  * @returns {number}
  */
-Config.prototype.linearToLog = function(min, max, now) {
+Config.linearToLog = function(min, max, now) {
 
 	var v = Math.exp((now - min) / (max - min)); // 1 <= result <= E
 
@@ -161,7 +160,7 @@ Config.prototype.linearToLog = function(min, max, now) {
  * @param {number} now
  * @returns {number}
  */
-Config.prototype.logTolinear = function(min, max, now) {
+Config.logTolinear = function(min, max, now) {
 
 	var v = 1 + (now - min) * (Math.E - 1) / (max - min);
 
@@ -495,9 +494,6 @@ function Viewport(width, height) {
 		width = 1;
 	if (height <= 0)
 		height = 1;
-
-	/** @member {number} - tick of last update */
-	this.tickLast = 0;
 
 	/** @member {number} - width of viewport */
 	this.viewWidth = width;
@@ -844,7 +840,7 @@ Viewport.prototype.calculate = function(x, y) {
 	var pre = x;
 	var pim = y;
 
-	var iter = 1, maxiter = window.config.depthNow;
+	var iter = 1, maxiter = Config.depthNow;
 	var rp, ip;
 
 	do {
@@ -1104,7 +1100,7 @@ function GUI(config) {
 	this.lastLoop = 0;
 	this.counters = [0,0,0,0,0,0,0];
 	this.rafTime = 0;
-	this.cycleTime = 0;
+	this.lastTick = 0;
 	this.ctx = undefined;
 	this.viewport0 = undefined;
 	this.viewport1 = undefined;
@@ -1134,7 +1130,7 @@ function GUI(config) {
 	// small viewport for initial image
 	this.viewportInit = new Viewport(256, 256);
 	this.viewportInit.fill();
-	this.currentViewport.setPosition(new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight), config.centerX, config.centerY, config.radius, config.angle, this.viewportInit);
+	this.currentViewport.setPosition(new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight), Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 
 	// create formula engine
 	this.calculator = new Formula();
@@ -1160,15 +1156,15 @@ function GUI(config) {
 
 	// construct sliders
 	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
-		config.magnificationMin, config.magnificationMax, config.magnificationNow);
+		Config.magnificationMin, Config.magnificationMax, Config.magnificationNow);
 	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
-		config.rotateSpeedMin, config.rotateSpeedMax, config.rotateSpeedNow);
+		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
 	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
-		config.paletteSpeedMin, config.paletteSpeedMax, config.paletteSpeedNow);
+		Config.paletteSpeedMin, Config.paletteSpeedMax, Config.paletteSpeedNow);
 	this.depth = new Aria.Slider(this.domDepthThumb, this.domDepthRail,
-		config.depthMin, config.depthMax, config.depthNow);
+		Config.depthMin, Config.depthMax, Config.depthNow);
 	this.Framerate = new Aria.Slider(this.domFramerateThumb, this.domFramerateRail,
-		config.framerateMin, config.framerateMax, config.framerateNow);
+		Config.framerateMin, Config.framerateMax, Config.framerateNow);
 
 	// construct controlling listbox button
 	this.formula = new Aria.ListboxButton(this.domFormulaButton, this.domFormulaList);
@@ -1192,51 +1188,51 @@ function GUI(config) {
 	// sliders
 	this.speed.setCallbackValueChange(function(newValue) {
 		// scale exponentially
-		newValue = config.linearToLog(config.magnificationMin, config.magnificationMax, newValue);
-		config.magnificationNow = newValue;
+		newValue = Config.linearToLog(Config.magnificationMin, Config.magnificationMax, newValue);
+		Config.magnificationNow = newValue;
 		self.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
 	});
 	this.rotateSpeed.setCallbackValueChange(function(newValue) {
-		config.rotateSpeedNow = newValue;
+		Config.rotateSpeedNow = newValue;
 		self.domRotateLeft.innerHTML = newValue.toFixed(1);
 	});
 	this.paletteSpeed.setCallbackValueChange(function(newValue) {
-		config.paletteSpeedNow = newValue;
+		Config.paletteSpeedNow = newValue;
 		self.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
 	});
 	this.depth.setCallbackValueChange(function(newValue) {
 		newValue = Math.round(newValue);
-		config.depthNow = newValue;
+		Config.depthNow = newValue;
 		self.domDepthLeft.innerHTML = newValue;
 	});
 	this.Framerate.setCallbackValueChange(function(newValue) {
 		newValue = Math.round(newValue);
-		config.framerateNow = newValue;
+		Config.framerateNow = newValue;
 		self.domFramerateLeft.innerHTML = newValue;
 	});
 
 	// listboxes
 	this.formula.listbox.setCallbackFocusChange(function(focusedItem) {
-		config.formula = focusedItem.id;
+		Config.formula = focusedItem.id;
 		self.domFormulaButton.innerText = focusedItem.innerText;
 		var formula = focusedItem.id.substr(8) | 0;
 		Formula.prototype.formula = formula;
 	});
 	this.incolour.listbox.setCallbackFocusChange(function(focusedItem) {
-		config.incolour = focusedItem.id;
+		Config.incolour = focusedItem.id;
 		self.domIncolourButton.innerText = focusedItem.innerText;
 		var incolour = focusedItem.id.substr(9) | 0;
 		Formula.prototype.incolour = incolour;
 
 	});
 	this.outcolour.listbox.setCallbackFocusChange(function(focusedItem) {
-		config.outcolour = focusedItem.id;
+		Config.outcolour = focusedItem.id;
 		self.domOutcolourButton.innerText = focusedItem.innerText;
 		var outcolour = focusedItem.id.substr(10) | 0;
 		Formula.prototype.outcolour = outcolour;
 	});
 	this.plane.listbox.setCallbackFocusChange(function(focusedItem) {
-		config.plane = focusedItem.id;
+		Config.plane = focusedItem.id;
 		self.domPlaneButton.innerText = focusedItem.innerText;
 		var plane = focusedItem.id.substr(6) | 0;
 		Formula.prototype.plane = plane;
@@ -1251,7 +1247,7 @@ function GUI(config) {
 			self.stop(); // power off
 	});
 	this.autoPilot.setCallbackValueChange(function(newValue) {
-		self.config.autoPilot = newValue;
+		Config.autoPilot = newValue;
 		if (newValue) {
 			self.autopilotOn();
 		} else {
@@ -1259,22 +1255,22 @@ function GUI(config) {
 		}
 	});
 	this.home.setCallbackValueChange(function(newValue) {
-		this.config.centerX = -0.75;
-		this.config.centerY = 0;
-		this.config.radius = 2.5;
-		this.config.angle = 0;
-		this.config.autopilotX = 0;
-		this.config.autopilotY = 0;
+		Config.centerX = -0.75;
+		Config.centerY = 0;
+		Config.radius = 2.5;
+		Config.angle = 0;
+		Config.autopilotX = 0;
+		Config.autopilotY = 0;
 
 		var frame = this.frames.shift();
 		if (!frame)
 			frame = new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight);
-		this.currentViewport.setPosition(frame, this.config.centerX, this.config.centerY, this.config.radius, this.config.angle, this.viewportInit);
+		this.currentViewport.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 	}.bind(this));
 
 	this.paletteGroup.setCallbackFocusChange(function(newButton) {
 		if (newButton.domButton.id === "idRandomPaletteButton") {
-			window.palette.mkrandom(self.config.depthNow);
+			window.palette.mkrandom(Config.depthNow);
 		} else {
 			window.palette.mkdefault();
 		}
@@ -1519,9 +1515,8 @@ GUI.prototype.handleMessage = function(event) {
  */
 GUI.prototype.start = function() {
 	this.state = 1;
-	this.vsync = performance.now() + (1000 / this.config.framerateNow); // vsync wakeup time
+	this.vsync = performance.now() + (1000 / Config.framerateNow); // vsync wakeup time
 	this.statStateCopy = this.statStateUpdate = this.statStatePaint1 = this.statStatePaint2 = 0;
-	this.config.tickLast = performance.now();
 	window.postMessage("mainloop", "*");
 };
 
@@ -1581,9 +1576,10 @@ GUI.prototype.mainloop = function() {
 
 	if (this.vsync === 0 || now > this.vsync + 2000) {
 		// Missed vsync by more than 2 seconds, resync
-		this.vsync = now + (1000 / config.framerateNow);
-		this.cycleTime = now;
+		this.vsync = now + (1000 / Config.framerateNow);
+		this.lastTick = now;
 		this.state = 1;
+		console.log("resync");
 	}
 
 	if (this.state === 2) {
@@ -1635,7 +1631,7 @@ GUI.prototype.mainloop = function() {
 		if (now >= this.vsync) {
 			// vsync is NOW
 			this.state = 1;
-			this.vsync += (1000 / config.framerateNow); // time of next vsync
+			this.vsync += (1000 / Config.framerateNow); // time of next vsync
 			this.rafTime = now;
 		} else {
 			window.postMessage("mainloop", "*");
@@ -1652,37 +1648,37 @@ GUI.prototype.mainloop = function() {
 	last = now;
 
 	// seconds since last cycle
-	var diffSec = (now - this.cycleTime) / 1000;
-	this.cycleTime = now;
+	var diffSec = (now - this.lastTick) / 1000;
+	this.lastTick = now;
 
-	if (config.autoPilot) {
+	if (Config.autoPilot) {
 		if (this.frameNr & 1) {
 			if (this.viewport1.reachedLimits()) {
-				config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 				window.gui.domAutopilot.style.border = '4px solid orange';
 			} else {
 				this.domStatusQuality.innerHTML = "";
 				if (!this.viewport1.updateAutopilot(4, 16))
 					if (!this.viewport1.updateAutopilot(60, 16))
 						if (!this.viewport1.updateAutopilot(this.viewport1.diameter >> 1, 16))
-							config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 			}
 		} else {
 			if (this.viewport0.reachedLimits()) {
-				config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 				window.gui.domAutopilot.style.border = '4px solid orange';
 			} else {
 				this.domStatusQuality.innerHTML = "";
 				if (!this.viewport0.updateAutopilot(4, 16))
 					if (!this.viewport0.updateAutopilot(60, 16))
 						if (!this.viewport0.updateAutopilot(this.viewport0.diameter >> 1, 16))
-							config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 			}
 		}
 
-		this.mouseX = config.autopilotX;
-		this.mouseY = config.autopilotY;
-		this.mouseButtons = config.autopilotButtons;
+		this.mouseX = Config.autopilotX;
+		this.mouseY = Config.autopilotY;
+		this.mouseButtons = Config.autopilotButtons;
 	}
 
 	/*
@@ -1690,16 +1686,16 @@ GUI.prototype.mainloop = function() {
 	 */
 	if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
 		// zoom-in only
-		config.zoomSpeed = +1 - (+1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
+		Config.zoomSpeed = +1 - (+1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
 	} else if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
 		// zoom-out only
-		config.zoomSpeed = -1 - (-1 - config.zoomSpeed) * Math.pow((1 - config.zoomSpeedCoef), diffSec);
+		Config.zoomSpeed = -1 - (-1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
 	} else if (this.mouseButtons === 0) {
 		// buttons released
-		config.zoomSpeed = config.zoomSpeed * Math.pow((1 - config.zoomSpeedCoef), diffSec);
+		Config.zoomSpeed = Config.zoomSpeed * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
 
-		if (config.zoomSpeed >= -0.001 && config.zoomSpeed < +0.001)
-			config.zoomSpeed = 0; // full stop
+		if (Config.zoomSpeed >= -0.001 && Config.zoomSpeed < +0.001)
+			Config.zoomSpeed = 0; // full stop
 	}
 
 	/*
@@ -1736,14 +1732,14 @@ GUI.prototype.mainloop = function() {
 	/*
 	 * Update palette cycle offset
 	 */
-	if (config.paletteSpeedNow)
-		config.paletteOffset -= diffSec * config.paletteSpeedNow;
+	if (Config.paletteSpeedNow)
+		Config.paletteOffset -= diffSec * Config.paletteSpeedNow;
 
 	/*
 	 * Update viewport angle (before zoom gestures)
 	 */
-	if (config.rotateSpeedNow)
-		config.angle += diffSec * config.rotateSpeedNow * 360;
+	if (Config.rotateSpeedNow)
+		Config.angle += diffSec * Config.rotateSpeedNow * 360;
 
 	// drag gesture
 	if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
@@ -1763,21 +1759,21 @@ GUI.prototype.mainloop = function() {
 		}
 
 		// update x/y but keep radius
-		config.centerX = config.centerX - x + this.dragActiveX;
-		config.centerY = config.centerY - y + this.dragActiveY;
+		Config.centerX = Config.centerX - x + this.dragActiveX;
+		Config.centerY = Config.centerY - y + this.dragActiveY;
 	} else {
 		this.dragActive = false;
 	}
 
 	// zoom-in/out gesture
-	if (config.zoomSpeed) {
+	if (Config.zoomSpeed) {
 		// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
-		var magnify = Math.pow(config.magnificationNow, config.zoomSpeed * diffSec);
+		var magnify = Math.pow(Config.magnificationNow, Config.zoomSpeed * diffSec);
 
 		// zoom, The mouse pointer coordinate should not change
-		config.centerX = (config.centerX - this.mouseX) / magnify + this.mouseX;
-		config.centerY = (config.centerY - this.mouseY) / magnify + this.mouseY;
-		config.radius  = config.radius / magnify;
+		Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
+		Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
+		Config.radius  = Config.radius / magnify;
 	}
 
 	this.domStatusQuality.innerHTML = JSON.stringify({lines:this.currentViewport.doneX+this.currentViewport.doneY, calc: this.currentViewport.doneCalc});
@@ -1799,10 +1795,10 @@ GUI.prototype.mainloop = function() {
 		frame = new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight);
 
 	if (this.frameNr & 1) {
-		this.viewport1.setPosition(frame, config.centerX, config.centerY, config.radius, config.angle, this.viewport0);
+		this.viewport1.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport0);
 		this.currentViewport = this.viewport1;
 	} else {
-		this.viewport0.setPosition(frame, config.centerX, config.centerY, config.radius, config.angle, this.viewport1);
+		this.viewport0.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport1);
 		this.currentViewport = this.viewport0;
 	}
 
@@ -1814,7 +1810,7 @@ GUI.prototype.mainloop = function() {
 	oldViewport.frame = null;
 
 	oldFrame.now = performance.now();
-	oldFrame.setPalette(window.palette, config.paletteOffset, config.depthNow);
+	oldFrame.setPalette(window.palette, Config.paletteOffset, Config.depthNow);
 
 	/*
 	 * The message queue is overloaded, so call direct until improved design
@@ -1839,10 +1835,10 @@ GUI.prototype.mainloop = function() {
 
 	this.domStatusRect.innerHTML =
 		"zoom:" + this.statStateCopy.toFixed(3) +
-		"mSec("+ (this.statStateCopy*100/(1000 / config.framerateNow)).toFixed(0) +
+		"mSec("+ (this.statStateCopy*100/(1000 / Config.framerateNow)).toFixed(0) +
 		"%), update:" + this.statStateUpdate.toFixed(3) +
 		"mSec, paint:" + this.statStatePaint1.toFixed(3) +
-		"mSec("+ (this.statStatePaint1*100/(1000 / config.framerateNow)).toFixed(0) +
+		"mSec("+ (this.statStatePaint1*100/(1000 / Config.framerateNow)).toFixed(0) +
 		"%)+"+this.statStatePaint2.toFixed(3)+", rAF:" + this.statStateRAF.toFixed(3) ;
 
 	if (Math.floor(now/1000) !== this.lastNow) {
@@ -1871,8 +1867,8 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 
 	// coordinate within pixel data pointed to by mouse
 	// todo: compensate rotation
-	var api = ((config.autopilotX - this.centerX) / this.radius + 1) * this.diameter >> 1;
-	var apj = ((config.autopilotY - this.centerY) / this.radius + 1) * this.diameter >> 1;
+	var api = ((Config.autopilotX - this.centerX) / this.radius + 1) * this.diameter >> 1;
+	var apj = ((Config.autopilotY - this.centerY) / this.radius + 1) * this.diameter >> 1;
 
 	var min = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
 	var max = min * 3;
@@ -1898,9 +1894,9 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 					if (pixels[j * this.diameter + i] === 0)
 						c++;
 			if (c >= min && c <= max) {
-				config.autopilotX = x;
-				config.autopilotY = y;
-				config.autopilotButtons = 1<<Aria.ButtonCode.BUTTON_LEFT;
+				Config.autopilotX = x;
+				Config.autopilotY = y;
+				Config.autopilotButtons = 1<<Aria.ButtonCode.BUTTON_LEFT;
 
 				var i = (((x - this.centerX) * this.rcos - (y - this.centerY) * this.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
 				var j = (((x - this.centerX) * this.rsin + (y - this.centerY) * this.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
@@ -1913,7 +1909,7 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 			}
 		}
 
-	config.autopilotButtons = 0;
+	Config.autopilotButtons = 0;
 	window.gui.domAutopilot.style.border = '4px solid red';
 	return false;
 };
@@ -1921,8 +1917,8 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 GUI.prototype.autopilotOn = function() {
 
 	var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
-	config.autopilotX = config.centerX;
-	config.autopilotY = config.centerY;
+	Config.autopilotX = Config.centerX;
+	Config.autopilotY = Config.centerY;
 
 	var lookPixelRadius = viewport.diameter >> 1;
 	var borderPixelRadius = viewport.diameter >> 5;

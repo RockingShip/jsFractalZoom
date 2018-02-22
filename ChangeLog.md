@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Formula, incolour, outcolour and plane
 
+### Changed
+- Config() static scoping
+
 ## [0.7.0] 2018-02-20
 
 ### Added
