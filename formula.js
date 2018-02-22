@@ -55,6 +55,16 @@ function Formula () {
 	];
 
 	Formula.incolour = 0;
+	Formula.incolourNames = [
+		"maxiter",
+		"zmag",
+		"decomposition-like",
+		"real/imag",
+		"mag*cos(real^2)",
+		"sin(real^2-imag^2)",
+		"atan(real*imag*creal*cimag)",
+		"squares"
+	];
 
 	Formula.outcolour = 0;
 
@@ -546,63 +556,50 @@ function Formula () {
 	};
 
 	Formula.calc_incolour = function (zre, zim, pre, pim, iter) {
-		var maxiter = Config.depthNow;
-		var palettesize = Config.paletteSize;
+		var paletteSize = Config.paletteSize;
 
 		switch (Formula.incolour) {
-			case 1:
-				iter = ((zre * zre + zim * zim) * (maxiter >> 1) * 256 + 256);
-				break;
-			case 2:
-				iter = ((Math.atan2(zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000);
-				break;
-			case 3:
-				iter = (100 + (zre / zim) * 256 * 10);
-				break;
-			case 4:
-				zre = Math.abs(zre);
-				zim = Math.abs(zim);
-				pre = Math.abs(pre);
-				pre = Math.abs(pim);
-				iter += Math.abs(pre - zre) * 256 * 64;
-				iter += Math.abs(pim - zim) * 256 * 64;
-				break;
-			case 5:
-				if ((Math.floor((zre * zre + zim * zim) * 10)) % 2)
-					iter = Math.cos(zre * zim * pre * pim) * 256 * 256;
-				else
-					iter = Math.sin(zre * zim * pre * pim) * 256 * 256;
-				break;
-			case 6:
-				iter = (zre * zre + zim * zim) * Math.cos(zre * zre) * 256 * 256;
-				break;
-			case 7:
-				iter = Math.floor(Math.sin(zre * zre - zim * zim) * 256);
-				return (iter < 0) ? (palettesize - 1) - (-iter) % (palettesize - 1) - 1 : iter % (palettesize - 1) + 1;
-				break;
-			case 8:
-				iter = Math.atan(zre * zim * pre * pim) * 256 * 64;
-				break;
-			case 9:
-				if ((Math.abs(Math.floor(zre * 40)) % 2) ^ (Math.abs(Math.floor(zim * 40)) % 2))
-					iter = ((Math.atan2(zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000);
-				else
-					iter = ((Math.atan2(zim, zre) / (Math.PI + Math.PI) + 0.75) * 20000);
-				break;
+			case 0: // iter
+				// range 1..maxiter
+				return iter;
+			case 1: // zmag
+				iter = (zre * zre + zim * zim);
+				// range 0..4
+				return (iter * (paletteSize >> 2)) | 0;
+			case 2: // real
+				iter = Math.atan2(zre, zim);
+				// range -PI..+PI
+				return ((iter + Math.PI) * paletteSize / Math.PI) >> 1;
+			case 3: // real/imag
+				iter = zre / zim;
+				// range anything
+				iter = Math.floor(iter*10);
+				return (iter >= 0) ? iter : ((paletteSize - 1) - (-iter - 1) % paletteSize);
+			case 4: // mag*cos(real^2)
+				iter = (zre * zre + zim * zim) * Math.cos(zre * zre);
+				// range -1..+1 (as implied by original code)
+				return ((iter + 1) * paletteSize) >> 1;
+			case 5: // sin(real^2-imag^2)
+				iter = Math.sin(zre * zre - zim * zim);
+				// range -1..+1
+				return ((iter + 1) * paletteSize) >> 1;
+			case 6: // atan(real*imag*creal*cimag)
+				iter = Math.atan(zre * zim * pre * pim);
+				// range -PI/2..+PI/2
+				return ((iter + Math.PI/2) * paletteSize / Math.PI) | 0;
+			case 7: // squares. larger number = smaller squares
+				if ((Math.abs(zre * 80) & 1) ^ (Math.abs((zim * 80) & 1))) {
+					iter = Math.atan2(zre, zim);
+				} else {
+					iter = Math.atan2(zim, zre);
+				}
+				// range -PI..+PI
+				return ((iter + Math.PI) * paletteSize / Math.PI) >> 1;
 		}
-
-
-		if (iter < 0) {
-			iter = ((palettesize - 1) << 8) - ((-iter) % ((palettesize - 1) << 8)) - 1;
-			if (iter < 0)
-				iter = 0;
-		}
-		iter %= (palettesize - 1) << 8;
-		return 1 + (iter >> 8);
 	};
 
 	Formula.calc_outcolour = function (zre, zim, pre, pim, iter) {
-		var palettesize = Config.paletteSize;
+		var paletteSize = Config.paletteSize;
 
 		iter <<= 8;
 
@@ -637,11 +634,11 @@ function Formula () {
 		}
 
 		if (iter < 0) {
-			iter = ((palettesize - 1) << 8) - ((-iter) % ((palettesize - 1) << 8)) - 1;
+			iter = ((paletteSize - 1) << 8) - ((-iter) % ((paletteSize - 1) << 8)) - 1;
 			if (iter < 0)
 				iter = 0;
 		}
-		iter %= (palettesize - 1) << 8;
+		iter %= (paletteSize - 1) << 8;
 		return 1 + (iter >> 8);
 	}
 

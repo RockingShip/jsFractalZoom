@@ -1304,7 +1304,12 @@ function GUI(config) {
 		} else {
 			window.palette.mkdefault();
 		}
-	});
+		// fast clamp pixel values
+		var viewport = this.currentViewport;
+		for (var ji=0; ji<viewport.viewWidth*viewport.viewHeight; ji++)
+			if (viewport.pixels[ji] != 65535)
+				viewport.pixels[ji] %= Config.paletteSize;
+	}.bind(this));
 
 	/*
 	 * create 4 workers
