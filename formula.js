@@ -67,7 +67,17 @@ function Formula () {
 	];
 
 	Formula.outcolour = 0;
-
+	Formula.outcolourNames = [
+		"iter",
+		"iter+real",
+		"iter+imag",
+		"iter+real/imag",
+		"iter+real+imag+real/imag",
+		"binary decomposition",
+		"biomorphs",
+		"potential",
+		"color decomposition"
+	];
 	Formula.plane = 0;
 	Formula.planeNames = [
 		"mu",
@@ -196,7 +206,7 @@ function Formula () {
 					iter = maxiter - iter * 4 + 0;
 					return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 				}
-				return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim, maxiter - iter * 4) : 65535;
+				return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
 
 			case 1:
 				return Formula.mand3_calc(x, y, x, y);
@@ -429,7 +439,7 @@ function Formula () {
 
 		iter = maxiter - iter;
 		if (iter >= maxiter) {
-			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim, maxiter - iter * 4) : 65535;
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
 		} else {
 			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 		}
@@ -459,7 +469,7 @@ function Formula () {
 
 		iter = maxiter - iter;
 		if (iter >= maxiter) {
-			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim, maxiter - iter * 4) : 65535;
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
 		} else {
 			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 		}
@@ -555,13 +565,12 @@ function Formula () {
 		return iter;
 	};
 
-	Formula.calc_incolour = function (zre, zim, pre, pim, iter) {
+	Formula.calc_incolour = function (zre, zim, pre, pim) {
 		var paletteSize = Config.paletteSize;
 
 		switch (Formula.incolour) {
-			case 0: // iter
-				// range 1..maxiter
-				return iter;
+			case 0: // maxiter
+				return 65535;
 			case 1: // zmag
 				iter = (zre * zre + zim * zim);
 				// range 0..4
@@ -601,45 +610,40 @@ function Formula () {
 	Formula.calc_outcolour = function (zre, zim, pre, pim, iter) {
 		var paletteSize = Config.paletteSize;
 
-		iter <<= 8;
-
 		switch (Formula.outcolour) {
-			case 1:                /* real */
-				iter = (iter + zre * 256);
+			case 0: // iter
+				return iter;
+			case 1: // iter+real
+				iter += zre | 0;
 				break;
-			case 2:                /* imag */
-				iter = (iter + zim * 256);
+			case 2: // iter+imag
+				iter += zim | 0;
 				break;
-			case 3:                /* real / imag */
-				iter = (iter + (zre / zim) * 256);
+			case 3: // iter+real/imag
+				iter += (zre / zim) | 0;
 				break;
-			case 4:                /* all of the above */
-				iter = (iter + (zre + zim + zre / zim) * 256);
+			case 4: // iter+real+imag+real/imag
+				iter += (zre + zim + zre / zim) | 0;
 				break;
-			case 5:
-				if (zim > 0)
-					iter = ((maxiter << 8) - iter);
+			case 5: // binary decomposition
+				if (zim >= 0)
+					iter = paletteSize - iter;
 				break;
-			case 6:
+			case 6: // biomorphs
 				if (Math.abs(zim) < 2.0 || Math.abs(zre) < 2.0)
-					iter = ((maxiter << 8) - iter);
+					iter = paletteSize - iter;
 				break;
-			case 7:
-				zre = zre * zre + zim * zim;
-				iter = (Math.sqrt(Math.log(zre) / iter) * 256 * 256);
+			case 7: // potential
+				iter = (Math.sqrt(Math.log(zre * zre + zim * zim) / iter) * paletteSize) | 0;
 				break;
-			case 8:
-				iter = ((Math.atan2(zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000);
-				break;
+			case 8: // color decomposition
+				iter = Math.atan2(zre, zim) * 4;
+				// range -4PI..+4PI
+				iter = ((iter + Math.PI * 4) * paletteSize / Math.PI) >> 1;
+				// the above has >>1 instead of >>3, so the result range is 0..4*paletteSize
+				return iter % paletteSize;
 		}
 
-		if (iter < 0) {
-			iter = ((paletteSize - 1) << 8) - ((-iter) % ((paletteSize - 1) << 8)) - 1;
-			if (iter < 0)
-				iter = 0;
-		}
-		iter %= (paletteSize - 1) << 8;
-		return 1 + (iter >> 8);
+		return (iter >= 0) ? iter : ((paletteSize - 1) - (-iter - 1) % paletteSize);
 	}
-
 }
