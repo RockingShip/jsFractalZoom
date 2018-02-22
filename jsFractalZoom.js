@@ -1946,7 +1946,7 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 			var c = 0;
 			for (j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
 				for (i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
-					if (pixels[j * this.diameter + i] === 0)
+					if (pixels[j * this.diameter + i] === 65535)
 						c++;
 			if (c >= min && c <= max) {
 				Config.autopilotX = x;
