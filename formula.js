@@ -23,10 +23,23 @@
 
 function Formula () {
 
-	Formula.prototype.maxiter = 1200;
+	Formula.initial = [
+		{x: -0.75, y: 0.0, r: 2.5, a:0},
+		{x: 0.0, y: 0.0, r: 2.5, a:0},
+		{x: 0.0, y: 0.0, r: 2.5, a:0},
+		{x: 0.0, y: 0.0, r: 2.5, a:0},
+		{x: 0.0, y: 0.0, r: 2.5, a:0},
+		{x: 0.0, y: 0.0, r: 2.5, a:0},
+		{x: 0.0, y: 0.0, r: 2.5, a:0},
+		{x: 0.0, y: 0.0, r: 3.5, a:0},
+		{x: 0.0, y: 0.0, r: 3.5, a:0},
+		{x: 0.0, y: 0.0, r: 3.0, a:0},
+		{x: 1.5, y: 0.0, r: 6.0, a:0},
+		{x: 1.5, y: 0.0, r: 4.0, a:0}
+	];
 
-	Formula.prototype.formula = 0;
-	this.formulaNames = [
+	Formula.formula = 0;
+	Formula.formulaNames = [
 		"mandelbrot",
 		"mandelbrot^3",
 		"mandelbrot^4",
@@ -41,12 +54,12 @@ function Formula () {
 		"magnet2"
 	];
 
-	Formula.prototype.incolour = 0;
+	Formula.incolour = 0;
 
-	Formula.prototype.outcolour = 0;
+	Formula.outcolour = 0;
 
-	Formula.prototype.plane = 0;
-	this.planeNames = [
+	Formula.plane = 0;
+	Formula.planeNames = [
 		"mu",
 		"1/mu",
 		"1/(mu+0.25)",
@@ -62,10 +75,10 @@ function Formula () {
 	 * @param {number} y
 	 * @returns {number}
 	 */
-	Formula.prototype.calculate = function (x, y) {
+	Formula.calculate = function (x, y) {
 
-		if (Formula.prototype.plane) {
-			switch (Formula.prototype.plane) {
+		if (Formula.plane) {
+			switch (Formula.plane) {
 				case 1: // 1/mu
 					var t = x * x + y * y;
 					if (t < 0.000001) {
@@ -126,10 +139,10 @@ function Formula () {
 			}
 		}
 
-		var maxiter = Formula.prototype.maxiter;
+		var maxiter = Config.depthNow;
 		var iter = maxiter >> 2;
 
-		switch (Formula.prototype.formula) {
+		switch (Formula.formula) {
 			case 0: // mandelbrot
 				var zre = x, zim = y, pre = x, pim = y;
 				var rp = zre * zre, ip = zim * zim;
@@ -159,34 +172,34 @@ function Formula () {
 
 				if (rp3 + ip3 >= 4) {
 					iter = maxiter - iter * 4 + 1;
-					return Formula.prototype.outcolour ? Formula.prototype.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
+					return Formula.outcolour ? Formula.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
 				}
 				if (rp2 + ip2 >= 4) {
 					iter = maxiter - iter * 4 + 2;
-					return Formula.prototype.outcolour ? Formula.prototype.calc_outcolour(zre2, zim2, pre, pim, iter) : iter;
+					return Formula.outcolour ? Formula.calc_outcolour(zre2, zim2, pre, pim, iter) : iter;
 				}
 				if (rp1 + ip1 >= 4) {
 					iter = maxiter - iter * 4 + 3;
-					return Formula.prototype.outcolour ? Formula.prototype.calc_outcolour(zre1, zim1, pre, pim, iter) : iter;
+					return Formula.outcolour ? Formula.calc_outcolour(zre1, zim1, pre, pim, iter) : iter;
 				}
 				if (rp + ip >= 4) {
 					iter = maxiter - iter * 4 + 0;
-					return Formula.prototype.outcolour ? Formula.prototype.calc_outcolour(zre, zim, pre, pim, iter) : iter;
+					return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 				}
-				return Formula.prototype.incolour ? Formula.prototype.calc_incolour(zre, zim, pre, pim, maxiter - iter * 4) : 0;
+				return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim, maxiter - iter * 4) : 65535;
 
 			case 1:
-				return Formula.prototype.mand3_calc(x, y, x, y);
+				return Formula.mand3_calc(x, y, x, y);
 			case 2:
-				return Formula.prototype.mand4_calc(x, y, x, y);
+				return Formula.mand4_calc(x, y, x, y);
 			case 3:
-				return Formula.prototype.mand5_calc(x, y, x, y);
+				return Formula.mand5_calc(x, y, x, y);
 			case 4:
-				return Formula.prototype.mand6_calc(x, y, x, y);
+				return Formula.mand6_calc(x, y, x, y);
 			case 5:
-				return Formula.prototype.octo_calc(0, 0, x, y);
+				return Formula.octo_calc(0, 0, x, y);
 			case 6:
-				return Formula.prototype.newton_calc(x, y, 1.0199502202048319698, 0);
+				return Formula.newton_calc(x, y, 1.0199502202048319698, 0);
 			case 7: // barnsley1
 				if (0) {
 					var zre = x, zim = y, pre = -0.6, pim = 1.1;
@@ -200,27 +213,28 @@ function Formula () {
 					break;
 				}
 
-				return Formula.prototype.barnsley1_calc(x, y, -0.6, 1.1);
+				return Formula.barnsley1_calc(x, y, -0.6, 1.1);
 
 				var t = (zre >= 0) ? zre - 1 : zre + 1;
 				zre = t * pre - zim * pim;
 				zim = t * pim + zim * pre;
 
-				return Formula.prototype.barnsley1_calc(x, y, -0.6, 1.1);
+				return Formula.barnsley1_calc(x, y, -0.6, 1.1);
 			case 8:
-				return Formula.prototype.barnsley2_calc(x, y, -0.6, 1.1);
+				return Formula.barnsley2_calc(x, y, -0.6, 1.1);
 			case 9:
-				return Formula.prototype.phoenix_calc(x, y, 0.56666667, -0.5);
+				return Formula.phoenix_calc(x, y, 0.56666667, -0.5);
 			case 10:
-				return Formula.prototype.magnet1_calc(0, 0, x, y);
+				return Formula.magnet1_calc(0, 0, x, y);
 			case 11:
-				return Formula.prototype.magnet2_calc(0, 0, x, y);
+				return Formula.magnet2_calc(0, 0, x, y);
 
 		}
 	};
 
-	Formula.prototype.mand3_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter>>2;
+	Formula.mand3_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter>>2;
 		var rp = zre*zre;
 		var ip = zim*zim;
 		do {
@@ -233,15 +247,16 @@ function Formula () {
 			zre = (rp1-ip1*3)*zre+pre; var rp  = zre*zre; zim = (rp1*3-ip1)*zim+pim; var ip  = zim*zim;
 		} while (--iter && rp+ip < 4);
 
-		iter = Formula.prototype.maxiter - (iter<<2);
+		iter = maxiter - (iter<<2);
 		if (rp3+ip3 >= 4) return iter-3;
 		if (rp2+ip2 >= 4) return iter-2;
 		if (rp1+ip1 >= 4) return iter-1;
 		return iter;
 	};
 
-	Formula.prototype.mand4_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter>>2;
+	Formula.mand4_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter>>2;
 		var rp = zre*zre;
 		var ip = zim*zim;
 		do {
@@ -257,15 +272,16 @@ function Formula () {
 			var t = rp1-ip1; zim = t*zre*zim*4+pim; var ip  = zim*zim; zre = t*t-rp1*ip1*4+pre; var rp  = zre*zre;
 		} while (--iter && rp+ip < 4);
 
-		iter = Formula.prototype.maxiter - (iter<<2);
+		iter = maxiter - (iter<<2);
 		if (rp3+ip3 >= 4) return iter-3;
 		if (rp2+ip2 >= 4) return iter-2;
 		if (rp1+ip1 >= 4) return iter-1;
 		return iter;
 	};
 
-	Formula.prototype.mand5_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter>>2;
+	Formula.mand5_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter>>2;
 		var rp = zre*zre;
 		var ip = zim*zim;
 		do {
@@ -281,15 +297,16 @@ function Formula () {
 			var t1=rp1-ip1,t2=t1*t1*5; zre = (t2-rp1*rp1*4)*zre+pre; var rp  = zre*zre; zim = (t2-ip1*ip1*4)*zim+pim; var ip  = zim*zim;
 		} while (--iter && rp+ip < 4);
 
-		iter = Formula.prototype.maxiter - (iter<<2);
+		iter = maxiter - (iter<<2);
 		if (rp3+ip3 >= 4) return iter-3;
 		if (rp2+ip2 >= 4) return iter-2;
 		if (rp1+ip1 >= 4) return iter-1;
 		return iter;
 	};
 
-	Formula.prototype.mand6_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter>>2;
+	Formula.mand6_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter>>2;
 		var rp = zre*zre;
 		var ip = zim*zim;
 		do {
@@ -305,15 +322,16 @@ function Formula () {
 			var t1=rp1-ip1,t2=t1*t1,t3=rp1*ip1; zim = (t2*6-t3*8)*zre*zim+pim; var ip  = zim*zim; zre = (t3*-12+t2)*t1 +pre; var rp  = zre*zre;
 		} while (--iter && rp+ip < 4);
 
-		iter = Formula.prototype.maxiter - (iter<<2);
+		iter = maxiter - (iter<<2);
 		if (rp3+ip3 >= 4) return iter-3;
 		if (rp2+ip2 >= 4) return iter-2;
 		if (rp1+ip1 >= 4) return iter-1;
 		return iter;
 	};
 
-	Formula.prototype.octo_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter>>2;
+	Formula.octo_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter>>2;
 		var zpr = 0;
 		var zpi = 0;
 
@@ -349,15 +367,16 @@ function Formula () {
 
 		} while (--iter && zpr*zpr + zpi*zpi < 4);
 
-		iter = Formula.prototype.maxiter - (iter<<2);
+		iter = maxiter - (iter<<2);
 		if (zpr3*zpr3 + zpi3*zpi3 >= 4) return iter-3;
 		if (zpr2*zpr2 + zpi2*zpi2 >= 4) return iter-2;
 		if (zpr1*zpr1 + zpi1*zpi1 >= 4) return iter-1;
 		return iter;
 	};
 
-	Formula.prototype.newton_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter;
+	Formula.newton_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter;
 		var rp, ip;
 		var n, sqrr, sqri, zre1, zim1;
 		sqri = zim * zim, n = zre, zre = pre, pre = n, n = zim, zim = pim, pim = n, n = 1;
@@ -380,12 +399,13 @@ function Formula () {
 			iter--;
 		}
 
-		iter = Formula.prototype.maxiter - iter;
+		iter = maxiter - iter;
 		return iter;
 	};
 
-	Formula.prototype.barnsley1_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter;
+	Formula.barnsley1_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter;
 		var rp = zre * zre;
 		var ip = zim * zim;
 		while (iter && rp + ip < 4) {
@@ -397,16 +417,17 @@ function Formula () {
 			iter--;
 		}
 
-		iter = Formula.prototype.maxiter - iter;
-		if (iter >= Formula.prototype.maxiter) {
-			return Formula.prototype.incolour ? Formula.prototype.calc_incolour(zre, zim, pre, pim, maxiter - iter * 4) : 0;
+		iter = maxiter - iter;
+		if (iter >= maxiter) {
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim, maxiter - iter * 4) : 65535;
 		} else {
-			return Formula.prototype.outcolour ? Formula.prototype.calc_outcolour(zre, zim, pre, pim, iter) : iter;
+			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 		}
 	};
 
-	Formula.prototype.barnsley2_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter;
+	Formula.barnsley2_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter;
 		var rp, ip;
 		if (0)
 			iter = 0;
@@ -426,16 +447,17 @@ function Formula () {
 			}
 		}
 
-		iter = Formula.prototype.maxiter - iter;
-		if (iter >= Formula.prototype.maxiter) {
-			return Formula.prototype.incolour ? Formula.prototype.calc_incolour(zre, zim, pre, pim, maxiter - iter * 4) : 0;
+		iter = maxiter - iter;
+		if (iter >= maxiter) {
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim, maxiter - iter * 4) : 65535;
 		} else {
-			return Formula.prototype.outcolour ? Formula.prototype.calc_outcolour(zre, zim, pre, pim, iter) : iter;
+			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 		}
 	};
 
-	Formula.prototype.phoenix_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter>>2;
+	Formula.phoenix_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter>>2;
 		var rp = zre*zre;
 		var ip = zim*zim;
 		var zpr = 0;
@@ -448,15 +470,16 @@ function Formula () {
 			var zre  = rp1-ip1+pre+zpr; var zim  = zre1*zim1*2+zpi; zpr = zre1*pim; zpi = zim1*pim; rp  = zre *zre ; ip  = zim *zim ;
 		} while (--iter && rp+ip < 4);
 
-		iter = Formula.prototype.maxiter - (iter<<2);
+		iter = maxiter - (iter<<2);
 		if (rp3+ip3 >= 4) return iter-3;
 		if (rp2+ip2 >= 4) return iter-2;
 		if (rp1+ip1 >= 4) return iter-1;
 		return iter;
 	};
 
-	Formula.prototype.magnet1_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter;
+	Formula.magnet1_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter;
 		var rp = zre*zre;
 		var ip = zim*zim;
 		do {
@@ -479,12 +502,13 @@ function Formula () {
 			var t = rp+ip;
 		} while (--iter && t < 100*100 && t > zre*2-0.99);
 
-		iter = Formula.prototype.maxiter - iter;
+		iter = maxiter - iter;
 		return iter;
 	};
 
-	Formula.prototype.magnet2_calc = function (zre, zim, pre, pim) {
-		var iter = Formula.prototype.maxiter;
+	Formula.magnet2_calc = function (zre, zim, pre, pim) {
+		var maxiter = Config.depthNow;
+		var iter = maxiter;
 		var rp = zre*zre;
 		var ip = zim*zim;
 		var c1re = (pre-1)*3;
@@ -517,16 +541,17 @@ function Formula () {
 
 		} while (--iter && rp+ip < 100*100 && rp+ip > zre*2-0.99);
 
-		iter = Formula.prototype.maxiter - iter;
+		iter = maxiter - iter;
 		return iter;
 	};
 
-	Formula.prototype.calc_incolour = function (zre, zim, pre, pim, iter) {
-		var palettesize = 1200;
+	Formula.calc_incolour = function (zre, zim, pre, pim, iter) {
+		var maxiter = Config.depthNow;
+		var palettesize = Config.paletteSize;
 
-		switch (Formula.prototype.incolour) {
+		switch (Formula.incolour) {
 			case 1:
-				iter = ((zre * zre + zim * zim) * (Formula.prototype.maxiter >> 1) * 256 + 256);
+				iter = ((zre * zre + zim * zim) * (maxiter >> 1) * 256 + 256);
 				break;
 			case 2:
 				iter = ((Math.atan2(zre, zim) / (Math.PI + Math.PI) + 0.75) * 20000);
@@ -576,12 +601,12 @@ function Formula () {
 		return 1 + (iter >> 8);
 	};
 
-	Formula.prototype.calc_outcolour = function (zre, zim, pre, pim, iter) {
-		var palettesize = 1200;
+	Formula.calc_outcolour = function (zre, zim, pre, pim, iter) {
+		var palettesize = Config.paletteSize;
 
 		iter <<= 8;
 
-		switch (Formula.prototype.outcolour) {
+		switch (Formula.outcolour) {
 			case 1:                /* real */
 				iter = (iter + zre * 256);
 				break;
@@ -596,11 +621,11 @@ function Formula () {
 				break;
 			case 5:
 				if (zim > 0)
-					iter = ((Formula.prototype.maxiter << 8) - iter);
+					iter = ((maxiter << 8) - iter);
 				break;
 			case 6:
 				if (Math.abs(zim) < 2.0 || Math.abs(zre) < 2.0)
-					iter = ((Formula.prototype.maxiter << 8) - iter);
+					iter = ((maxiter << 8) - iter);
 				break;
 			case 7:
 				zre = zre * zre + zim * zim;

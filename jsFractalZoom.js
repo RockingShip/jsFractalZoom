@@ -96,7 +96,7 @@ function Config() {
 	Config.depthMin = 30;
 	/** @member {number} - calculation depth slider Max */
 	Config.depthMax = 1500;
-	/** @member {number} - calculation depth slider Now */
+	/** @member {number} - calculation depth slider Now - MULTIPLE OF 4 */
 	Config.depthNow = 1200;
 
 	/** @member {number} - calculation depth slider Min */
@@ -106,19 +106,21 @@ function Config() {
 	/** @member {number} - calculation depth slider Now */
 	Config.framerateNow = 20;
 
-	/** @member {number} - center X coordinate */
+	/** @member {number} - center X coordinate - vsync updated */
 	Config.centerX = 0;
-	/** @member {number} - center Y coordinate */
+	/** @member {number} - center Y coordinate - vsync updated */
 	Config.centerY = 0;
-	/** @member {number} - distance between center and viewport corner */
+	/** @member {number} - distance between center and viewport corner - vsync updated */
 	Config.radius = 0;
-	/** @member {number} - current viewport angle (degrees) */
+	/** @member {number} - current viewport angle (degrees) - timer updated */
 	Config.angle = 0;
 
-	/** @member {number} - current palette offset */
-	Config.paletteOffset = 0; // color palette cycle timer updated
+	/** @member {number} - current palette offset - timer updated */
+	Config.paletteOffsetFloat = 0;
+	/** @member {number} - Palette size before colours start repeating */
+	Config.paletteSize = 0;
 
-	/** @member {number} - current viewport zoomspeed */
+	/** @member {number} - current viewport zoomspeed - timer updated */
 	Config.zoomSpeed = 0;
 	/** @member {number} - After 1sec, get 80% closer to target speed */
 	Config.zoomSpeedCoef = 0.80;
@@ -128,11 +130,11 @@ function Config() {
 	Config.outcolour = "";
 	Config.plane = "";
 
-	/** @member {number} */
+	/** @member {number} - center X coordinate - autopilot updated */
 	Config.autopilotX = 0;
-	/** @member {number} */
+	/** @member {number} - center Y coordinate - autopilot updated*/
 	Config.autopilotY = 0;
-	/** @member {number} */
+	/** @member {number} - movement gesture - autopilot updated*/
 	Config.autopilotButtons = 0;
 }
 
@@ -168,6 +170,20 @@ Config.logTolinear = function(min, max, now) {
 };
 
 /**
+ * set initial position
+ */
+Config.home = function() {
+	if (Formula) {
+		var initial = Formula.initial[Formula.formula];
+
+		Config.centerX = initial.x;
+		Config.centerY = initial.y;
+		Config.radius = initial.r;
+		Config.angle = initial.a;
+	}
+};
+
+/**
  * Frame, used to transport data between workers
  *
  * @constructor
@@ -191,7 +207,7 @@ function Frame(viewWidth, viewHeight) {
 	this.angle = 0;
 
 	/** @member {ArrayBuffer} - (UINT8x4) red */
-	this.paletteBuffer = new ArrayBuffer(2000*4);
+	this.paletteBuffer = new ArrayBuffer(65536 * 4);
 
 	/** @member {ArrayBuffer} - (UINT16) pixels */
 	this.pixelBuffer = new ArrayBuffer(this.diameter * this.diameter * 2);
@@ -201,71 +217,49 @@ function Frame(viewWidth, viewHeight) {
 }
 
 /**
- * Set palette for frame
- * NOTE: this needs to be prototyped to avoid getting serialised
- *
- * @param {Palette} palette
- * @param {number} offset
- * @param {number} depth
- */
-Frame.prototype.setPalette = function(palette, offset, depth)
-{
-	var paletteSize = palette.red.length;
-	var palette8 = new Uint8Array(this.paletteBuffer);
-
-	// palette offset must be integer and may not be negative
-	offset = Math.round(offset);
-	if (offset < 0)
-		offset = (paletteSize - 1) - (-offset - 1) % paletteSize;
-	else
-		offset = offset % paletteSize;
-
-	// apply colour cycling (not for first colour)
-	var j = 0;
-	palette8[j++] = palette.backgroundRed;
-	palette8[j++] = palette.backgroundGreen;
-	palette8[j++] = palette.backgroundBlue;
-	palette8[j++] = 255;
-	for (var i = 1; i < depth; i++) {
-		palette8[j++] = palette.red[(i - 1 + offset) % paletteSize + 1];
-		palette8[j++] = palette.green[(i - 1 + offset) % paletteSize + 1];
-		palette8[j++] = palette.blue[(i - 1 + offset) % paletteSize + 1];
-		palette8[j++] = 255;
-	}
-};
-
-/**
  * Palette creation
+ *
+ * NOTE: Palette is always 65536 large (16 bits pixel value)
+ * NOTE: color 65535 is always background colour
  *
  * @constructor
  */
 function Palette()
 {
-	/** member {Uint8Array} */
-	this.red = undefined;
-	/** member {Uint8Array} */
-	this.green = undefined;
-	/** member {Uint8Array} */
-	this.blue = undefined;
+	/** @member {ArrayBuffer} - palette data */
+	this.paletteBuffer = new ArrayBuffer(65536*4);
 
+	/** @member {number} - background red */
 	this.backgroundRed = 0;
+	/** @member {number} - background green */
 	this.backgroundGreen = 0;
+	/** @member {number} - background blue */
 	this.backgroundBlue = 0;
 
-	this.random = function(n) {
+	/** @var {Uint32Array} - RGBA view of palette */
+	var palette32 = new Uint32Array(this.paletteBuffer);
+	/** @var {Uint8Array} - R,G,B view of palette */
+	var palette8 = new Uint8Array(this.paletteBuffer);
+
+	/**
+	 * Create a random number in range 0 <= return < n
+	 *
+	 * @function
+	 * @param n
+	 * @returns {number}
+	 */
+	var random = function(n) {
 		return Math.floor(Math.random() * n);
 	};
 
 	this.mksmooth = function(nsegments, segmentsize, R, G, B) {
 		var i, j, k;
 
-		this.red = new Uint8Array(nsegments * segmentsize);
-		this.green = new Uint8Array(nsegments * segmentsize);
-		this.blue = new Uint8Array(nsegments * segmentsize);
+		// set palette modulo size
+		Config.paletteSize = nsegments * segmentsize;
 
 		k = 0;
 		for (i = 0; i < nsegments; i++) {
-
 			var r = R[i % nsegments];
 			var g = G[i % nsegments];
 			var b = B[i % nsegments];
@@ -275,10 +269,10 @@ function Palette()
 
 			for (j = 0; j < segmentsize; j++) {
 
-				this.red[k] = Math.floor(r);
-				this.green[k] = Math.floor(g);
-				this.blue[k] = Math.floor(b);
-				k++;
+				palette8[k++] = Math.floor(r);
+				palette8[k++] = Math.floor(g);
+				palette8[k++] = Math.floor(b);
+				palette8[k++] = 255;
 
 				r += rs;
 				g += gs;
@@ -300,25 +294,25 @@ function Palette()
 			B[0] = 255;
 			for (i = 0; i < nsegments; i += 2) {
 				if (i !== 0) {
-					R[i] = this.random(256);
-					G[i] = this.random(256);
-					B[i] = this.random(256);
+					R[i] = random(256);
+					G[i] = random(256);
+					B[i] = random(256);
 				}
 				if (i + 1 < nsegments) {
-					R[i + 1] = this.random(35);
-					G[i + 1] = this.random(35);
-					B[i + 1] = this.random(35);
+					R[i + 1] = random(35);
+					G[i + 1] = random(35);
+					B[i + 1] = random(35);
 				}
 			}
 		} else {
 			for (i = 0; i < nsegments; i += 2) {
-				R[i] = this.random(35);
-				G[i] = this.random(35);
-				B[i] = this.random(35);
+				R[i] = random(35);
+				G[i] = random(35);
+				B[i] = random(35);
 				if (i + 1 < nsegments) {
-					R[i + 1] = this.random(256);
-					G[i + 1] = this.random(256);
-					B[i + 1] = this.random(256);
+					R[i + 1] = random(256);
+					G[i + 1] = random(256);
+					B[i + 1] = random(256);
 				}
 			}
 		}
@@ -338,9 +332,9 @@ function Palette()
 			B[i] = (!whitemode) * 255;
 			if (++i >= nsegments)
 				break;
-			R[i] = this.random(256);
-			G[i] = this.random(256);
-			B[i] = this.random(256);
+			R[i] = random(256);
+			G[i] = random(256);
+			B[i] = random(256);
 			if (++i >= nsegments)
 				break;
 			R[i] = whitemode * 255;
@@ -363,9 +357,9 @@ function Palette()
 			} else if (i % 3 === 0) {
 				R[i] = G[i] = B[i] = 255;
 			} else {
-				s = this.random(256);
-				h = this.random(128 - 32);
-				v = this.random(128);
+				s = random(256);
+				h = random(128 - 32);
+				v = random(128);
 				if ((i % 6 > 3) ^ (i % 3 === 1)) {
 					h += 42 + 16;
 				} else {
@@ -424,16 +418,16 @@ function Palette()
 		this.mksmooth(nsegments, segmentsize, R, G, B);
 	};
 
-	this.mkrandom = function(depth)
+	this.mkrandom = function()
 	{
 		// 85 = 255 / 3
 		var segmentsize, nsegments;
-		var whitemode = this.random(2);
+		var whitemode = random(2);
 
-		segmentsize  = this.random(85 + 4);
-		segmentsize += this.random(85 + 4);
-		segmentsize += this.random(85 + 4);
-		segmentsize += this.random(85 + 4);	/* Make smaller segments with higher probability */
+		segmentsize  = random(85 + 4);
+		segmentsize += random(85 + 4);
+		segmentsize += random(85 + 4);
+		segmentsize += random(85 + 4);	/* Make smaller segments with higher probability */
 
 		segmentsize = Math.abs(segmentsize >> 1 - 85 + 3);
 		if (segmentsize < 8)
@@ -441,7 +435,7 @@ function Palette()
 		if (segmentsize > 85)
 			segmentsize = 85;
 
-		switch (this.random(6)) {
+		switch (random(6)) {
 			case 0:
 				segmentsize = Math.floor(segmentsize/2)*2;
 				nsegments = Math.floor(256 / segmentsize);
@@ -458,22 +452,56 @@ function Palette()
 				this.randomize_segments3(whitemode, nsegments, segmentsize);
 				break;
 			case 3:
-				this.randomize_segments1(whitemode, depth, 1);
+				this.randomize_segments1(whitemode, Config.depthNow, 1);
 				break;
 			case 4:
-				this.randomize_segments2(whitemode, depth, 1);
+				this.randomize_segments2(whitemode, Config.depthNow, 1);
 				break;
 			case 5:
-				this.randomize_segments3(whitemode, depth, 1);
+				this.randomize_segments3(whitemode, Config.depthNow, 1);
 				break;
 		}
 	};
 
-	this.mkdefault = function()
-	{
-		this.red = this.green = this.blue = new Uint8Array([0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99,0xaa,0xbb,0xcc,0xdd,0xee,0xff]);
+	this.mkdefault = function() {
+		var gray = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff];
+		this.mksmooth(16, 1, gray, gray, gray);
 	};
 
+	/**
+	 * Set paletteBuffer
+	 *
+	 * @param {ArrayBuffer} paletteBuffer
+	 * @param {number} offset
+	 */
+	this.setPaletteBuffer = function(paletteBuffer, offset) {
+		var paletteSize = Config.paletteSize;
+		var out32 = new Uint32Array(paletteBuffer);
+		var i, j, k;
+
+		// palette offset may not be negative
+		if (offset < 0)
+			offset = (paletteSize - 1) - (-offset - 1) % paletteSize;
+		else
+			offset = offset % paletteSize;
+
+		// apply colour cycling
+		for (i = 0; i < Config.depthNow; i++) {
+			out32[i] = palette32[(offset + i) % paletteSize];
+		}
+
+		// background colour
+		i = 65535 * 4;
+		palette8[i++] = this.backgroundRed;
+		palette8[i++] = this.backgroundGreen;
+		palette8[i++] = this.backgroundBlue;
+		palette8[i++] = 255;
+		out32[65535] = palette32[65535];
+	};
+
+	/*
+	 * Create initial palette
+	 */
 	this.mkdefault();
 }
 
@@ -853,7 +881,7 @@ Viewport.prototype.calculate = function(x, y) {
 			return iter;
 	} while (++iter < maxiter);
 
-	return 0;
+	return 65535;
 };
 
 /**
@@ -902,7 +930,7 @@ Viewport.prototype.renderLines = function() {
 	var yError = this.yError;
 	var yFrom = this.yFrom;
 	var pixels = this.pixels;
-	var calculate = Formula.prototype.calculate;
+	var calculate = Formula.calculate;
 
 	if (worstXerr > worstYerr) {
 
@@ -975,13 +1003,13 @@ Viewport.prototype.renderLines = function() {
 
 Viewport.prototype.fill = function() {
 
+	this.centerX = Config.centerX;
+	this.centerY = Config.centerY;
+	this.radius = Config.radius;
+	this.angle = Config.angle;
+
 	this.frame = new Frame(this.viewWidth, this.viewHeight);
 	this.pixels = new Uint16Array(this.frame.pixelBuffer);
-
-	this.centerX = -0.75;
-	this.centerY = 0;
-	this.radius = 2.5;
-	this.angle = 0;
 
 	var d = Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight);
 	this.radiusX = this.radius * this.viewWidth / d;
@@ -990,19 +1018,21 @@ Viewport.prototype.fill = function() {
 	this.rsin = Math.sin(this.angle * Math.PI / 180);
 	this.rcos = Math.cos(this.angle * Math.PI / 180);
 
+	var ji, j, i, y, x;
 
-	for (var i = 0; i < this.xCoord.length; i++)
+	for (i = 0; i < this.xCoord.length; i++)
 		this.xNearest[i] = this.xCoord[i] = ((this.centerX + this.radius) - (this.centerX - this.radius)) * i / (this.xCoord.length - 1) + (this.centerX - this.radius);
-	for (var i = 0; i < this.xCoord.length; i++)
+	for (i = 0; i < this.yCoord.length; i++)
 		this.yNearest[i] = this.yCoord[i] = ((this.centerY + this.radius) - (this.centerY - this.radius)) * i / (this.yCoord.length - 1) + (this.centerY - this.radius);
 
-	var ji = 0;
-	for (var j = 0; j < this.diameter; j++) {
-		var y = (this.centerY - this.radius) + this.radius * 2 * j / this.diameter;
-		for (var i = 0; i < this.diameter; i++) {
+	var calculate = Formula.calculate;
+	ji = 0;
+	for (j = 0; j < this.diameter; j++) {
+		y = (this.centerY - this.radius) + this.radius * 2 * j / this.diameter;
+		for (i = 0; i < this.diameter; i++) {
 			// distance to center
-			var x = (this.centerX - this.radius) + this.radius * 2 * i / this.diameter;
-			this.pixels[ji++] = this.calculate(x, y);
+			x = (this.centerX - this.radius) + this.radius * 2 * i / this.diameter;
+			this.pixels[ji++] = calculate(x, y);
 		}
 	}
 };
@@ -1128,7 +1158,7 @@ function GUI(config) {
 	this.currentViewport = this.viewport0;
 
 	// small viewport for initial image
-	this.viewportInit = new Viewport(256, 256);
+	this.viewportInit = new Viewport(64, 64);
 	this.viewportInit.fill();
 	this.currentViewport.setPosition(new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight), Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 
@@ -1202,6 +1232,8 @@ function GUI(config) {
 	});
 	this.depth.setCallbackValueChange(function(newValue) {
 		newValue = Math.round(newValue);
+		// needs to be a multiple of 4
+		newValue = (newValue+3)&~3;
 		Config.depthNow = newValue;
 		self.domDepthLeft.innerHTML = newValue;
 	});
@@ -1214,30 +1246,35 @@ function GUI(config) {
 	// listboxes
 	this.formula.listbox.setCallbackFocusChange(function(focusedItem) {
 		Config.formula = focusedItem.id;
-		self.domFormulaButton.innerText = focusedItem.innerText;
+		this.domFormulaButton.innerText = focusedItem.innerText;
 		var formula = focusedItem.id.substr(8) | 0;
-		Formula.prototype.formula = formula;
-	});
+		Formula.formula = formula;
+		Config.home();
+		this.reload();
+	}.bind(this));
 	this.incolour.listbox.setCallbackFocusChange(function(focusedItem) {
 		Config.incolour = focusedItem.id;
-		self.domIncolourButton.innerText = focusedItem.innerText;
+		this.domIncolourButton.innerText = focusedItem.innerText;
 		var incolour = focusedItem.id.substr(9) | 0;
-		Formula.prototype.incolour = incolour;
-
-	});
+		Formula.incolour = incolour;
+		this.reload();
+	}.bind(this));
 	this.outcolour.listbox.setCallbackFocusChange(function(focusedItem) {
 		Config.outcolour = focusedItem.id;
-		self.domOutcolourButton.innerText = focusedItem.innerText;
+		this.domOutcolourButton.innerText = focusedItem.innerText;
 		var outcolour = focusedItem.id.substr(10) | 0;
-		Formula.prototype.outcolour = outcolour;
-	});
+		Formula.outcolour = outcolour;
+		this.reload();
+	}.bind(this));
 	this.plane.listbox.setCallbackFocusChange(function(focusedItem) {
 		Config.plane = focusedItem.id;
-		self.domPlaneButton.innerText = focusedItem.innerText;
+		this.domPlaneButton.innerText = focusedItem.innerText;
 		var plane = focusedItem.id.substr(6) | 0;
-		Formula.prototype.plane = plane;
+		Formula.plane = plane;
+		Config.home();
+		this.reload();
 
-	});
+	}.bind(this));
 
 	// buttons
 	this.power.setCallbackValueChange(function(newValue) {
@@ -1255,22 +1292,15 @@ function GUI(config) {
 		}
 	});
 	this.home.setCallbackValueChange(function(newValue) {
-		Config.centerX = -0.75;
-		Config.centerY = 0;
-		Config.radius = 2.5;
-		Config.angle = 0;
 		Config.autopilotX = 0;
 		Config.autopilotY = 0;
-
-		var frame = this.frames.shift();
-		if (!frame)
-			frame = new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight);
-		this.currentViewport.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+		Config.home();
+		this.reload();
 	}.bind(this));
 
 	this.paletteGroup.setCallbackFocusChange(function(newButton) {
 		if (newButton.domButton.id === "idRandomPaletteButton") {
-			window.palette.mkrandom(Config.depthNow);
+			window.palette.mkrandom();
 		} else {
 			window.palette.mkdefault();
 		}
@@ -1528,6 +1558,23 @@ GUI.prototype.stop = function() {
 };
 
 /**
+ * (re)load initial frame
+ */
+GUI.prototype.reload = function() {
+
+	// set all pixels
+	this.viewportInit.fill();
+
+	// allocate new current frame
+	var frame = this.frames.shift();
+	if (!frame)
+		frame = new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight);
+
+	// inject into current viewport
+	this.currentViewport.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+};
+
+/**
  * Synchronise screen updates
  *
  * @param {number} time
@@ -1733,7 +1780,7 @@ GUI.prototype.mainloop = function() {
 	 * Update palette cycle offset
 	 */
 	if (Config.paletteSpeedNow)
-		Config.paletteOffset -= diffSec * Config.paletteSpeedNow;
+		Config.paletteOffsetFloat -= diffSec * Config.paletteSpeedNow;
 
 	/*
 	 * Update viewport angle (before zoom gestures)
@@ -1776,7 +1823,8 @@ GUI.prototype.mainloop = function() {
 		Config.radius  = Config.radius / magnify;
 	}
 
-	this.domStatusQuality.innerHTML = JSON.stringify({lines:this.currentViewport.doneX+this.currentViewport.doneY, calc: this.currentViewport.doneCalc});
+	this.domStatusQuality.innerHTML = JSON.stringify({lines:this.currentViewport.doneX+this.currentViewport.doneY, calc: this.currentViewport.doneCalc,
+	x: Config.centerX.toFixed(3), y: Config.centerY.toFixed(3), r: Config.radius.toFixed(3)});
 	this.currentViewport.doneX = 0;
 	this.currentViewport.doneY = 0;
 	this.currentViewport.doneCalc = 0;
@@ -1810,7 +1858,9 @@ GUI.prototype.mainloop = function() {
 	oldViewport.frame = null;
 
 	oldFrame.now = performance.now();
-	oldFrame.setPalette(window.palette, Config.paletteOffset, Config.depthNow);
+
+	// inject palette into frame
+	palette.setPaletteBuffer(oldFrame.paletteBuffer, Math.round(Config.paletteOffsetFloat));
 
 	/*
 	 * The message queue is overloaded, so call direct until improved design

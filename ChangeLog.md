@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Config() static scoping
+- Formula() static scoping
+- Improved palette and pixel value 65535 for background
+- Fast initial image
 
 ## [0.7.0] 2018-02-20
 
