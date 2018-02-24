@@ -863,8 +863,8 @@ Viewport.prototype.draw = function(paletteBuffer, pixelBuffer, rgbaBuffer) {
  * @returns {number}
  */
 Viewport.prototype.calculate = function(x, y) {
-	var zre = 0;
-	var zim = 0;
+	var zre = x;
+	var zim = y;
 	var pre = x;
 	var pim = y;
 
