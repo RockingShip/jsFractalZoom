@@ -114,6 +114,11 @@ function Config() {
 	Config.radius = 0;
 	/** @member {number} - current viewport angle (degrees) - timer updated */
 	Config.angle = 0;
+	/** @member {number} - sin(angle) */
+	Config.rsin = 0;
+	/** @member {number} - cos(angle) */
+	Config.rcos = 1;
+
 
 	/** @member {number} - current palette offset - timer updated */
 	Config.paletteOffsetFloat = 0;
@@ -180,6 +185,9 @@ Config.home = function() {
 		Config.centerY = initial.y;
 		Config.radius = initial.r;
 		Config.angle = initial.a;
+		Config.rsin = Math.sin(Config.angle * Math.PI / 180);
+		Config.rcos = Math.cos(Config.angle * Math.PI / 180);
+
 	}
 };
 
@@ -529,26 +537,13 @@ function Viewport(width, height) {
 	this.viewHeight = height;
 	/** @member {number} - diameter of the pixel data */
 	this.diameter = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
-	/** @member {Uint8Array} - pixel data (must be square) */
+	/** @member {Uint16Array} - pixel data (must be square) */
 	this.pixels = undefined;
 
-	/** @member {number} - center X coordinate */
-	this.centerX = 0;
-	/** @member {number} - center Y coordinate */
-	this.centerY = 0;
-	/** @member {number} - distance between center and viewport corner */
-	this.radius = 0;
 	/** @member {number} - distance between center and horizontal viewport edge (derived from this.radius) */
 	this.radiusX = 0;
 	/** @member {number} - distance between center and vertical viewport edge  (derived from this.radius) */
 	this.radiusY = 0;
-
-	/** @member {number} - angle */
-	this.angle = 0;
-	/** @member {number} - sin(angle) */
-	this.rsin = 0;
-	/** @member {number} - cos(angle) */
-	this.rcos = 1;
 
 	this.xCoord = new Float64Array(this.diameter);
 	this.xNearest = new Float64Array(this.diameter);
@@ -559,10 +554,17 @@ function Viewport(width, height) {
 	this.yError = new Float64Array(this.diameter);
 	this.yFrom = new Int32Array(this.diameter);
 
-	this.doneX = 0;
-	this.doneY = 0;
-	this.doneCalc = 0;
+	/*
+	 * Static members
+	 */
+	Viewport.doneX = 0;
+	Viewport.doneY = 0;
+	Viewport.doneCalc = 0;
 
+	// list of free frames
+	Viewport.frames = [];
+	// list of pending requestAnimationFrames()
+	Viewport.raf = [];
 
 }
 
@@ -619,39 +621,50 @@ Viewport.prototype.makeRuler = function(start, end, newCoord, newNearest, newErr
 /**
  * Set the center coordinate and radius.
  *
- * @param {Frame} frame
  * @param {number} x
  * @param {number} y
  * @param {number} radius
  * @param {number} angle
  * @param {Viewport} oldViewport
  */
-Viewport.prototype.setPosition = function(frame, x, y, radius, angle, oldViewport) {
+Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
+
+	/** @var {Frame} frame */
+	var frame;
+
+	/*
+	 * allocate a new frame
+	 */
+	do {
+		frame = Viewport.frames.shift();
+	} while (frame && (frame.viewWidth !== this.viewWidth || frame.viewHeight !== this.viewHeight));
+
+	if (!frame)
+		frame = new Frame(this.viewWidth, this.viewHeight);
+
 
 	this.frame = frame;
 	this.frame.angle = angle;
 	this.pixels = new Uint16Array(frame.pixelBuffer);
 
-	this.centerX = x;
-	this.centerY = y;
-	this.radius = radius;
-
-	var d = Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight);
-	this.radiusX = radius * this.viewWidth / d;
-	this.radiusY = radius * this.viewHeight / d;
+	Config.centerX = x;
+	Config.centerY = y;
+	Config.radius = radius;
+	this.radiusX = radius * this.viewWidth / this.diameter;
+	this.radiusY = radius * this.viewHeight / this.diameter;
 
 	// set angle
-	this.angle = angle;
-	this.rsin = Math.sin(angle * Math.PI / 180);
-	this.rcos = Math.cos(angle * Math.PI / 180);
+	Config.angle = angle;
+	Config.rsin = Math.sin(angle * Math.PI / 180);
+	Config.rcos = Math.cos(angle * Math.PI / 180);
 
 	// window.gui.domStatusQuality.innerHTML = JSON.stringify({x:x, y:y, r:radius, a:angle});
 
 	/*
 	 * setup new rulers
 	 */
-	this.makeRuler(this.centerX - this.radius, this.centerX + this.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, oldViewport.xNearest, oldViewport.xError);
-	this.makeRuler(this.centerY - this.radius, this.centerY + this.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, oldViewport.yNearest, oldViewport.yError);
+	this.makeRuler(Config.centerX - Config.radius, Config.centerX + Config.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, oldViewport.xNearest, oldViewport.xError);
+	this.makeRuler(Config.centerY - Config.radius, Config.centerY + Config.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, oldViewport.yNearest, oldViewport.yError);
 
 	/**
 	 **!
@@ -809,7 +822,7 @@ Viewport.prototype.draw = function(paletteBuffer, pixelBuffer, rgbaBuffer) {
 	var diameter = this.diameter; // pixel scanline width (it's square)
 	var viewWidth = this.viewWidth; // viewport width
 	var viewHeight = this.viewHeight; // viewport height
-	var angle = this.angle;
+	var angle = Config.angle;
 
 	/**
 	 **!
@@ -941,7 +954,7 @@ Viewport.prototype.renderLines = function() {
 		last = calculate(x, this.yCoord[0]);
 		pixels[ji] = last;
 		ji += diameter;
-		this.doneCalc++;
+		Viewport.doneCalc++;
 		for (j = 1; j < diameter; j++) {
 			/*
 			 * Logic would say 'this.yFrom[j] === -1', but haven't been able to figure out why this works better
@@ -949,7 +962,7 @@ Viewport.prototype.renderLines = function() {
 			 */
 			if (yError[j] === 0 || yFrom[j] !== -1) {
 				last = calculate(x, yCoord[j]);
-				this.doneCalc++;
+				Viewport.doneCalc++;
 			}
 			pixels[ji] = last;
 			ji += diameter;
@@ -966,7 +979,7 @@ Viewport.prototype.renderLines = function() {
 
 		xNearest[i] = x;
 		xError[i] = 0;
-		this.doneX++;
+		Viewport.doneX++;
 
 	} else {
 
@@ -977,11 +990,11 @@ Viewport.prototype.renderLines = function() {
 		ji = j * diameter + 0;
 		last = calculate(xCoord[0], y);
 		pixels[ji++] = last;
-		this.doneCalc++;
+		Viewport.doneCalc++;
 		for (i = 1; i < diameter; i++) {
 			if (xError[i] === 0 || xFrom[i] !== -1) {
 				last = calculate(xCoord[i], y);
-				this.doneCalc++;
+				Viewport.doneCalc++;
 			}
 			pixels[ji++] = last;
 		}
@@ -997,41 +1010,32 @@ Viewport.prototype.renderLines = function() {
 
 		yNearest[j] = y;
 		yError[j] = 0;
-		this.doneY++;
+		Viewport.doneY++;
 	}
 };
 
 Viewport.prototype.fill = function() {
 
-	this.centerX = Config.centerX;
-	this.centerY = Config.centerY;
-	this.radius = Config.radius;
-	this.angle = Config.angle;
-
 	this.frame = new Frame(this.viewWidth, this.viewHeight);
 	this.pixels = new Uint16Array(this.frame.pixelBuffer);
 
-	var d = Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight);
-	this.radiusX = this.radius * this.viewWidth / d;
-	this.radiusY = this.radius * this.viewHeight / d;
-
-	this.rsin = Math.sin(this.angle * Math.PI / 180);
-	this.rcos = Math.cos(this.angle * Math.PI / 180);
+	this.radiusX = Config.radius * this.viewWidth / this.diameter;
+	this.radiusY = Config.radius * this.viewHeight / this.diameter;
 
 	var ji, j, i, y, x;
 
 	for (i = 0; i < this.xCoord.length; i++)
-		this.xNearest[i] = this.xCoord[i] = ((this.centerX + this.radius) - (this.centerX - this.radius)) * i / (this.xCoord.length - 1) + (this.centerX - this.radius);
+		this.xNearest[i] = this.xCoord[i] = ((Config.centerX + Config.radius) - (Config.centerX - Config.radius)) * i / (this.xCoord.length - 1) + (Config.centerX - Config.radius);
 	for (i = 0; i < this.yCoord.length; i++)
-		this.yNearest[i] = this.yCoord[i] = ((this.centerY + this.radius) - (this.centerY - this.radius)) * i / (this.yCoord.length - 1) + (this.centerY - this.radius);
+		this.yNearest[i] = this.yCoord[i] = ((Config.centerY + Config.radius) - (Config.centerY - Config.radius)) * i / (this.yCoord.length - 1) + (Config.centerY - Config.radius);
 
 	var calculate = Formula.calculate;
 	ji = 0;
 	for (j = 0; j < this.diameter; j++) {
-		y = (this.centerY - this.radius) + this.radius * 2 * j / this.diameter;
+		y = (Config.centerY - Config.radius) + Config.radius * 2 * j / this.diameter;
 		for (i = 0; i < this.diameter; i++) {
 			// distance to center
-			x = (this.centerX - this.radius) + this.radius * 2 * i / this.diameter;
+			x = (Config.centerX - Config.radius) + Config.radius * 2 * i / this.diameter;
 			this.pixels[ji++] = calculate(x, y);
 		}
 	}
@@ -1137,10 +1141,6 @@ function GUI(config) {
 
 	// list of web workers
 	this.wworkers = [];
-	// list of free frames
-	this.frames = [];
-	// list of pending requestAnimationFrames()
-	this.raf = [];
 
 	/*
 	 * Find the elements and replace the string names for DOM references
@@ -1160,7 +1160,7 @@ function GUI(config) {
 	// small viewport for initial image
 	this.viewportInit = new Viewport(64, 64);
 	this.viewportInit.fill();
-	this.currentViewport.setPosition(new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight), Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+	this.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 
 	// create formula engine
 	this.calculator = new Formula();
@@ -1327,7 +1327,7 @@ function GUI(config) {
 			var response = e.data;
 
 			// move request to pending requestAnimationFrames()
-			this.raf.push(response);
+			Viewport.raf.push(response);
 			// request animation
 			window.requestAnimationFrame(this.animationFrame);
 
@@ -1517,8 +1517,8 @@ GUI.prototype.handleMouse = function(event) {
 	var dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
 	var dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
 	// undo rotation
-	this.mouseX = dy * viewport.rsin + dx * viewport.rcos + viewport.centerX;
-	this.mouseY = dy * viewport.rcos - dx * viewport.rsin + viewport.centerY;
+	this.mouseX = dy * Config.rsin + dx * Config.rcos + Config.centerX;
+	this.mouseY = dy * Config.rcos - dx * Config.rsin + Config.centerY;
 
 	this.mouseButtons = event.buttons;
 
@@ -1567,16 +1567,11 @@ GUI.prototype.stop = function() {
  */
 GUI.prototype.reload = function() {
 
-	// set all pixels
+	// set all pixels of thumbnail
 	this.viewportInit.fill();
 
-	// allocate new current frame
-	var frame = this.frames.shift();
-	if (!frame)
-		frame = new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight);
-
 	// inject into current viewport
-	this.currentViewport.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+	this.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 };
 
 /**
@@ -1588,9 +1583,9 @@ GUI.prototype.animationFrame = function(time) {
 	// paint image onto canvas
 
 	// move request to pending requestAnimationFrames()
-	while (this.raf.length) {
+	while (Viewport.raf.length) {
 
-		var request = this.raf.shift();
+		var request = Viewport.raf.shift();
 		var rgba = new Uint8ClampedArray(request.rgbaBuffer);
 		var imagedata = new ImageData(rgba, request.viewWidth, request.viewHeight);
 
@@ -1598,7 +1593,7 @@ GUI.prototype.animationFrame = function(time) {
 		this.ctx.putImageData(imagedata, 0, 0);
 
 		// move request to free list
-		this.frames.push(request);
+		Viewport.frames.push(request);
 	}
 
 	this.statStateRAF += ((performance.now() - this.rafTime) - this.statStateRAF) * this.coef;
@@ -1754,7 +1749,6 @@ GUI.prototype.mainloop = function() {
 	 * test for viewport resize
 	 */
 	var domViewport = this.domViewport;
-	if (0)
 	if (domViewport.clientWidth !== domViewport.width || domViewport.clientHeight !== domViewport.height) {
 		// set property
 		domViewport.width = domViewport.clientWidth;
@@ -1767,15 +1761,14 @@ GUI.prototype.mainloop = function() {
 		this.viewport0 = new Viewport(domViewport.clientWidth, domViewport.clientHeight);
 		this.viewport1 = new Viewport(domViewport.clientWidth, domViewport.clientHeight);
 
-		var frame = this.frames.shift();
-		if (!frame)
-			frame = new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight);
-
-		// copy the contents. However the start frame is empty because the input has none
-		if (this.frameNr & 1)
-			this.viewport1.setPosition(frame, oldViewport1.centerX, oldViewport1.centerY, oldViewport1.radius, oldViewport1.angle, this.viewport1);
-		else
-			this.viewport0.setPosition(frame, oldViewport0.centerX, oldViewport0.centerY, oldViewport0.radius, oldViewport0.angle, this.viewport0);
+		// copy the contents
+		if (this.frameNr & 1) {
+			this.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport1);
+			this.currentViewport = this.viewport1;
+		} else {
+			this.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport0);
+			this.currentViewport = this.viewport0;
+		}
 
 		// update GUI
 		this.domWxH.innerHTML = "[" + domViewport.clientWidth + "x" + domViewport.clientHeight + "]";
@@ -1800,8 +1793,8 @@ GUI.prototype.mainloop = function() {
 		var dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
 		var dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
 		// undo rotation
-		var x = dy * viewport.rsin + dx * viewport.rcos + viewport.centerX;
-		var y = dy * viewport.rcos - dx * viewport.rsin + viewport.centerY;
+		var x = dy * Config.rsin + dx * Config.rcos + Config.centerX;
+		var y = dy * Config.rcos - dx * Config.rsin + Config.centerY;
 
 		if (!this.dragActive) {
 			// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
@@ -1828,13 +1821,14 @@ GUI.prototype.mainloop = function() {
 		Config.radius  = Config.radius / magnify;
 	}
 
-	this.domStatusQuality.innerHTML = JSON.stringify({lines:this.currentViewport.doneX+this.currentViewport.doneY, calc: this.currentViewport.doneCalc,
+	this.domStatusQuality.innerHTML = JSON.stringify({lines:Viewport.doneX+Viewport.doneY, calc: Viewport.doneCalc,
 	x: Config.centerX.toFixed(3), y: Config.centerY.toFixed(3), r: Config.radius.toFixed(3)});
-	this.currentViewport.doneX = 0;
-	this.currentViewport.doneY = 0;
-	this.currentViewport.doneCalc = 0;
+	Viewport.doneX = 0;
+	Viewport.doneY = 0;
+	Viewport.doneCalc = 0;
 
 	var oldViewport = this.currentViewport;
+	var oldFrame = oldViewport.frame;
 
 	/*
 	 * COPY
@@ -1842,26 +1836,17 @@ GUI.prototype.mainloop = function() {
 
 	this.frameNr++;
 
-	// allocate frame storage
-	var frame = this.frames.shift();
-	if (!frame)
-		frame = new Frame(this.currentViewport.viewWidth, this.currentViewport.viewHeight);
-
 	if (this.frameNr & 1) {
-		this.viewport1.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport0);
+		this.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport0);
 		this.currentViewport = this.viewport1;
 	} else {
-		this.viewport0.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport1);
+		this.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport1);
 		this.currentViewport = this.viewport0;
 	}
 
 	/*
 	 * Create palette
 	 */
-
-	var oldFrame = oldViewport.frame;
-	oldViewport.frame = null;
-
 	oldFrame.now = performance.now();
 
 	// inject palette into frame
@@ -1872,7 +1857,7 @@ GUI.prototype.mainloop = function() {
 	 */
 	if (1) {
 		oldViewport.draw(oldFrame.paletteBuffer, oldFrame.pixelBuffer, oldFrame.rgbaBuffer);
-		this.raf.push(oldFrame);
+		Viewport.raf.push(oldFrame);
 		window.requestAnimationFrame(this.animationFrame);
 		this.statStatePaint1 += ((performance.now() - oldFrame.now) - this.statStatePaint1) * this.coef;
 		this.statStatePaint2 += ((oldFrame.msec) - this.statStatePaint2) * this.coef;
@@ -1922,8 +1907,8 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 
 	// coordinate within pixel data pointed to by mouse
 	// todo: compensate rotation
-	var api = ((Config.autopilotX - this.centerX) / this.radius + 1) * this.diameter >> 1;
-	var apj = ((Config.autopilotY - this.centerY) / this.radius + 1) * this.diameter >> 1;
+	var api = ((Config.autopilotX - Config.centerX) / Config.radius + 1) * this.diameter >> 1;
+	var apj = ((Config.autopilotY - Config.centerY) / Config.radius + 1) * this.diameter >> 1;
 
 	var min = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
 	var max = min * 3;
@@ -1934,11 +1919,11 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 			var i0 = api + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
 			var j0 = apj + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
 			// convert to x/y
-			var x = (i0 / this.diameter * 2 - 1) * this.radius + this.centerX;
-			var y = (j0 / this.diameter * 2 - 1) * this.radius + this.centerY;
+			var x = (i0 / this.diameter * 2 - 1) * Config.radius + Config.centerX;
+			var y = (j0 / this.diameter * 2 - 1) * Config.radius + Config.centerY;
 			// convert to viewport coords (use '>>1' as integer '/2'
-			var i = (((x - this.centerX) * this.rcos - (y - this.centerY) * this.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
-			var j = (((x - this.centerX) * this.rsin + (y - this.centerY) * this.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
+			var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
+			var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
 			// must be visable
 			if (i < borderPixelRadius || j < borderPixelRadius || i >= this.viewWidth-borderPixelRadius || j >= this.viewHeight-borderPixelRadius)
 				continue;
@@ -1953,8 +1938,8 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 				Config.autopilotY = y;
 				Config.autopilotButtons = 1<<Aria.ButtonCode.BUTTON_LEFT;
 
-				var i = (((x - this.centerX) * this.rcos - (y - this.centerY) * this.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
-				var j = (((x - this.centerX) * this.rsin + (y - this.centerY) * this.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
+				var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
+				var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
 				window.gui.domAutopilot.style.top = (j - borderPixelRadius)+"px";
 				window.gui.domAutopilot.style.left = (i - borderPixelRadius)+"px";
 				window.gui.domAutopilot.style.width = (borderPixelRadius*2)+"px";
