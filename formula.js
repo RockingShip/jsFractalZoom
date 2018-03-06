@@ -511,7 +511,7 @@ function Formula () {
 			var pre = (rp-3*ip)*pre1+zpr1;
 			var pim = (3*rp-ip)*pim1+zpi1;
 
-		} while (--iter && zpr*zpr + zpi*zpi < 4);
+		} while (zpr*zpr + zpi*zpi < 4 && --iter > 0);
 
 		iter = maxiter - (iter<<2);
 		if (zpr3*zpr3 + zpi3*zpi3 >= 4)
@@ -624,7 +624,7 @@ function Formula () {
 			var zre2 = rp3-ip3+pre+zpr; var zim2 = zre3*zim3*2+zpi; zpr = zre3*pim; zpi = zim3*pim; rp2 = zre2*zre2; ip2 = zim2*zim2;
 			var zre1 = rp2-ip2+pre+zpr; var zim1 = zre2*zim2*2+zpi; zpr = zre2*pim; zpi = zim2*pim; rp1 = zre1*zre1; ip1 = zim1*zim1;
 			var zre  = rp1-ip1+pre+zpr; var zim  = zre1*zim1*2+zpi; zpr = zre1*pim; zpi = zim1*pim; rp  = zre *zre ; ip  = zim *zim ;
-		} while (--iter && rp+ip < 4);
+		} while (rp+ip < 4 && --iter > 0);
 
 		iter = maxiter - (iter<<2);
 
@@ -663,7 +663,7 @@ function Formula () {
 			var rp = zre*zre;
 			var ip = zim*zim;
 			var t = rp+ip;
-		} while (--iter && t < 100*100 && t > zre*2-0.99);
+		} while (t < 100*100 && t > zre*2-0.99 && --iter > 0);
 
 		iter = maxiter - iter;
 		if (iter)
@@ -705,7 +705,7 @@ function Formula () {
 			var rp = zre*zre;
 			var ip = zim*zim;
 
-		} while (--iter && rp+ip < 100*100 && rp+ip > zre*2-0.99);
+		} while (rp+ip < 100*100 && rp+ip > zre*2-0.99 && --iter > 0);
 
 		iter = maxiter - iter;
 		if (iter)
