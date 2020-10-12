@@ -1085,6 +1085,205 @@ function Zoomer(domZoomer, options) {
 
 	// list of web workers
 	this.wworkers = [];
+
+	/**
+	 * start the mainloop
+	 */
+	this.start = () => {
+		this.state = 1;
+		this.vsync = performance.now() + (1000 / Config.framerateNow); // vsync wakeup time
+		this.statStateCopy = this.statStateUpdate = this.statStatePaint1 = this.statStatePaint2 = 0;
+		window.postMessage("mainloop", "*");
+	};
+
+	/**
+	 * stop the mainloop
+	 */
+	this.stop = () => {
+		this.state = 0;
+	};
+
+	/**
+	 * GUI mainloop called by timer event
+	 *
+	 * @returns {boolean}
+	 */
+	this.mainloop = () => {
+		if (!this.state) {
+			console.log("STOP");
+			return false;
+		}
+		this.mainloopNr++;
+
+		// make local for speed
+		var config = this.config;
+		var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+
+
+		// current time
+		var last;
+		var now = performance.now();
+
+		if (this.vsync === 0 || now > this.vsync + 2000) {
+			// Missed vsync by more than 2 seconds, resync
+			this.vsync = now + (1000 / Config.framerateNow);
+			this.lastTick = now;
+			this.state = 1;
+			console.log("resync");
+		}
+
+		if (this.state === 2) {
+			/*
+			 * UPDATE-before-rAF. calculate inaccurate pixels
+			 */
+			this.counters[2]++;
+			last = now;
+
+			if (now >= this.vsync - 2) {
+				// don't even start if there is less than 2mSec left till next vsync
+				this.state = 3;
+			} else {
+				/*
+				 * update inaccurate pixels
+				 */
+
+				// end time is 2mSec before next vertical sync
+				var endtime = this.vsync - 2;
+				if (endtime > now + 2)
+					endtime = now + 2;
+
+				/*
+				 * Calculate lines
+				 */
+
+				var numLines = 0;
+				while (now < endtime) {
+					viewport.renderLines();
+
+					now = performance.now();
+					numLines++;
+				}
+
+				// update stats
+				this.statStateUpdate += ((now - last) / numLines - this.statStateUpdate) * this.coef;
+
+				window.postMessage("mainloop", "*");
+				return true;
+			}
+		}
+
+		if (this.state === 3) {
+			/*
+			 * IDLE. Wait for vsync
+			 */
+			this.counters[3]++;
+
+			if (now >= this.vsync) {
+				// vsync is NOW
+				this.state = 1;
+				this.vsync += (1000 / Config.framerateNow); // time of next vsync
+				this.rafTime = now;
+			} else {
+				window.postMessage("mainloop", "*");
+				return true;
+			}
+		}
+
+		/**
+		 ***
+		 *** Start of new cycle
+		 ***
+		 **/
+		this.counters[1]++;
+		last = now;
+
+		if (this.onBeginFrame) this.onBeginFrame(this);
+
+		var oldViewport = this.currentViewport;
+		this.oldFrame = oldViewport.frame;
+
+		/*
+		 * COPY
+		 */
+
+		this.frameNr++;
+
+		if (this.frameNr & 1) {
+			this.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport0);
+			this.currentViewport = this.viewport1;
+		} else {
+			this.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport1);
+			this.currentViewport = this.viewport0;
+		}
+
+		/*
+		 * Create palette
+		 */
+		this.oldFrame.now = performance.now();
+
+		if (this.onRenderFrame) this.onRenderFrame(this, this.oldFrame);
+
+		/*
+		 * The message queue is overloaded, so call direct until improved design
+		 */
+		if (1) {
+			oldViewport.draw(this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer);
+			Viewport.raf.push(this.oldFrame);
+			window.requestAnimationFrame(this.animationFrame);
+			this.statStatePaint1 += ((performance.now() - this.oldFrame.now) - this.statStatePaint1) * this.coef;
+			this.statStatePaint2 += ((this.oldFrame.msec) - this.statStatePaint2) * this.coef;
+		} else {
+			this.wworkers[this.frameNr & 3].postMessage(this.oldFrame, [this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer]);
+		}
+
+		/*
+		 * update stats
+		 */
+		now = performance.now();
+		this.statStateCopy += ((now - last) - this.statStateCopy) * this.coef;
+
+		if (this.onEndFrame) this.onEndFrame(this);
+
+		this.state = 2;
+		window.postMessage("mainloop", "*");
+		return true;
+	};
+
+
+	/**
+	 * Use message queue as highspeed queue handler. SetTimeout() is throttled.
+	 *
+	 * @param {message} event
+	 */
+	this.handleMessage = (event) => {
+		if (event.source === window && event.data === "mainloop") {
+			event.stopPropagation();
+			this.mainloop();
+		}
+	};
+
+	/**
+	 * Synchronise screen updates
+	 *
+	 * @param {number} time
+	 */
+	this.animationFrame = (time) => {
+		// paint image onto canvas
+
+		// move request to pending requestAnimationFrames()
+		while (Viewport.raf.length) {
+
+			var request = Viewport.raf.shift();
+
+			if (this.onPutImageData) this.onPutImageData(this, request);
+
+			// move request to free list
+			Viewport.frames.push(request);
+		}
+
+		this.statStateRAF += ((performance.now() - this.rafTime) - this.statStateRAF) * this.coef;
+	};
+
 }
 
 /**
@@ -1368,14 +1567,11 @@ function GUI(config) {
 	this.calculator = new Formula();
 
 	// replace event handlers with a bound instance
-	this.mainloop = this.mainloop.bind(this);
-	this.animationFrame = this.animationFrame.bind(this);
 	this.handleMouse = this.handleMouse.bind(this);
 	this.handleFocus = this.handleFocus.bind(this);
 	this.handleBlur = this.handleBlur.bind(this);
 	this.handleKeyDown = this.handleKeyDown.bind(this);
 	this.handleKeyUp = this.handleKeyUp.bind(this);
-	this.handleMessage = this.handleMessage.bind(this);
 
 	// register global key bindings before widgets overrides
 	this.domZoomer.addEventListener("focus", this.handleFocus);
@@ -1384,7 +1580,7 @@ function GUI(config) {
 	this.domZoomer.addEventListener("contextmenu", this.handleMouse);
 	document.addEventListener("keydown", this.handleKeyDown);
 	document.addEventListener("keyup", this.handleKeyUp);
-	window.addEventListener("message", this.handleMessage);
+	window.addEventListener("message", this.zoomer.handleMessage);
 
 	// construct sliders
 	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
@@ -1481,9 +1677,9 @@ function GUI(config) {
 	// buttons
 	this.power.setCallbackValueChange(function (newValue) {
 		if (newValue)
-			self.start(); // power on
+			self.zoomer.start(); // power on
 		else
-			self.stop(); // power off
+			self.zoomer.stop(); // power off
 	});
 	this.autoPilot.setCallbackValueChange(function (newValue) {
 		Config.autoPilot = newValue;
@@ -1736,209 +1932,11 @@ GUI.prototype.handleMouse = function (event) {
 };
 
 /**
- * Use message queue as highspeed queue handler. SetTimeout() is throttled.
- *
- * @param {message} event
- */
-GUI.prototype.handleMessage = function (event) {
-	if (event.source === window && event.data === "mainloop") {
-		event.stopPropagation();
-		this.mainloop();
-	}
-};
-
-/**
- * start the mainloop
- */
-GUI.prototype.start = function () {
-	this.zoomer.state = 1;
-	this.zoomer.vsync = performance.now() + (1000 / Config.framerateNow); // vsync wakeup time
-	this.zoomer.statStateCopy = this.zoomer.statStateUpdate = this.zoomer.statStatePaint1 = this.zoomer.statStatePaint2 = 0;
-	window.postMessage("mainloop", "*");
-};
-
-/**
- * stop the mainloop
- */
-GUI.prototype.stop = function () {
-	this.zoomer.state = 0;
-};
-
-/**
  * (re)load initial frame
  */
 GUI.prototype.reload = function () {
 
 	if (this.zoomer.onKeyFrame) this.zoomer.onKeyFrame(this.zoomer);
-};
-
-/**
- * Synchronise screen updates
- *
- * @param {number} time
- */
-GUI.prototype.animationFrame = function (time) {
-	// paint image onto canvas
-
-	// move request to pending requestAnimationFrames()
-	while (Viewport.raf.length) {
-
-		var request = Viewport.raf.shift();
-
-		if (this.zoomer.onPutImageData) this.zoomer.onPutImageData(this.zoomer, request);
-
-		// move request to free list
-		Viewport.frames.push(request);
-	}
-
-	this.zoomer.statStateRAF += ((performance.now() - this.zoomer.rafTime) - this.zoomer.statStateRAF) * this.zoomer.coef;
-};
-
-
-/**
- * GUI mainloop called by timer event
- *
- * @returns {boolean}
- */
-GUI.prototype.mainloop = function () {
-	if (!this.zoomer.state) {
-		console.log("STOP");
-		return false;
-	}
-	this.zoomer.mainloopNr++;
-
-	// make local for speed
-	var config = this.config;
-	var viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
-
-
-	// current time
-	var last;
-	var now = performance.now();
-
-	if (this.zoomer.vsync === 0 || now > this.zoomer.vsync + 2000) {
-		// Missed vsync by more than 2 seconds, resync
-		this.zoomer.vsync = now + (1000 / Config.framerateNow);
-		this.zoomer.lastTick = now;
-		this.zoomer.state = 1;
-		console.log("resync");
-	}
-
-	if (this.zoomer.state === 2) {
-		/*
-		 * UPDATE-before-rAF. calculate inaccurate pixels
-		 */
-		this.zoomer.counters[2]++;
-		last = now;
-
-		if (now >= this.zoomer.vsync - 2) {
-			// don't even start if there is less than 2mSec left till next vsync
-			this.zoomer.state = 3;
-		} else {
-			/*
-			 * update inaccurate pixels
-			 */
-
-			// end time is 2mSec before next vertical sync
-			var endtime = this.zoomer.vsync - 2;
-			if (endtime > now + 2)
-				endtime = now + 2;
-
-			/*
-			 * Calculate lines
-			 */
-
-			var numLines = 0;
-			while (now < endtime) {
-				viewport.renderLines();
-
-				now = performance.now();
-				numLines++;
-			}
-
-			// update stats
-			this.zoomer.statStateUpdate += ((now - last) / numLines - this.zoomer.statStateUpdate) * this.zoomer.coef;
-
-			window.postMessage("mainloop", "*");
-			return true;
-		}
-	}
-
-	if (this.zoomer.state === 3) {
-		/*
-		 * IDLE. Wait for vsync
-		 */
-		this.zoomer.counters[3]++;
-
-		if (now >= this.zoomer.vsync) {
-			// vsync is NOW
-			this.zoomer.state = 1;
-			this.zoomer.vsync += (1000 / Config.framerateNow); // time of next vsync
-			this.zoomer.rafTime = now;
-		} else {
-			window.postMessage("mainloop", "*");
-			return true;
-		}
-	}
-
-	/**
-	 ***
-	 *** Start of new cycle
-	 ***
-	 **/
-	this.zoomer.counters[1]++;
-	last = now;
-
-	if (this.zoomer.onBeginFrame) this.zoomer.onBeginFrame(this.zoomer);
-
-	var oldViewport = this.zoomer.currentViewport;
-	this.oldFrame = oldViewport.frame;
-
-	/*
-	 * COPY
-	 */
-
-	this.zoomer.frameNr++;
-
-	if (this.zoomer.frameNr & 1) {
-		this.zoomer.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer.viewport0);
-		this.zoomer.currentViewport = this.zoomer.viewport1;
-	} else {
-		this.zoomer.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer.viewport1);
-		this.zoomer.currentViewport = this.zoomer.viewport0;
-	}
-
-	/*
-	 * Create palette
-	 */
-	this.oldFrame.now = performance.now();
-
-	if (this.zoomer.onRenderFrame) this.zoomer.onRenderFrame(this.zoomer, this.oldFrame);
-
-	/*
-	 * The message queue is overloaded, so call direct until improved design
-	 */
-	if (1) {
-		oldViewport.draw(this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer);
-		Viewport.raf.push(this.oldFrame);
-		window.requestAnimationFrame(this.animationFrame);
-		this.zoomer.statStatePaint1 += ((performance.now() - this.oldFrame.now) - this.zoomer.statStatePaint1) * this.zoomer.coef;
-		this.zoomer.statStatePaint2 += ((this.oldFrame.msec) - this.zoomer.statStatePaint2) * this.zoomer.coef;
-	} else {
-		this.zoomer.wworkers[this.zoomer.frameNr & 3].postMessage(this.oldFrame, [this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer]);
-	}
-
-	/*
-	 * update stats
-	 */
-	now = performance.now();
-	this.zoomer.statStateCopy += ((now - last) - this.zoomer.statStateCopy) * this.zoomer.coef;
-
-	if (this.zoomer.onEndFrame) this.zoomer.onEndFrame(this.zoomer);
-
-	this.zoomer.state = 2;
-	window.postMessage("mainloop", "*");
-	return true;
 };
 
 /**

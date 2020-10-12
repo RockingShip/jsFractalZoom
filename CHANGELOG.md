@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-12 13:23:57 Relocate related functions to `Zoomer`.
 2020-10-12 13:10:23 Relocate related data members to `Zoomer`.
 2020-10-12 10:50:54 Extract and relocate zoomer callbacks.
 2020-10-12 09:27:04 Isolate resource handling.
