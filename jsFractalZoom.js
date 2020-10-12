@@ -72,11 +72,11 @@ function Config() {
 	Config.autoPilot = false;
 
 	/** @member {number} - zoom magnification slider Min */
-	Config.magnificationMin = 1.0;
+	Config.zoomSpeedMin = 1.0;
 	/** @member {number} - zoom magnification slider Max */
-	Config.magnificationMax = 1000.0;
+	Config.zoomSpeedMax = 300.0;
 	/** @member {number} - zoom magnification slider Now */
-	Config.magnificationNow = Config.logTolinear(Config.magnificationMin, Config.magnificationMax, 1000);
+	Config.zoomSpeedNow = Config.logTolinear(Config.zoomSpeedMin, Config.zoomSpeedMax, 100);
 
 	/** @member {number} - rotate speed slider Min */
 	Config.rotateSpeedMin = -0.5;
@@ -1495,7 +1495,7 @@ function GUI(config) {
 			// zoom-in/out gesture
 			if (Config.zoomSpeed) {
 				// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
-				const magnify = Math.pow(Config.magnificationNow, Config.zoomSpeed * diffSec);
+				const magnify = Math.pow(Config.zoomSpeedNow, Config.zoomSpeed * diffSec);
 
 				// zoom, The mouse pointer coordinate should not change
 				Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
@@ -1584,7 +1584,7 @@ function GUI(config) {
 
 	// construct sliders
 	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
-		Config.magnificationMin, Config.magnificationMax, Config.magnificationNow);
+		Config.zoomSpeedMin, Config.zoomSpeedMax, Config.zoomSpeedNow);
 	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
 		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
 	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
@@ -1616,8 +1616,8 @@ function GUI(config) {
 	// sliders
 	this.speed.setCallbackValueChange(function (newValue) {
 		// scale exponentially
-		newValue = Config.linearToLog(Config.magnificationMin, Config.magnificationMax, newValue);
-		Config.magnificationNow = newValue;
+		newValue = Config.linearToLog(Config.zoomSpeedMin, Config.zoomSpeedMax, newValue);
+		Config.zoomSpeedNow = newValue;
 		self.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
 	});
 	this.rotateSpeed.setCallbackValueChange(function (newValue) {
