@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-12 14:24:27 Extract core logic into `zoomer.js`.
 2020-10-12 14:21:12 Modernised `this` binding.
 2020-10-12 13:23:57 Lowered and renamed `zoomSpeed`.
 2020-10-12 13:23:57 Relocate related functions to `Zoomer`.
