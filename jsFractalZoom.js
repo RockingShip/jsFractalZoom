@@ -197,7 +197,7 @@ Config.home = function () {
  * NOTE: Palette is always 65536 large (16 bits pixel value)
  * NOTE: color 65535 is always background colour
  *
- * @constructor
+ * @class Palette
  */
 function Palette()
 {
@@ -482,7 +482,7 @@ function Palette()
 /**
  * DOM bindings and event handlers
  *
- * @constructor
+ * @class GUI
  * @param config {Config}
  */
 function GUI(config) {
@@ -559,10 +559,34 @@ function GUI(config) {
 	}
 
 	this.zoomer = new Zoomer(this.domZoomer, {
+
 		/**
-		 * Called to create the initial key frame
+		 * Size change detected for `domZoomer`
+		 *
+		 * @param {Zoomer} zoomer      - This
+		 * @param {int}    viewWidth   - Screen width (pixels)
+		 * @param {int}    viewHeight  - Screen height (pixels)
+		 * @param {int}    pixelWidth  - Storage width (pixels)
+		 * @param {int}    pixelHeight - Storage Heignt (pixels)
 		 */
-		onKeyFrame:  (zoomer) => {
+		onResize: (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
+			this.domWxH.innerHTML = "[" + viewWidth + "x" + viewHeight + "]";
+		},
+
+		/**
+		 * Create a keyframe.
+		 * Every frame requires a previous frame to inherit rulers/pixels.
+		 * The only exception are keyframes, who need all pixels rendered.
+		 * However, they can be any size and will be scaled accordingly.
+		 * `Zoomer` requires a preloaded key frame before calling `start()`.
+		 *
+		 * @param {Zoomer}   zoomer            - This
+		 * @param {Viewport} currentViewport   - Current viewport
+		 * @param {Frame}    currentFrame      - Current frame
+		 * @param {Viewport} previousViewport  - Previous viewport to extract rulers/pixels
+		 * @param {Frame}    previousFrame     - Previous frame
+		 */
+		onKeyFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
 			// set all pixels of thumbnail
 			this.viewportInit.fill();
 
@@ -573,9 +597,16 @@ function GUI(config) {
 		},
 
 		/**
-		 * Called to setup a frame. The place to update UI state and set x,y,radius,angle
+		 * Start of a new frame.
+		 * Process timed updates (piloting), set x,y,radius,angle.
+		 *
+		 * @param {Zoomer}   zoomer            - This
+		 * @param {Viewport} currentViewport   - Current viewport
+		 * @param {Frame}    currentFrame      - Current frame
+		 * @param {Viewport} previousViewport  - Previous viewport to extract rulers/pixels
+		 * @param {Frame}    previousFrame     - Previous frame
 		 */
-		onBeginFrame: (zoomer) => {
+		onBeginFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
 			// seconds since last cycle
 			const now = performance.now();
 			const diffSec = (now - this.lastTick) / 1000;
@@ -588,9 +619,9 @@ function GUI(config) {
 						window.gui.domAutopilot.style.border = '4px solid orange';
 					} else {
 						this.domStatusQuality.innerHTML = "";
-						if (!zoomer.viewport1.updateAutopilot(4, 16))
-							if (!zoomer.viewport1.updateAutopilot(60, 16))
-								if (!zoomer.viewport1.updateAutopilot(zoomer.viewport1.diameter >> 1, 16))
+						if (!this.updateAutopilot(zoomer.viewport1, 4, 16))
+							if (!this.updateAutopilot(zoomer.viewport1, 60, 16))
+								if (!this.updateAutopilot(zoomer.viewport1, zoomer.viewport1.diameter >> 1, 16))
 									Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 					}
 				} else {
@@ -599,9 +630,9 @@ function GUI(config) {
 						window.gui.domAutopilot.style.border = '4px solid orange';
 					} else {
 						this.domStatusQuality.innerHTML = "";
-						if (!zoomer.viewport0.updateAutopilot(4, 16))
-							if (!zoomer.viewport0.updateAutopilot(60, 16))
-								if (!zoomer.viewport0.updateAutopilot(zoomer.viewport0.diameter >> 1, 16))
+						if (!this.updateAutopilot(zoomer.viewport0, 4, 16))
+							if (!this.updateAutopilot(zoomer.viewport0, 60, 16))
+								if (!this.updateAutopilot(zoomer.viewport0, zoomer.viewport0.diameter >> 1, 16))
 									Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 					}
 				}
@@ -626,35 +657,6 @@ function GUI(config) {
 
 				if (Config.zoomSpeed >= -0.001 && Config.zoomSpeed < +0.001)
 					Config.zoomSpeed = 0; // full stop
-			}
-
-			/*
-			 * test for viewport resize
-			 */
-			const domZoomer = this.domZoomer;
-			if (domZoomer.clientWidth !== domZoomer.width || domZoomer.clientHeight !== domZoomer.height) {
-				// set property
-				domZoomer.width = domZoomer.clientWidth;
-				domZoomer.height = domZoomer.clientHeight;
-
-				const oldViewport0 = zoomer.viewport0;
-				const oldViewport1 = zoomer.viewport1;
-
-				// create new viewports
-				zoomer.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
-				zoomer.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
-
-				// copy the contents
-				if (zoomer.frameNr & 1) {
-					zoomer.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport1);
-					zoomer.currentViewport = zoomer.viewport1;
-				} else {
-					zoomer.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport0);
-					zoomer.currentViewport = zoomer.viewport0;
-				}
-
-				// update GUI
-				this.domWxH.innerHTML = "[" + domZoomer.clientWidth + "x" + domZoomer.clientHeight + "]";
 			}
 
 			/*
@@ -711,7 +713,13 @@ function GUI(config) {
 		},
 
 		/**
-		 * Called before rendering a frame. The place to update/apply palettes.
+		 * Start extracting (rotated) RGBA values from (paletted) pixels.
+		 * Extract rotated viewport from pixels and store them in specified imnagedata.
+		 * Called just before submitting the frame to a web-worker.
+		 * Previous frame is complete, current frame is under construction.
+		 *
+		 * @param {Zoomer}   zoomer        - This
+		 * @param {Frame}    previousFrame - Previous frame
 		 */
 		onRenderFrame: (zoomer, previousFrame) => {
 			// inject palette into frame
@@ -719,9 +727,12 @@ function GUI(config) {
 		},
 
 		/**
-		 * Called after a frame has been rendered. The place to update UI statistics
+		 * Frame construction complete. Update statistics.
+		 *
+		 * @param {Zoomer}   zoomer       - This
+		 * @param {Frame}    currentFrame - Current frame
 		 */
-		onEndFrame: (zoomer) => {
+		onEndFrame: (zoomer, currentFrame) => {
 
 			// window.gui.domStatusQuality.innerHTML = JSON.stringify(this.counters);
 
@@ -744,7 +755,11 @@ function GUI(config) {
 		},
 
 		/**
-		 * Called to inject imagedata into domZoomer
+		 * Inject frame into canvas.
+		 * This is a callback to keep all canvas resource handling/passing out of Zoomer context.
+		 *
+		 * @param {Zoomer}   zoomer - This
+		 * @param {Frame}    frame  - Frame to inject
 		 */
 		onPutImageData: (zoomer, frame) => {
 
@@ -1105,8 +1120,7 @@ GUI.prototype.handleMouse = function (event) {
  * (re)load initial frame
  */
 GUI.prototype.reload = function () {
-
-	if (this.zoomer.onKeyFrame) this.zoomer.onKeyFrame(this.zoomer);
+	if (this.zoomer.onKeyFrame) this.zoomer.onKeyFrame(this.zoomer, this.zoomer.currentViewport, this.zoomer.currentFrame);
 };
 
 /**
@@ -1114,17 +1128,17 @@ GUI.prototype.reload = function () {
  * @param {number} borderPixelRadius
  * @returns {boolean}
  */
-Viewport.prototype.updateAutopilot = function (lookPixelRadius, borderPixelRadius) {
+GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixelRadius) {
 
 	var config = window.config;
-	var pixels = this.pixels;
+	var pixels = viewport.pixels;
 
 	// use '>>1' as integer '/2'
 
 	// coordinate within pixel data pointed to by mouse
 	// todo: compensate rotation
-	var api = ((Config.autopilotX - Config.centerX) / Config.radius + 1) * this.diameter >> 1;
-	var apj = ((Config.autopilotY - Config.centerY) / Config.radius + 1) * this.diameter >> 1;
+	var api = ((Config.autopilotX - Config.centerX) / Config.radius + 1) * viewport.diameter >> 1;
+	var apj = ((Config.autopilotY - Config.centerY) / Config.radius + 1) * viewport.diameter >> 1;
 
 	var min = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
 	var max = min * 3;
@@ -1135,27 +1149,27 @@ Viewport.prototype.updateAutopilot = function (lookPixelRadius, borderPixelRadiu
 		var i0 = api + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
 		var j0 = apj + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
 		// convert to x/y
-		var x = (i0 / this.diameter * 2 - 1) * Config.radius + Config.centerX;
-		var y = (j0 / this.diameter * 2 - 1) * Config.radius + Config.centerY;
+		var x = (i0 / viewport.diameter * 2 - 1) * Config.radius + Config.centerX;
+		var y = (j0 / viewport.diameter * 2 - 1) * Config.radius + Config.centerY;
 		// convert to viewport coords (use '>>1' as integer '/2'
-		var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
-		var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
+		var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + viewport.radiusX) * viewport.viewWidth / viewport.radiusX) >> 1;
+		var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + viewport.radiusY) * viewport.viewHeight / viewport.radiusY) >> 1;
 		// must be visable
-		if (i < borderPixelRadius || j < borderPixelRadius || i >= this.viewWidth - borderPixelRadius || j >= this.viewHeight - borderPixelRadius)
+		if (i < borderPixelRadius || j < borderPixelRadius || i >= viewport.viewWidth - borderPixelRadius || j >= viewport.viewHeight - borderPixelRadius)
 			continue;
 
 		var c = 0;
 		for (j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
 			for (i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
-				if (pixels[j * this.diameter + i] === 65535)
+				if (pixels[j * viewport.diameter + i] === 65535)
 					c++;
 		if (c >= min && c <= max) {
 			Config.autopilotX = x;
 			Config.autopilotY = y;
 			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
-			var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
-			var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
+			var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + viewport.radiusX) * viewport.viewWidth / viewport.radiusX) >> 1;
+			var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + viewport.radiusY) * viewport.viewHeight / viewport.radiusY) >> 1;
 			window.gui.domAutopilot.style.top = (j - borderPixelRadius) + "px";
 			window.gui.domAutopilot.style.left = (i - borderPixelRadius) + "px";
 			window.gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
@@ -1179,7 +1193,7 @@ GUI.prototype.autopilotOn = function () {
 	var lookPixelRadius = viewport.diameter >> 1;
 	var borderPixelRadius = viewport.diameter >> 5;
 	do {
-		if (!viewport.updateAutopilot(lookPixelRadius, 16))
+		if (!this.updateAutopilot(viewport, lookPixelRadius, 16))
 			break;
 		lookPixelRadius >>= 1;
 	} while (lookPixelRadius > 2);
