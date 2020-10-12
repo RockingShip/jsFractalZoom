@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+`Zoomer`, Isolate and extract core logic so it can be used within other projects
+
+```
+2020-10-12 07:37:14 Forking branch `zoomer`. Isolate and extract core logic so it can be used within other projects
+```
+
 ## [0.8.0] 2018-03-06
 
 ### Added
