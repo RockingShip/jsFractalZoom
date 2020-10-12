@@ -95,7 +95,7 @@ function Config() {
 	/** @member {number} - calculation depth slider Min */
 	Config.depthMin = 30;
 	/** @member {number} - calculation depth slider Max */
-	Config.depthMax = 1500;
+	Config.depthMax = 4000;
 	/** @member {number} - calculation depth slider Now - MULTIPLE OF 4 */
 	Config.depthNow = 1200;
 
@@ -1822,7 +1822,7 @@ GUI.prototype.mainloop = function() {
 	}
 
 	this.domStatusQuality.innerHTML = JSON.stringify({lines:Viewport.doneX+Viewport.doneY, calc: Viewport.doneCalc,
-	x: Config.centerX.toFixed(3), y: Config.centerY.toFixed(3), r: Config.radius.toFixed(3)});
+	x: Config.centerX, y: Config.centerY, r: Config.radius});
 	Viewport.doneX = 0;
 	Viewport.doneY = 0;
 	Viewport.doneCalc = 0;
