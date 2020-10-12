@@ -153,7 +153,7 @@ function Config() {
  */
 Config.linearToLog = function (min, max, now) {
 
-	var v = Math.exp((now - min) / (max - min)); // 1 <= result <= E
+	const v = Math.exp((now - min) / (max - min)); // 1 <= result <= E
 
 	return min + (max - min) * (v - 1) / (Math.E - 1);
 
@@ -169,7 +169,7 @@ Config.linearToLog = function (min, max, now) {
  */
 Config.logTolinear = function (min, max, now) {
 
-	var v = 1 + (now - min) * (Math.E - 1) / (max - min);
+	const v = 1 + (now - min) * (Math.E - 1) / (max - min);
 
 	return min + Math.log(v) * (max - min);
 };
@@ -179,7 +179,7 @@ Config.logTolinear = function (min, max, now) {
  */
 Config.home = function () {
 	if (Formula) {
-		var initial = Formula.initial[Formula.formula];
+		const initial = Formula.initial[Formula.formula];
 
 		Config.centerX = initial.x;
 		Config.centerY = initial.y;
@@ -212,9 +212,9 @@ function Palette()
 	this.backgroundBlue = 0;
 
 	/** @var {Uint32Array} - RGBA view of palette */
-	var palette32 = new Uint32Array(this.paletteBuffer);
+	const palette32 = new Uint32Array(this.paletteBuffer);
 	/** @var {Uint8Array} - R,G,B view of palette */
-	var palette8 = new Uint8Array(this.paletteBuffer);
+	const palette8 = new Uint8Array(this.paletteBuffer);
 
 	/**
 	 * Create a random number in range 0 <= return < n
@@ -223,26 +223,24 @@ function Palette()
 	 * @param n
 	 * @returns {number}
 	 */
-	var random = function (n) {
+	const random = function (n) {
 		return Math.floor(Math.random() * n);
 	};
 
 	this.mksmooth = function (nsegments, segmentsize, R, G, B) {
-		var i, j, k;
-
 		// set palette modulo size
 		Config.paletteSize = nsegments * segmentsize;
 
-		k = 0;
-		for (i = 0; i < nsegments; i++) {
-			var r = R[i % nsegments];
-			var g = G[i % nsegments];
-			var b = B[i % nsegments];
-			var rs = (R[(i + 1) % nsegments] - r) / segmentsize;
-			var gs = (G[(i + 1) % nsegments] - g) / segmentsize;
-			var bs = (B[(i + 1) % nsegments] - b) / segmentsize;
+		let k = 0;
+		for (let i = 0; i < nsegments; i++) {
+			let r = R[i % nsegments];
+			let g = G[i % nsegments];
+			let b = B[i % nsegments];
+			const rs = (R[(i + 1) % nsegments] - r) / segmentsize;
+			const gs = (G[(i + 1) % nsegments] - g) / segmentsize;
+			const bs = (B[(i + 1) % nsegments] - b) / segmentsize;
 
-			for (j = 0; j < segmentsize; j++) {
+			for (let j = 0; j < segmentsize; j++) {
 
 				palette8[k++] = Math.floor(r);
 				palette8[k++] = Math.floor(g);
@@ -258,16 +256,15 @@ function Palette()
 
 	this.randomize_segments1 = function(whitemode, nsegments, segmentsize)
 	{
-		var i;
-		var R = new Array(nsegments);
-		var G = new Array(nsegments);
-		var B = new Array(nsegments);
+		const R = new Array(nsegments);
+		const G = new Array(nsegments);
+		const B = new Array(nsegments);
 
 		if (whitemode) {
 			R[0] = 255;
 			G[0] = 255;
 			B[0] = 255;
-			for (i = 0; i < nsegments; i += 2) {
+			for (let i = 0; i < nsegments; i += 2) {
 				if (i !== 0) {
 					R[i] = random(256);
 					G[i] = random(256);
@@ -280,7 +277,7 @@ function Palette()
 				}
 			}
 		} else {
-			for (i = 0; i < nsegments; i += 2) {
+			for (let i = 0; i < nsegments; i += 2) {
 				R[i] = random(35);
 				G[i] = random(35);
 				B[i] = random(35);
@@ -297,11 +294,11 @@ function Palette()
 
 	this.randomize_segments2 = function(whitemode, nsegments, segmentsize)
 	{
-		var R = new Array(nsegments);
-		var G = new Array(nsegments);
-		var B = new Array(nsegments);
+		const R = new Array(nsegments);
+		const G = new Array(nsegments);
+		const B = new Array(nsegments);
 
-		for (var i = 0; i < nsegments; i++) {
+		for (let i = 0; i < nsegments; i++) {
 			R[i] = (!whitemode) * 255;
 			G[i] = (!whitemode) * 255;
 			B[i] = (!whitemode) * 255;
@@ -321,12 +318,12 @@ function Palette()
 	};
 
 	this.randomize_segments3 = function (whitemode, nsegments, segmentsize) {
-		var h, s, v, i;
-		var R = new Array(nsegments);
-		var G = new Array(nsegments);
-		var B = new Array(nsegments);
+		let h, s, v;
+		const R = new Array(nsegments);
+		const G = new Array(nsegments);
+		const B = new Array(nsegments);
 
-		for (i = 0; i < nsegments; i++) {
+		for (let i = 0; i < nsegments; i++) {
 			if (i % 6 === 0) {
 				R[i] = G[i] = B[i] = 0;
 			} else if (i % 3 === 0) {
@@ -348,12 +345,12 @@ function Palette()
 				if (s === 0) {
 					R[i] = G[i] = B[i] = v;
 				} else {
-					var hue = h * 6;
+					const  hue = h * 6;
 
-					var f = hue & 255;
-					var p = v * (256 - s) >> 8;
-					var q = v * (256 - ((s * f) >> 8)) >> 8;
-					var t = v * (256 * 256 - (s * (256 - f))) >> 16;
+					const f = hue & 255;
+					const p = v * (256 - s) >> 8;
+					const q = v * (256 - ((s * f) >> 8)) >> 8;
+					const t = v * (256 * 256 - (s * (256 - f))) >> 16;
 					switch (Math.floor(hue / 256)) {
 						case 0:
 							R[i] = v;
@@ -395,8 +392,8 @@ function Palette()
 
 	this.mkrandom = function() {
 		// 85 = 255 / 3
-		var segmentsize, nsegments;
-		var whitemode = random(2);
+		let segmentsize, nsegments;
+		const whitemode = random(2);
 
 		segmentsize = random(85 + 4);
 		segmentsize += random(85 + 4);
@@ -438,7 +435,7 @@ function Palette()
 	};
 
 	this.mkdefault = function () {
-		var gray = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff];
+		const gray = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff];
 		this.mksmooth(16, 1, gray, gray, gray);
 	};
 
@@ -449,9 +446,8 @@ function Palette()
 	 * @param {number} offset
 	 */
 	this.setPaletteBuffer = function (paletteBuffer, offset) {
-		var paletteSize = Config.paletteSize;
-		var out32 = new Uint32Array(paletteBuffer);
-		var i, j, k;
+		const  paletteSize = Config.paletteSize;
+		const out32 = new Uint32Array(paletteBuffer);
 
 		// palette offset may not be negative
 		if (offset < 0)
@@ -460,12 +456,12 @@ function Palette()
 			offset = offset % paletteSize;
 
 		// apply colour cycling
-		for (i = 0; i < Config.depthNow; i++) {
+		for (let i = 0; i < Config.depthNow; i++) {
 			out32[i] = palette32[(offset + i) % paletteSize];
 		}
 
 		// background colour
-		i = 65535 * 4;
+		let i = 65535 * 4;
 		palette8[i++] = this.backgroundRed;
 		palette8[i++] = this.backgroundGreen;
 		palette8[i++] = this.backgroundBlue;
@@ -552,7 +548,7 @@ function GUI(config) {
 	/*
 	 * Find the elements and replace the string names for DOM references
 	 */
-	for (var property in this) {
+	for (let property in this) {
 		if (this.hasOwnProperty(property) && property.substr(0, 3) === "dom") {
 			this[property] = document.getElementById(this[property]);
 		}
@@ -858,7 +854,7 @@ function GUI(config) {
 	this.formula.listbox.setCallbackFocusChange((focusedItem) => {
 		Config.formula = focusedItem.id;
 		this.domFormulaButton.innerText = focusedItem.innerText;
-		var formula = focusedItem.id.substr(8) | 0;
+		const formula = focusedItem.id.substr(8) | 0;
 		Formula.formula = formula;
 		Config.home();
 		this.reload();
@@ -866,21 +862,21 @@ function GUI(config) {
 	this.incolour.listbox.setCallbackFocusChange((focusedItem) => {
 		Config.incolour = focusedItem.id;
 		this.domIncolourButton.innerText = focusedItem.innerText;
-		var incolour = focusedItem.id.substr(9) | 0;
+		const incolour = focusedItem.id.substr(9) | 0;
 		Formula.incolour = incolour;
 		this.reload();
 	});
 	this.outcolour.listbox.setCallbackFocusChange((focusedItem) => {
 		Config.outcolour = focusedItem.id;
 		this.domOutcolourButton.innerText = focusedItem.innerText;
-		var outcolour = focusedItem.id.substr(10) | 0;
+		const outcolour = focusedItem.id.substr(10) | 0;
 		Formula.outcolour = outcolour;
 		this.reload();
 	});
 	this.plane.listbox.setCallbackFocusChange((focusedItem) => {
 		Config.plane = focusedItem.id;
 		this.domPlaneButton.innerText = focusedItem.innerText;
-		var plane = focusedItem.id.substr(6) | 0;
+		const plane = focusedItem.id.substr(6) | 0;
 		Formula.plane = plane;
 		Config.home();
 		this.reload();
@@ -915,8 +911,8 @@ function GUI(config) {
 			window.palette.mkdefault();
 		}
 		// fast clamp pixel values
-		var viewport = this.zoomer.currentViewport;
-		for (var ji = 0; ji < viewport.viewWidth * viewport.viewHeight; ji++)
+		const viewport = this.zoomer.currentViewport;
+		for (let ji = 0; ji < viewport.viewWidth * viewport.viewHeight; ji++)
 			if (viewport.pixels[ji] !== 65535)
 				viewport.pixels[ji] %= Config.paletteSize;
 	});
@@ -928,7 +924,7 @@ function GUI(config) {
  * @param {KeyboardEvent} event
  */
 GUI.prototype.handleKeyDown = function (event) {
-	var key = event.which || event.keyCode;
+	conat = event.which || event.keyCode;
 
 	// Grab the keydown and click events
 	switch (key) {
@@ -1007,7 +1003,7 @@ GUI.prototype.handleKeyDown = function (event) {
  * @param {KeyboardEvent} event
  */
 GUI.prototype.handleKeyUp = function (event) {
-	var key = event.which || event.keyCode;
+	const key = event.which || event.keyCode;
 
 	// Grab the keydown and click events
 	switch (key) {
@@ -1079,7 +1075,7 @@ GUI.prototype.handleBlur = function (event) {
  */
 GUI.prototype.handleMouse = function (event) {
 
-	var rect = this.domZoomer.getBoundingClientRect();
+	const rect = this.domZoomer.getBoundingClientRect();
 
 	/*
 	 * On first button press set a document listener to catch releases outside target element
@@ -1094,11 +1090,11 @@ GUI.prototype.handleMouse = function (event) {
 	this.mouseI = event.pageX - rect.left;
 	this.mouseJ = event.pageY - rect.top;
 
-	var viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
+	const viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
 
 	// relative to viewport center
-	var dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
-	var dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
+	const dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
+	const dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
 	// undo rotation
 	this.mouseX = dy * Config.rsin + dx * Config.rcos + Config.centerX;
 	this.mouseY = dy * Config.rcos - dx * Config.rsin + Config.centerY;
@@ -1130,37 +1126,37 @@ GUI.prototype.reload = function () {
  */
 GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixelRadius) {
 
-	var config = window.config;
-	var pixels = viewport.pixels;
+	const config = window.config;
+	const pixels = viewport.pixels;
 
 	// use '>>1' as integer '/2'
 
 	// coordinate within pixel data pointed to by mouse
 	// todo: compensate rotation
-	var api = ((Config.autopilotX - Config.centerX) / Config.radius + 1) * viewport.diameter >> 1;
-	var apj = ((Config.autopilotY - Config.centerY) / Config.radius + 1) * viewport.diameter >> 1;
+	const api = ((Config.autopilotX - Config.centerX) / Config.radius + 1) * viewport.diameter >> 1;
+	const apj = ((Config.autopilotY - Config.centerY) / Config.radius + 1) * viewport.diameter >> 1;
 
-	var min = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
-	var max = min * 3;
+	const min = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
+	const max = min * 3;
 
 
 	// outside center rectangle, adjust autopilot heading
-	for (var k = 0; k < 450; k++) {
-		var i0 = api + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
-		var j0 = apj + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+	for (let k = 0; k < 450; k++) {
+		const i0 = api + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+		const j0 = apj + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
 		// convert to x/y
-		var x = (i0 / viewport.diameter * 2 - 1) * Config.radius + Config.centerX;
-		var y = (j0 / viewport.diameter * 2 - 1) * Config.radius + Config.centerY;
+		const x = (i0 / viewport.diameter * 2 - 1) * Config.radius + Config.centerX;
+		const y = (j0 / viewport.diameter * 2 - 1) * Config.radius + Config.centerY;
 		// convert to viewport coords (use '>>1' as integer '/2'
-		var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + viewport.radiusX) * viewport.viewWidth / viewport.radiusX) >> 1;
-		var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + viewport.radiusY) * viewport.viewHeight / viewport.radiusY) >> 1;
+		const i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + viewport.radiusX) * viewport.viewWidth / viewport.radiusX) >> 1;
+		const j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + viewport.radiusY) * viewport.viewHeight / viewport.radiusY) >> 1;
 		// must be visable
 		if (i < borderPixelRadius || j < borderPixelRadius || i >= viewport.viewWidth - borderPixelRadius || j >= viewport.viewHeight - borderPixelRadius)
 			continue;
 
-		var c = 0;
-		for (j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
-			for (i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
+		let c = 0;
+		for (let j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
+			for (let i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
 				if (pixels[j * viewport.diameter + i] === 65535)
 					c++;
 		if (c >= min && c <= max) {
@@ -1168,8 +1164,8 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 			Config.autopilotY = y;
 			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
-			var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + viewport.radiusX) * viewport.viewWidth / viewport.radiusX) >> 1;
-			var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + viewport.radiusY) * viewport.viewHeight / viewport.radiusY) >> 1;
+			const i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + viewport.radiusX) * viewport.viewWidth / viewport.radiusX) >> 1;
+			const j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + viewport.radiusY) * viewport.viewHeight / viewport.radiusY) >> 1;
 			window.gui.domAutopilot.style.top = (j - borderPixelRadius) + "px";
 			window.gui.domAutopilot.style.left = (i - borderPixelRadius) + "px";
 			window.gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
@@ -1186,12 +1182,12 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 
 GUI.prototype.autopilotOn = function () {
 
-	var viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
+	const viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
 	Config.autopilotX = Config.centerX;
 	Config.autopilotY = Config.centerY;
 
-	var lookPixelRadius = viewport.diameter >> 1;
-	var borderPixelRadius = viewport.diameter >> 5;
+	let lookPixelRadius = viewport.diameter >> 1;
+	const borderPixelRadius = viewport.diameter >> 5;
 	do {
 		if (!this.updateAutopilot(viewport, lookPixelRadius, 16))
 			break;

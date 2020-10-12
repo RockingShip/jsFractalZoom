@@ -61,19 +61,20 @@ function workerPaint() {
 	 * @param {MessageEvent} e
 	 */
 	this.onmessage = function (e) {
-		var now = performance.now();
+		const now = performance.now();
+
 		/** @var {Frame} */
-		var request = e.data;
+		const request = e.data;
 
 		// typed wrappers for Arrays
-		var rgba = new Uint32Array(request.rgbaBuffer);
-		var pixels = new Uint16Array(request.pixelBuffer);
-		var palette32 = new Uint32Array(request.paletteBuffer);
+		const rgba = new Uint32Array(request.rgbaBuffer);
+		const pixels = new Uint16Array(request.pixelBuffer);
+		const palette32 = new Uint32Array(request.paletteBuffer);
 
-		var diameter = request.diameter;
-		var viewWidth = request.viewWidth;
-		var viewHeight = request.viewHeight;
-		var angle = request.angle;
+		const diameter = request.diameter;
+		const viewWidth = request.viewWidth;
+		const viewHeight = request.viewHeight;
+		const angle = request.angle;
 
 		/**
 		 **!
@@ -81,38 +82,35 @@ function workerPaint() {
 		 **!
 		 **/
 
-		var i, j, u, v, ji, vu, yx;
-
 		if (angle === 0) {
 			// FAST extract viewport
-			i = (diameter - viewWidth) >> 1;
-			j = (diameter - viewHeight) >> 1;
+			let i = (diameter - viewWidth) >> 1;
+			let j = (diameter - viewHeight) >> 1;
 
 			// copy pixels
-			ji = j * diameter + i;
-			vu = 0;
-			for (v = 0; v < viewHeight; v++) {
-				for (u = 0; u < viewWidth; u++)
+			let ji = j * diameter + i;
+			let vu = 0;
+			for (let v = 0; v < viewHeight; v++) {
+				for (let u = 0; u < viewWidth; u++)
 					rgba[vu++] = palette32[pixels[ji++]];
 				ji += diameter - viewWidth;
 			}
 
 		} else {
 			// SLOW viewport rotation
-			var rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
-			var rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
-			var xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
-			var ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
-			var ixstep = Math.floor(rcos * 65536);
-			var iystep = Math.floor(rsin * -65536);
-			var jxstep = Math.floor(rsin * 65536);
-			var jystep = Math.floor(rcos * 65536);
-			var x, y, ix, iy;
+			const rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
+			const rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
+			const xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
+			const ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
+			const ixstep = Math.floor(rcos * 65536);
+			const iystep = Math.floor(rsin * -65536);
+			const jxstep = Math.floor(rsin * 65536);
+			const jystep = Math.floor(rcos * 65536);
 
 			// copy pixels
-			vu = 0;
-			for (j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
-				for (i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
+			let vu = 0;
+			for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
+				for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
 					rgba[vu++] = palette32[pixels[(iy >> 16) * diameter + (ix >> 16)]];
 				}
 			}
@@ -189,7 +187,7 @@ function Viewport(width, height) {
 	 */
 	this.makeRuler = (start, end, newCoord, newNearest, newError, newFrom, oldNearest, oldError) => {
 
-		var iOld, iNew, nextError, currError, currCoord;
+		let iOld, iNew;
 
 		/*
 		 *
@@ -198,11 +196,11 @@ function Viewport(width, height) {
 		for (iNew = 0; iNew < newCoord.length && iOld < oldNearest.length; iNew++) {
 
 			// determine coordinate current tab stop
-			currCoord = (end - start) * iNew / (newCoord.length - 1) + start;
+			const currCoord = (end - start) * iNew / (newCoord.length - 1) + start;
 
 			// determine errors
-			currError = Math.abs(currCoord - oldNearest[iOld]);
-			nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
+			let currError = Math.abs(currCoord - oldNearest[iOld]);
+			let nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
 
 			// bump if next source stop is better
 			while (nextError <= currError && iOld < oldNearest.length - 1) {
@@ -238,7 +236,7 @@ function Viewport(width, height) {
 	this.setPosition = (x, y, radius, angle, oldViewport) => {
 
 		/** @var {Frame} frame */
-		var frame;
+		let frame;
 
 		/*
 		 * allocate a new frame
@@ -283,42 +281,43 @@ function Viewport(width, height) {
 		/*
 		 * copy pixels
 		 */
-		var j = 0, i = 0, k = 0, ji = 0;
-		var xFrom = this.xFrom;
-		var yFrom = this.yFrom;
-		var newDiameter = this.diameter;
-		var oldDiameter = oldViewport.diameter;
-		var newPixels = this.pixels;
-		var oldPixels = oldViewport.pixels;
+		const xFrom = this.xFrom;
+		const yFrom = this.yFrom;
+		const newDiameter = this.diameter;
+		const oldDiameter = oldViewport.diameter;
+		const newPixels = this.pixels;
+		const oldPixels = oldViewport.pixels;
+		let ji = 0;
 
 		// first line
-		k = yFrom[0] * oldDiameter;
-		for (i = 0; i < newDiameter; i++)
+		let k = yFrom[0] * oldDiameter;
+		for (let i = 0; i < newDiameter; i++)
 			newPixels[ji++] = oldPixels[k + xFrom[i]];
+
 		// followups
-		for (j = 1; j < newDiameter; j++) {
+		for (let j = 1; j < newDiameter; j++) {
 			if (yFrom[j] === yFrom[j - 1]) {
 				// this line is identical to the previous
-				k = ji - newDiameter;
-				for (i = 0; i < newDiameter; i++)
+				let k = ji - newDiameter;
+				for (let i = 0; i < newDiameter; i++)
 					newPixels[ji++] = newPixels[k++];
 
 			} else {
 				// extract line from previous frame
-				k = yFrom[j] * oldDiameter;
-				for (i = 0; i < newDiameter; i++)
+				let k = yFrom[j] * oldDiameter;
+				for (let i = 0; i < newDiameter; i++)
 					newPixels[ji++] = oldPixels[k + xFrom[i]];
 			}
 		}
 
 		// keep the froms with lowest error
-		for (i = 1; i < newDiameter; i++) {
+		for (let i = 1; i < newDiameter; i++) {
 			if (xFrom[i - 1] === xFrom[i] && this.xError[i - 1] > this.xError[i])
 				xFrom[i - 1] = -1;
 			if (yFrom[i - 1] === yFrom[i] && this.yError[i - 1] > this.yError[i])
 				yFrom[i - 1] = -1;
 		}
-		for (i = newDiameter - 2; i >= 0; i--) {
+		for (let i = newDiameter - 2; i >= 0; i--) {
 			if (xFrom[i + 1] === xFrom[i] && this.xError[i + 1] > this.xError[i])
 				xFrom[i + 1] = -1;
 			if (yFrom[i + 1] === yFrom[i] && this.yError[i + 1] > this.yError[i])
@@ -332,14 +331,12 @@ function Viewport(width, height) {
 	 * @returns {boolean}
 	 */
 	this.reachedLimits = () => {
-		var ij;
-
 		/*
 		 * @date 2020-10-12 18:30:14
 		 * NOTE: First duplicate ruler coordinate is sufficient to mark endpoint.
 		 *       This to prevent zooming full screen into a single pixel
 		 */
-		for (ij = 1; ij < this.diameter; ij++) {
+		for (let ij = 1; ij < this.diameter; ij++) {
 			if (this.xCoord[ij - 1] === this.xCoord[ij] || this.yCoord[ij - 1] === this.yCoord[ij])
 				return true;
 
@@ -358,14 +355,14 @@ function Viewport(width, height) {
 	this.draw = (rgbaBuffer, pixelBuffer, paletteBuffer) => {
 
 		// make references local
-		var rgba = new Uint32Array(rgbaBuffer); // canvas pixel data
-		var pixels = new Uint16Array(pixelBuffer); // pixel data
-		var palette32 = new Uint32Array(paletteBuffer);
+		const rgba = new Uint32Array(rgbaBuffer); // canvas pixel data
+		const pixels = new Uint16Array(pixelBuffer); // pixel data
+		const palette32 = new Uint32Array(paletteBuffer);
 
-		var diameter = this.diameter; // pixel scanline width (it's square)
-		var viewWidth = this.viewWidth; // viewport width
-		var viewHeight = this.viewHeight; // viewport height
-		var angle = Config.angle;
+		const diameter = this.diameter; // pixel scanline width (it's square)
+		const viewWidth = this.viewWidth; // viewport width
+		const viewHeight = this.viewHeight; // viewport height
+		const angle = Config.angle;
 
 		/**
 		 **!
@@ -373,38 +370,35 @@ function Viewport(width, height) {
 		 **!
 		 **/
 
-		var i, j, u, v, ji, vu, yx;
-
 		if (angle === 0) {
 			// FAST extract viewport
-			i = (diameter - viewWidth) >> 1;
-			j = (diameter - viewHeight) >> 1;
+			let i = (diameter - viewWidth) >> 1;
+			let j = (diameter - viewHeight) >> 1;
 
 			// copy pixels
-			ji = j * diameter + i;
-			vu = 0;
-			for (v = 0; v < viewHeight; v++) {
-				for (u = 0; u < viewWidth; u++)
+			let ji = j * diameter + i;
+			let vu = 0;
+			for (let v = 0; v < viewHeight; v++) {
+				for (let u = 0; u < viewWidth; u++)
 					rgba[vu++] = palette32[pixels[ji++]];
 				ji += diameter - viewWidth;
 			}
 
 		} else {
 			// SLOW viewport rotation
-			var rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
-			var rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
-			var xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
-			var ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
-			var ixstep = Math.floor(rcos * 65536);
-			var iystep = Math.floor(rsin * -65536);
-			var jxstep = Math.floor(rsin * 65536);
-			var jystep = Math.floor(rcos * 65536);
-			var x, y, ix, iy;
+			const rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
+			const rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
+			const xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
+			const ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
+			const ixstep = Math.floor(rcos * 65536);
+			const iystep = Math.floor(rsin * -65536);
+			const jxstep = Math.floor(rsin * 65536);
+			const jystep = Math.floor(rcos * 65536);
 
 			// copy pixels
-			vu = 0;
-			for (j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
-				for (i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
+			let vu = 0;
+			for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
+				for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
 					rgba[vu++] = palette32[pixels[(iy >> 16) * diameter + (ix >> 16)]];
 				}
 			}
@@ -417,20 +411,19 @@ function Viewport(width, height) {
 	this.renderLines = () => {
 		// which tabstops have the worst error
 
-		var worstXerr = this.xError[0];
-		var worstXi = 0;
-		var worstYerr = this.yError[0];
-		var worstYj = 0;
-		var i, j, k, ji, x, y, err, last;
-		var diameter = this.diameter;
+		let worstXerr = this.xError[0];
+		let worstXi = 0;
+		let worstYerr = this.yError[0];
+		let worstYj = 0;
+		const diameter = this.diameter;
 
-		for (i = 1; i < diameter; i++) {
+		for (let i = 1; i < diameter; i++) {
 			if (this.xError[i] > worstXerr) {
 				worstXi = i;
 				worstXerr = this.xError[i];
 			}
 		}
-		for (j = 1; j < diameter; j++) {
+		for (let j = 1; j < diameter; j++) {
 			if (this.yError[j] > worstYerr) {
 				worstYj = j;
 				worstYerr = this.yError[j];
@@ -446,30 +439,29 @@ function Viewport(width, height) {
 		 **!
 		 **/
 
-		var lo, hi, lasti, lastj, last, oldpx;
-		var u, v;
-		var xCoord = this.xCoord;
-		var xNearest = this.xNearest;
-		var xError = this.xError;
-		var xFrom = this.xFrom;
-		var yCoord = this.yCoord;
-		var yNearest = this.yNearest;
-		var yError = this.yError;
-		var yFrom = this.yFrom;
-		var pixels = this.pixels;
-		var calculate = Formula.calculate;
+		const xCoord = this.xCoord;
+		const xNearest = this.xNearest;
+		const xError = this.xError;
+		const xFrom = this.xFrom;
+		const yCoord = this.yCoord;
+		const yNearest = this.yNearest;
+		const yError = this.yError;
+		const yFrom = this.yFrom;
+		const pixels = this.pixels;
+		const  calculate = Formula.calculate;
 
 		if (worstXerr > worstYerr) {
 
-			i = worstXi;
-			x = this.xCoord[i];
+			let i = worstXi;
+			let x = this.xCoord[i];
 
-			ji = 0 * diameter + i;
-			last = calculate(x, this.yCoord[0]);
+			let ji = 0 * diameter + i;
+			let last = calculate(x, this.yCoord[0]);
 			pixels[ji] = last;
 			ji += diameter;
 			Viewport.doneCalc++;
-			for (j = 1; j < diameter; j++) {
+
+			for (let j = 1; j < diameter; j++) {
 				/*
 				 * Logic would say 'this.yFrom[j] === -1', but haven't been able to figure out why this works better
 				 * ..and 3 other places
@@ -482,11 +474,11 @@ function Viewport(width, height) {
 				ji += diameter;
 			}
 
-			for (u = i + 1; u < diameter; u++) {
+			for (let u = i + 1; u < diameter; u++) {
 				if (xError[u] === 0 || xFrom[u] !== -1)
 					break;
 
-				for (v = 0; v < diameter; v++) {
+				for (let v = 0; v < diameter; v++) {
 					pixels[v * diameter + u] = pixels[v * diameter + i];
 				}
 			}
@@ -497,15 +489,14 @@ function Viewport(width, height) {
 
 		} else {
 
+			let j = worstYj;
+			let y = yCoord[j];
 
-			j = worstYj;
-			y = yCoord[j];
-
-			ji = j * diameter + 0;
-			last = calculate(xCoord[0], y);
+			let ji = j * diameter + 0;
+			let last = calculate(xCoord[0], y);
 			pixels[ji++] = last;
 			Viewport.doneCalc++;
-			for (i = 1; i < diameter; i++) {
+			for (let i = 1; i < diameter; i++) {
 				if (xError[i] === 0 || xFrom[i] !== -1) {
 					last = calculate(xCoord[i], y);
 					Viewport.doneCalc++;
@@ -513,11 +504,11 @@ function Viewport(width, height) {
 				pixels[ji++] = last;
 			}
 
-			for (v = j + 1; v < diameter; v++) {
+			for (let v = j + 1; v < diameter; v++) {
 				if (yError[v] === 0 || yFrom[v] !== -1)
 					break;
 
-				for (u = 0; u < diameter; u++) {
+				for (let u = 0; u < diameter; u++) {
 					pixels[v * diameter + u] = pixels[j * diameter + u];
 				}
 			}
@@ -539,20 +530,18 @@ function Viewport(width, height) {
 		this.radiusX = Config.radius * this.viewWidth / this.diameter;
 		this.radiusY = Config.radius * this.viewHeight / this.diameter;
 
-		var ji, j, i, y, x;
-
-		for (i = 0; i < this.xCoord.length; i++)
+		for (let i = 0; i < this.xCoord.length; i++)
 			this.xNearest[i] = this.xCoord[i] = ((Config.centerX + Config.radius) - (Config.centerX - Config.radius)) * i / (this.xCoord.length - 1) + (Config.centerX - Config.radius);
-		for (i = 0; i < this.yCoord.length; i++)
+		for (let i = 0; i < this.yCoord.length; i++)
 			this.yNearest[i] = this.yCoord[i] = ((Config.centerY + Config.radius) - (Config.centerY - Config.radius)) * i / (this.yCoord.length - 1) + (Config.centerY - Config.radius);
 
-		var calculate = Formula.calculate;
-		ji = 0;
-		for (j = 0; j < this.diameter; j++) {
-			y = (Config.centerY - Config.radius) + Config.radius * 2 * j / this.diameter;
-			for (i = 0; i < this.diameter; i++) {
+		const  calculate = Formula.calculate;
+		let ji = 0;
+		for (let j = 0; j < this.diameter; j++) {
+			let y = (Config.centerY - Config.radius) + Config.radius * 2 * j / this.diameter;
+			for (let i = 0; i < this.diameter; i++) {
 				// distance to center
-				x = (Config.centerX - Config.radius) + Config.radius * 2 * i / this.diameter;
+				let x = (Config.centerX - Config.radius) + Config.radius * 2 * i / this.diameter;
 				this.pixels[ji++] = calculate(x, y);
 			}
 		}
@@ -765,13 +754,13 @@ function Zoomer(domZoomer, options = {
 		this.mainloopNr++;
 
 		// make local for speed
-		var config = this.config;
-		var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+		const config = this.config;
+		const viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 
 
 		// current time
-		var last;
-		var now = performance.now();
+		let last;
+		let now = performance.now();
 
 		if (this.vsync === 0 || now > this.vsync + 2000) {
 			// Missed vsync by more than 2 seconds, resync
@@ -796,7 +785,7 @@ function Zoomer(domZoomer, options = {
 				 */
 
 				// end time is 2mSec before next vertical sync
-				var endtime = this.vsync - 2;
+				let endtime = this.vsync - 2;
 				if (endtime > now + 2)
 					endtime = now + 2;
 
@@ -804,7 +793,7 @@ function Zoomer(domZoomer, options = {
 				 * Calculate lines
 				 */
 
-				var numLines = 0;
+				let numLines = 0;
 				while (now < endtime) {
 					viewport.renderLines();
 
@@ -874,7 +863,7 @@ function Zoomer(domZoomer, options = {
 		}
 
 
-		var oldViewport = this.currentViewport;
+		const oldViewport = this.currentViewport;
 		this.oldFrame = oldViewport.frame;
 
 		/*
@@ -938,7 +927,7 @@ function Zoomer(domZoomer, options = {
 		// move request to pending requestAnimationFrames()
 		while (Viewport.raf.length) {
 
-			var request = Viewport.raf.shift();
+			const request = Viewport.raf.shift();
 
 			if (this.onPutImageData) this.onPutImageData(this, request);
 
@@ -965,17 +954,17 @@ function Zoomer(domZoomer, options = {
 	 * create 4 workers
 	 */
 	{
-		var dataObj = '(' + workerPaint + ')();'; // here is the trick to convert the above function to string
-		var blob = new Blob([dataObj]);
-		var blobURL = (window.URL ? URL : webkitURL).createObjectURL(blob);
+		const dataObj = '(' + workerPaint + ')();'; // here is the trick to convert the above function to string
+		const blob = new Blob([dataObj]);
+		const blobURL = (window.URL ? URL : webkitURL).createObjectURL(blob);
 
 		// create 4 workers
-		for (var i = 0; i < 4; i++) {
+		for (let i = 0; i < 4; i++) {
 			this.wworkers[i] = new Worker(blobURL);
 
 			this.wworkers[i].onmessage = (e) => {
 				/** @var {Frame} */
-				var response = e.data;
+				const response = e.data;
 
 				// move request to pending requestAnimationFrames()
 				Viewport.raf.push(response);
