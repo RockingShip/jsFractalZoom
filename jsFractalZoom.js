@@ -1610,93 +1610,89 @@ function GUI(config) {
 	this.randomPalette = this.paletteGroup.radioButtons[0];
 	this.defaultPalette = this.paletteGroup.radioButtons[1];
 
-	// attach event listeners
-	var self = this;
-
 	// sliders
-	this.speed.setCallbackValueChange(function (newValue) {
+	this.speed.setCallbackValueChange((newValue) => {
 		// scale exponentially
 		newValue = Config.linearToLog(Config.zoomSpeedMin, Config.zoomSpeedMax, newValue);
 		Config.zoomSpeedNow = newValue;
-		self.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
+		this.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
 	});
-	this.rotateSpeed.setCallbackValueChange(function (newValue) {
+	this.rotateSpeed.setCallbackValueChange((newValue) => {
 		Config.rotateSpeedNow = newValue;
-		self.domRotateLeft.innerHTML = newValue.toFixed(1);
+		this.domRotateLeft.innerHTML = newValue.toFixed(1);
 	});
-	this.paletteSpeed.setCallbackValueChange(function (newValue) {
+	this.paletteSpeed.setCallbackValueChange((newValue) => {
 		Config.paletteSpeedNow = newValue;
-		self.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
+		this.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
 	});
-	this.depth.setCallbackValueChange(function (newValue) {
+	this.depth.setCallbackValueChange((newValue) => {
 		newValue = Math.round(newValue);
 		// needs to be a multiple of 4
 		newValue = (newValue + 3) & ~3;
 		Config.depthNow = newValue;
-		self.domDepthLeft.innerHTML = newValue;
+		this.domDepthLeft.innerHTML = newValue;
 	});
-	this.Framerate.setCallbackValueChange(function (newValue) {
+	this.Framerate.setCallbackValueChange((newValue) => {
 		newValue = Math.round(newValue);
 		Config.framerateNow = newValue;
-		self.domFramerateLeft.innerHTML = newValue;
+		this.domFramerateLeft.innerHTML = newValue;
 	});
 
 	// listboxes
-	this.formula.listbox.setCallbackFocusChange(function (focusedItem) {
+	this.formula.listbox.setCallbackFocusChange((focusedItem) => {
 		Config.formula = focusedItem.id;
 		this.domFormulaButton.innerText = focusedItem.innerText;
 		var formula = focusedItem.id.substr(8) | 0;
 		Formula.formula = formula;
 		Config.home();
 		this.reload();
-	}.bind(this));
-	this.incolour.listbox.setCallbackFocusChange(function (focusedItem) {
+	});
+	this.incolour.listbox.setCallbackFocusChange((focusedItem) => {
 		Config.incolour = focusedItem.id;
 		this.domIncolourButton.innerText = focusedItem.innerText;
 		var incolour = focusedItem.id.substr(9) | 0;
 		Formula.incolour = incolour;
 		this.reload();
-	}.bind(this));
-	this.outcolour.listbox.setCallbackFocusChange(function (focusedItem) {
+	});
+	this.outcolour.listbox.setCallbackFocusChange((focusedItem) => {
 		Config.outcolour = focusedItem.id;
 		this.domOutcolourButton.innerText = focusedItem.innerText;
 		var outcolour = focusedItem.id.substr(10) | 0;
 		Formula.outcolour = outcolour;
 		this.reload();
-	}.bind(this));
-	this.plane.listbox.setCallbackFocusChange(function (focusedItem) {
+	});
+	this.plane.listbox.setCallbackFocusChange((focusedItem) => {
 		Config.plane = focusedItem.id;
 		this.domPlaneButton.innerText = focusedItem.innerText;
 		var plane = focusedItem.id.substr(6) | 0;
 		Formula.plane = plane;
 		Config.home();
 		this.reload();
-
-	}.bind(this));
+	});
 
 	// buttons
-	this.power.setCallbackValueChange(function (newValue) {
+	this.power.setCallbackValueChange((newValue) => {
 		if (newValue)
-			self.zoomer.start(); // power on
+			this.zoomer.start(); // power on
 		else
-			self.zoomer.stop(); // power off
+			this.zoomer.stop(); // power off
 	});
-	this.autoPilot.setCallbackValueChange(function (newValue) {
+	this.autoPilot.setCallbackValueChange((newValue) => {
 		Config.autoPilot = newValue;
 		if (newValue) {
-			self.autopilotOn();
+			this.autopilotOn();
 		} else {
-			self.autopilotOff();
+			this.autopilotOff();
 		}
 	});
-	this.home.setCallbackValueChange(function (newValue) {
+	this.home.setCallbackValueChange((newValue) => {
 		Config.autopilotX = 0;
 		Config.autopilotY = 0;
 		Config.home();
 		this.reload();
-	}.bind(this));
+	});
 
-	this.paletteGroup.setCallbackFocusChange(function (newButton) {
+	this.paletteGroup.setCallbackFocusChange((newButton) => {
 		if (newButton.domButton.id === "idRandomPaletteButton") {
 			window.palette.mkrandom();
 		} else {
@@ -1707,7 +1703,7 @@ function GUI(config) {
 		for (var ji = 0; ji < viewport.viewWidth * viewport.viewHeight; ji++)
 			if (viewport.pixels[ji] != 65535)
 				viewport.pixels[ji] %= Config.paletteSize;
-	}.bind(this));
+	});
 
 	/*
 	 * create 4 workers
