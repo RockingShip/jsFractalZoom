@@ -29,7 +29,7 @@
 </head>
 <body>
 <canvas
-	id="idViewport"
+	id="idZoomer"
 	class="pane"
 	tabindex="0"
 	role="region"
@@ -388,12 +388,12 @@
 		window.palette = new Palette();
 		window.gui = new GUI(window.config);
 
-		var domViewport = window.gui.domViewport;
-		domViewport.width = domViewport.clientWidth;
-		domViewport.height = domViewport.clientHeight;
+		var domZoomer = window.gui.domZoomer;
+		domZoomer.width = domZoomer.clientWidth;
+		domZoomer.height = domZoomer.clientHeight;
 
 		// initial focus main view
-		window.gui.domViewport.focus();
+		window.gui.domZoomer.focus();
 		// press power button
 		window.gui.power.buttonDown(); // push
 		window.gui.power.buttonUp(); // and release

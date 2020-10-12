@@ -40,7 +40,7 @@ body {
 	right: 0;
 }
 
-#idViewport {
+#idZoomer {
 	padding: 0;
 	margin : auto;
 	border: none;
@@ -97,7 +97,7 @@ body {
  * Main view
  */
 
-#idViewport.focus {
+#idZoomer.focus {
 	/*border-color: #888;*/
 	outline: 2px dotted #000;
 }

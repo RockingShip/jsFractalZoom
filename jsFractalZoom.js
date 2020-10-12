@@ -214,14 +214,14 @@ function Frame(viewWidth, viewHeight) {
 	/** @member {number} - angle */
 	this.angle = 0;
 
-	/** @member {ArrayBuffer} - (UINT8x4) red */
-	this.paletteBuffer = new ArrayBuffer(65536 * 4);
+	/** @member {ArrayBuffer} - (UINT8x4) RGBA for canvas */
+	this.rgbaBuffer = new ArrayBuffer(viewWidth * viewHeight * 4);
 
 	/** @member {ArrayBuffer} - (UINT16) pixels */
 	this.pixelBuffer = new ArrayBuffer(this.diameter * this.diameter * 2);
 
-	/** @member {ArrayBuffer} - (UINT8x4) RGBA for canvas */
-	this.rgbaBuffer = new ArrayBuffer(viewWidth * viewHeight * 4);
+	/** @member {ArrayBuffer} - (UINT8x4) red */
+	this.paletteBuffer = new ArrayBuffer(65536 * 4);
 }
 
 /**
@@ -747,9 +747,9 @@ function workerPaint() {
 		var request = e.data;
 
 		// typed wrappers for Arrays
-		var palette32 = new Uint32Array(request.paletteBuffer);
-		var pixels = new Uint16Array(request.pixelBuffer);
 		var rgba = new Uint32Array(request.rgbaBuffer);
+		var pixels = new Uint16Array(request.pixelBuffer);
+		var palette32 = new Uint32Array(request.paletteBuffer);
 
 		var diameter = request.diameter;
 		var viewWidth = request.viewWidth;
@@ -800,7 +800,7 @@ function workerPaint() {
 		}
 
 		request.msec = performance.now() - now;
-		this.postMessage(request, [request.paletteBuffer, request.pixelBuffer, request.rgbaBuffer]);
+		this.postMessage(request, [request.rgbaBuffer, request.pixelBuffer, request.paletteBuffer]);
 	}
 }
 
@@ -808,16 +808,16 @@ function workerPaint() {
  * Extract rotated viewport from pixels and store them in specified imnagedata
  * The pixel data is palette based, the imagedata is RGB
  *
- * @param {ArrayBuffer} paletteBuffer
- * @param {ArrayBuffer} pixelBuffer
  * @param {ArrayBuffer} rgbaBuffer
+ * @param {ArrayBuffer} pixelBuffer
+ * @param {ArrayBuffer} paletteBuffer
  */
-Viewport.prototype.draw = function(paletteBuffer, pixelBuffer, rgbaBuffer) {
+Viewport.prototype.draw = function (rgbaBuffer, pixelBuffer, paletteBuffer) {
 
 	// make references local
-	var palette32 = new Uint32Array(paletteBuffer);
-	var pixels = new Uint16Array(pixelBuffer); // pixel data
 	var rgba = new Uint32Array(rgbaBuffer); // canvas pixel data
+	var pixels = new Uint16Array(pixelBuffer); // pixel data
+	var palette32 = new Uint32Array(paletteBuffer);
 
 	var diameter = this.diameter; // pixel scanline width (it's square)
 	var viewWidth = this.viewWidth; // viewport width
@@ -1054,7 +1054,7 @@ function GUI(config) {
 	/*
 	 * DOM elements and their matching id's
 	 */
-	this.domViewport = "idViewport";
+	this.domZoomer = "idZoomer";
 	this.domStatusQuality = "idStatusQuality";
 	this.domStatusLoad = "idStatusLoad";
 	this.domStatusRect = "idStatusRect";
@@ -1152,9 +1152,9 @@ function GUI(config) {
 	}
 
 	// get context
-	this.ctx = this.domViewport.getContext("2d", { alpha: false });
-	this.viewport0 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight);
-	this.viewport1 = new Viewport(this.domViewport.clientWidth, this.domViewport.clientHeight);
+	this.ctx = this.domZoomer.getContext("2d", { alpha: false });
+	this.viewport0 = new Viewport(this.domZoomer.clientWidth, this.domZoomer.clientHeight);
+	this.viewport1 = new Viewport(this.domZoomer.clientWidth, this.domZoomer.clientHeight);
 	this.currentViewport = this.viewport0;
 
 	// small viewport for initial image
@@ -1176,10 +1176,10 @@ function GUI(config) {
 	this.handleMessage = this.handleMessage.bind(this);
 
 	// register global key bindings before widgets overrides
-	this.domViewport.addEventListener("focus", this.handleFocus);
-	this.domViewport.addEventListener("blur", this.handleBlur);
-	this.domViewport.addEventListener("mousedown", this.handleMouse);
-	this.domViewport.addEventListener("contextmenu", this.handleMouse);
+	this.domZoomer.addEventListener("focus", this.handleFocus);
+	this.domZoomer.addEventListener("blur", this.handleBlur);
+	this.domZoomer.addEventListener("mousedown", this.handleMouse);
+	this.domZoomer.addEventListener("contextmenu", this.handleMouse);
 	document.addEventListener("keydown", this.handleKeyDown);
 	document.addEventListener("keyup", this.handleKeyUp);
 	window.addEventListener("message", this.handleMessage);
@@ -1362,22 +1362,22 @@ GUI.prototype.handleKeyDown = function (event) {
 		case 0x46: // F
 		case 0x66: // f
 			if (!this.formula.toggleListbox(event))
-				this.domViewport.focus();
+				this.domZoomer.focus();
 			break;
 		case 0x49: // I
 		case 0x69: // i
 			if (!this.incolour.toggleListbox(event))
-				this.domViewport.focus();
+				this.domZoomer.focus();
 			break;
 		case 0x4f: // O
 		case 0x6f: // o
 			if (!this.outcolour.toggleListbox(event))
-				this.domViewport.focus();
+				this.domZoomer.focus();
 			break;
 		case 0x50: // P
 		case 0x70: // p
 			if (!this.plane.toggleListbox(event))
-				this.domViewport.focus();
+				this.domZoomer.focus();
 			break;
 		case 0x51: // Q
 		case 0x71: // q
@@ -1431,38 +1431,38 @@ GUI.prototype.handleKeyUp = function (event) {
 		case 0x41: // A
 		case 0x61: // a
 			this.autoPilot.buttonUp();
-			this.domViewport.focus();
+			this.domZoomer.focus();
 			break;
 		case 0x44: // D
 		case 0x64: // d
 			this.paletteGroup.radioButtons[1].buttonUp();
-			this.domViewport.focus();
+			this.domZoomer.focus();
 			break;
 		case 0x51: // Q
 		case 0x71: // q
 			this.power.buttonUp();
-			this.domViewport.focus();
+			this.domZoomer.focus();
 			break;
 		case 0x52: // R
 		case 0x62: // r
 			this.paletteGroup.radioButtons[0].buttonUp();
-			this.domViewport.focus();
+			this.domZoomer.focus();
 			break;
 		case Aria.KeyCode.HOME:
 			this.home.buttonUp();
-			this.domViewport.focus();
+			this.domZoomer.focus();
 			break;
 		case Aria.KeyCode.UP:
-			this.domViewport.focus();
+			this.domZoomer.focus();
 			break;
 		case Aria.KeyCode.DOWN:
-			this.domViewport.focus();
+			this.domZoomer.focus();
 			break;
 		case Aria.KeyCode.PAGE_DOWN:
-			this.domViewport.focus();
+			this.domZoomer.focus();
 			break;
 		case Aria.KeyCode.PAGE_UP:
-			this.domViewport.focus();
+			this.domZoomer.focus();
 			break;
 	}
 
@@ -1477,7 +1477,7 @@ GUI.prototype.handleKeyUp = function (event) {
  * @param {FocusEvent} event
  */
 GUI.prototype.handleFocus = function (event) {
-	this.domViewport.classList.add("focus");
+	this.domZoomer.classList.add("focus");
 };
 
 /**
@@ -1486,7 +1486,7 @@ GUI.prototype.handleFocus = function (event) {
  * @param {FocusEvent} event
  */
 GUI.prototype.handleBlur = function (event) {
-	this.domViewport.classList.remove("focus");
+	this.domZoomer.classList.remove("focus");
 };
 
 /**
@@ -1496,7 +1496,7 @@ GUI.prototype.handleBlur = function (event) {
  */
 GUI.prototype.handleMouse = function(event) {
 
-	var rect = this.domViewport.getBoundingClientRect();
+	var rect = this.domZoomer.getBoundingClientRect();
 
 	/*
 	 * On first button press set a document listener to catch releases outside target element
@@ -1748,18 +1748,18 @@ GUI.prototype.mainloop = function() {
 	/*
 	 * test for viewport resize
 	 */
-	var domViewport = this.domViewport;
-	if (domViewport.clientWidth !== domViewport.width || domViewport.clientHeight !== domViewport.height) {
+	var domZoomer = this.domZoomer;
+	if (domZoomer.clientWidth !== domZoomer.width || domZoomer.clientHeight !== domZoomer.height) {
 		// set property
-		domViewport.width = domViewport.clientWidth;
-		domViewport.height = domViewport.clientHeight;
+		domZoomer.width = domZoomer.clientWidth;
+		domZoomer.height = domZoomer.clientHeight;
 
 		var oldViewport0 = this.viewport0;
 		var oldViewport1 = this.viewport1;
 
 		// create new viewports
-		this.viewport0 = new Viewport(domViewport.clientWidth, domViewport.clientHeight);
-		this.viewport1 = new Viewport(domViewport.clientWidth, domViewport.clientHeight);
+		this.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+		this.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
 
 		// copy the contents
 		if (this.frameNr & 1) {
@@ -1771,7 +1771,7 @@ GUI.prototype.mainloop = function() {
 		}
 
 		// update GUI
-		this.domWxH.innerHTML = "[" + domViewport.clientWidth + "x" + domViewport.clientHeight + "]";
+		this.domWxH.innerHTML = "[" + domZoomer.clientWidth + "x" + domZoomer.clientHeight + "]";
 	}
 
 	/*
@@ -1856,13 +1856,13 @@ GUI.prototype.mainloop = function() {
 	 * The message queue is overloaded, so call direct until improved design
 	 */
 	if (1) {
-		oldViewport.draw(oldFrame.paletteBuffer, oldFrame.pixelBuffer, oldFrame.rgbaBuffer);
+		oldViewport.draw(oldFrame.rgbaBuffer, oldFrame.pixelBuffer, oldFrame.paletteBuffer);
 		Viewport.raf.push(oldFrame);
 		window.requestAnimationFrame(this.animationFrame);
 		this.statStatePaint1 += ((performance.now() - oldFrame.now) - this.statStatePaint1) * this.coef;
 		this.statStatePaint2 += ((oldFrame.msec) - this.statStatePaint2) * this.coef;
 	} else {
-		this.wworkers[this.frameNr&3].postMessage(oldFrame, [oldFrame.paletteBuffer, oldFrame.pixelBuffer, oldFrame.rgbaBuffer]);
+		this.wworkers[this.frameNr&3].postMessage(oldFrame, [oldFrame.rgbaBuffer, oldFrame.pixelBuffer, oldFrame.paletteBuffer]);
 	}
 
 	/*
