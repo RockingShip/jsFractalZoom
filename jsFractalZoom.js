@@ -1041,6 +1041,52 @@ Viewport.prototype.fill = function () {
 	}
 };
 
+function Zoomer(domZoomer, options) {
+	this.onKeyFrame = options.onKeyFrame;
+	this.onBeginFrame = options.onBeginFrame;
+	this.onRenderFrame = options.onRenderFrame;
+	this.onEndFrame = options.onEndFrame;
+	this.onPutImageData = options.onPutImageData;
+
+	/** @member {number} -  0=STOP 1=COPY 2=UPDATE-before-rAF 3=IDLE 4=rAF 5=UPDATE-after-rAF 6=PAINT */
+	this.state = 0;
+	/** @member {number} - Timestamp next vsync */
+	this.vsync = 0;
+	/** @member {number} - Number of frames painted */
+	this.frameNr = 0;
+	/** @member {number} - Number of times mainloop called */
+	this.mainloopNr = 0;
+	/** @member {Viewport} - active viewport */
+	this.currentViewport = undefined;
+
+	/** @member {number} - Damping coefficient low-pass filter for following fields */
+	this.coef = 0.05;
+	/** @member {number} - Average time in mSec spent in COPY */
+	this.statStateCopy = 0;
+	/** @member {number} - Average time in mSec spent in UPDATE */
+	this.statStateUpdate = 0;
+	/** @member {number} - Average time in mSec spent in PAINT */
+	this.statStatePaint1 = 0;
+	this.statStatePaint2 = 0;
+	/** @member {number} - Average time in mSec waiting for rAF() */
+	this.statStateRAF = 0;
+
+	this.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+	this.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+	this.currentViewport = this.viewport0;
+
+	// per second differences
+	this.lastNow = 0;
+	this.lastFrame = 0;
+	this.lastLoop = 0;
+	this.counters = [0, 0, 0, 0, 0, 0, 0];
+	this.rafTime = 0;
+	this.lastTick = 0;
+
+	// list of web workers
+	this.wworkers = [];
+}
+
 /**
  * DOM bindings and event handlers
  *
@@ -1098,29 +1144,6 @@ function GUI(config) {
 	/** @member {number} - viewport mouse button state. OR-ed set of Aria.ButtonCode */
 	this.mouseButtons = 0;
 
-	/** @member {number} -  0=STOP 1=COPY 2=UPDATE-before-rAF 3=IDLE 4=rAF 5=UPDATE-after-rAF 6=PAINT */
-	this.state = 0;
-	/** @member {number} - Timestamp next vsync */
-	this.vsync = 0;
-	/** @member {number} - Number of frames painted */
-	this.frameNr = 0;
-	/** @member {number} - Number of times mainloop called */
-	this.mainloopNr = 0;
-	/** @member {Viewport} - active viewport */
-	this.currentViewport = undefined;
-
-	/** @member {number} - Damping coefficient low-pass filter for following fields */
-	this.coef = 0.05;
-	/** @member {number} - Average time in mSec spent in COPY */
-	this.statStateCopy = 0;
-	/** @member {number} - Average time in mSec spent in UPDATE */
-	this.statStateUpdate = 0;
-	/** @member {number} - Average time in mSec spent in PAINT */
-	this.statStatePaint1 = 0;
-	this.statStatePaint2 = 0;
-	/** @member {number} - Average time in mSec waiting for rAF() */
-	this.statStateRAF = 0;
-
 	/** @member {boolean} - fractal coordinate of pointer when button first pressed */
 	this.dragActive = false;
 	/** @member {boolean} - fractal X coordinate of pointer */
@@ -1128,16 +1151,25 @@ function GUI(config) {
 	/** @member {boolean} - fractal Y coordinate of pointer */
 	this.dragActiveY = 0;
 
-	this.zoomer = {
+	/*
+	 * Find the elements and replace the string names for DOM references
+	 */
+	for (var property in this) {
+		if (this.hasOwnProperty(property) && property.substr(0, 3) === "dom") {
+			this[property] = document.getElementById(this[property]);
+		}
+	}
+
+	this.zoomer = new Zoomer(this.domZoomer, {
 		/**
 		 * Called to create the initial key frame
 		 */
 		onKeyFrame:  (zoomer) => {
 			// set all pixels of thumbnail
-			zoomer.viewportInit.fill();
+			this.viewportInit.fill();
 
 			// inject into current viewport
-			zoomer.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, zoomer.viewportInit);
+			zoomer.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 		},
 
 		/**
@@ -1281,7 +1313,7 @@ function GUI(config) {
 		/**
 		 * Called before rendering a frame. The place to update/apply palettes.
 		 */
-		onBeginRender: (zoomer, previousFrame) => {
+		onRenderFrame: (zoomer, previousFrame) => {
 			// inject palette into frame
 			palette.setPaletteBuffer(previousFrame.paletteBuffer, Math.round(Config.paletteOffsetFloat));
 		},
@@ -1322,41 +1354,15 @@ function GUI(config) {
 			// draw frame onto canvas
 			this.ctx.putImageData(imagedata, 0, 0);
 		}
-	};
-
-	// per second differences
-	this.lastNow = 0;
-	this.lastFrame = 0;
-	this.lastLoop = 0;
-	this.counters = [0, 0, 0, 0, 0, 0, 0];
-	this.rafTime = 0;
-	this.lastTick = 0;
-	this.ctx = undefined;
-	this.viewport0 = undefined;
-	this.viewport1 = undefined;
-
-	// list of web workers
-	this.wworkers = [];
-
-	/*
-	 * Find the elements and replace the string names for DOM references
-	 */
-	for (var property in this) {
-		if (this.hasOwnProperty(property) && property.substr(0, 3) === "dom") {
-			this[property] = document.getElementById(this[property]);
-		}
-	}
+	});
 
 	// get context
 	this.ctx = this.domZoomer.getContext("2d", {alpha: false});
-	this.viewport0 = new Viewport(this.domZoomer.clientWidth, this.domZoomer.clientHeight);
-	this.viewport1 = new Viewport(this.domZoomer.clientWidth, this.domZoomer.clientHeight);
-	this.currentViewport = this.viewport0;
 
 	// small viewport for initial image
 	this.viewportInit = new Viewport(64, 64);
 	this.viewportInit.fill();
-	this.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+	this.zoomer.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 
 	// create formula engine
 	this.calculator = new Formula();
@@ -1501,7 +1507,7 @@ function GUI(config) {
 			window.palette.mkdefault();
 		}
 		// fast clamp pixel values
-		var viewport = this.currentViewport;
+		var viewport = this.zoomer.currentViewport;
 		for (var ji = 0; ji < viewport.viewWidth * viewport.viewHeight; ji++)
 			if (viewport.pixels[ji] != 65535)
 				viewport.pixels[ji] %= Config.paletteSize;
@@ -1516,9 +1522,9 @@ function GUI(config) {
 
 	// create 4 workers
 	for (var i = 0; i < 4; i++) {
-		this.wworkers[i] = new Worker(blobURL);
+		this.zoomer.wworkers[i] = new Worker(blobURL);
 
-		this.wworkers[i].onmessage = function (e) {
+		this.zoomer.wworkers[i].onmessage = function (e) {
 			/** @var {Frame} */
 			var response = e.data;
 
@@ -1528,8 +1534,8 @@ function GUI(config) {
 			window.requestAnimationFrame(this.animationFrame);
 
 			// keep track of round trip time
-			this.statStatePaint1 += ((performance.now() - response.now) - this.statStatePaint1) * this.coef;
-			this.statStatePaint2 += ((response.msec) - this.statStatePaint2) * this.coef;
+			this.zoomer.statStatePaint1 += ((performance.now() - response.now) - this.zoomer.statStatePaint1) * this.zoomer.coef;
+			this.zoomer.statStatePaint2 += ((response.msec) - this.zoomer.statStatePaint2) * this.zoomer.coef;
 		}.bind(this);
 	}
 
@@ -1707,7 +1713,7 @@ GUI.prototype.handleMouse = function (event) {
 	this.mouseI = event.pageX - rect.left;
 	this.mouseJ = event.pageY - rect.top;
 
-	var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+	var viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
 
 	// relative to viewport center
 	var dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
@@ -1745,9 +1751,9 @@ GUI.prototype.handleMessage = function (event) {
  * start the mainloop
  */
 GUI.prototype.start = function () {
-	this.state = 1;
-	this.vsync = performance.now() + (1000 / Config.framerateNow); // vsync wakeup time
-	this.statStateCopy = this.statStateUpdate = this.statStatePaint1 = this.statStatePaint2 = 0;
+	this.zoomer.state = 1;
+	this.zoomer.vsync = performance.now() + (1000 / Config.framerateNow); // vsync wakeup time
+	this.zoomer.statStateCopy = this.zoomer.statStateUpdate = this.zoomer.statStatePaint1 = this.zoomer.statStatePaint2 = 0;
 	window.postMessage("mainloop", "*");
 };
 
@@ -1755,7 +1761,7 @@ GUI.prototype.start = function () {
  * stop the mainloop
  */
 GUI.prototype.stop = function () {
-	this.state = 0;
+	this.zoomer.state = 0;
 };
 
 /**
@@ -1763,7 +1769,7 @@ GUI.prototype.stop = function () {
  */
 GUI.prototype.reload = function () {
 
-	if (this.zoomer.onKeyFrame) this.zoomer.onKeyFrame(this);
+	if (this.zoomer.onKeyFrame) this.zoomer.onKeyFrame(this.zoomer);
 };
 
 /**
@@ -1779,13 +1785,13 @@ GUI.prototype.animationFrame = function (time) {
 
 		var request = Viewport.raf.shift();
 
-		if (this.zoomer.onPutImageData) this.zoomer.onPutImageData(this, request);
+		if (this.zoomer.onPutImageData) this.zoomer.onPutImageData(this.zoomer, request);
 
 		// move request to free list
 		Viewport.frames.push(request);
 	}
 
-	this.statStateRAF += ((performance.now() - this.rafTime) - this.statStateRAF) * this.coef;
+	this.zoomer.statStateRAF += ((performance.now() - this.zoomer.rafTime) - this.zoomer.statStateRAF) * this.zoomer.coef;
 };
 
 
@@ -1795,46 +1801,46 @@ GUI.prototype.animationFrame = function (time) {
  * @returns {boolean}
  */
 GUI.prototype.mainloop = function () {
-	if (!this.state) {
+	if (!this.zoomer.state) {
 		console.log("STOP");
 		return false;
 	}
-	this.mainloopNr++;
+	this.zoomer.mainloopNr++;
 
 	// make local for speed
 	var config = this.config;
-	var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+	var viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
 
 
 	// current time
 	var last;
 	var now = performance.now();
 
-	if (this.vsync === 0 || now > this.vsync + 2000) {
+	if (this.zoomer.vsync === 0 || now > this.zoomer.vsync + 2000) {
 		// Missed vsync by more than 2 seconds, resync
-		this.vsync = now + (1000 / Config.framerateNow);
-		this.lastTick = now;
-		this.state = 1;
+		this.zoomer.vsync = now + (1000 / Config.framerateNow);
+		this.zoomer.lastTick = now;
+		this.zoomer.state = 1;
 		console.log("resync");
 	}
 
-	if (this.state === 2) {
+	if (this.zoomer.state === 2) {
 		/*
 		 * UPDATE-before-rAF. calculate inaccurate pixels
 		 */
-		this.counters[2]++;
+		this.zoomer.counters[2]++;
 		last = now;
 
-		if (now >= this.vsync - 2) {
+		if (now >= this.zoomer.vsync - 2) {
 			// don't even start if there is less than 2mSec left till next vsync
-			this.state = 3;
+			this.zoomer.state = 3;
 		} else {
 			/*
 			 * update inaccurate pixels
 			 */
 
 			// end time is 2mSec before next vertical sync
-			var endtime = this.vsync - 2;
+			var endtime = this.zoomer.vsync - 2;
 			if (endtime > now + 2)
 				endtime = now + 2;
 
@@ -1851,24 +1857,24 @@ GUI.prototype.mainloop = function () {
 			}
 
 			// update stats
-			this.statStateUpdate += ((now - last) / numLines - this.statStateUpdate) * this.coef;
+			this.zoomer.statStateUpdate += ((now - last) / numLines - this.zoomer.statStateUpdate) * this.zoomer.coef;
 
 			window.postMessage("mainloop", "*");
 			return true;
 		}
 	}
 
-	if (this.state === 3) {
+	if (this.zoomer.state === 3) {
 		/*
 		 * IDLE. Wait for vsync
 		 */
-		this.counters[3]++;
+		this.zoomer.counters[3]++;
 
-		if (now >= this.vsync) {
+		if (now >= this.zoomer.vsync) {
 			// vsync is NOW
-			this.state = 1;
-			this.vsync += (1000 / Config.framerateNow); // time of next vsync
-			this.rafTime = now;
+			this.zoomer.state = 1;
+			this.zoomer.vsync += (1000 / Config.framerateNow); // time of next vsync
+			this.zoomer.rafTime = now;
 		} else {
 			window.postMessage("mainloop", "*");
 			return true;
@@ -1880,26 +1886,26 @@ GUI.prototype.mainloop = function () {
 	 *** Start of new cycle
 	 ***
 	 **/
-	this.counters[1]++;
+	this.zoomer.counters[1]++;
 	last = now;
 
-	if (this.zoomer.onBeginFrame) this.zoomer.onBeginFrame(this);
+	if (this.zoomer.onBeginFrame) this.zoomer.onBeginFrame(this.zoomer);
 
-	var oldViewport = this.currentViewport;
+	var oldViewport = this.zoomer.currentViewport;
 	this.oldFrame = oldViewport.frame;
 
 	/*
 	 * COPY
 	 */
 
-	this.frameNr++;
+	this.zoomer.frameNr++;
 
-	if (this.frameNr & 1) {
-		this.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport0);
-		this.currentViewport = this.viewport1;
+	if (this.zoomer.frameNr & 1) {
+		this.zoomer.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer.viewport0);
+		this.zoomer.currentViewport = this.zoomer.viewport1;
 	} else {
-		this.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport1);
-		this.currentViewport = this.viewport0;
+		this.zoomer.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer.viewport1);
+		this.zoomer.currentViewport = this.zoomer.viewport0;
 	}
 
 	/*
@@ -1907,7 +1913,7 @@ GUI.prototype.mainloop = function () {
 	 */
 	this.oldFrame.now = performance.now();
 
-	if (this.zoomer.onBeginRender) this.zoomer.onBeginRender(this, this.oldFrame);
+	if (this.zoomer.onRenderFrame) this.zoomer.onRenderFrame(this.zoomer, this.oldFrame);
 
 	/*
 	 * The message queue is overloaded, so call direct until improved design
@@ -1916,21 +1922,21 @@ GUI.prototype.mainloop = function () {
 		oldViewport.draw(this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer);
 		Viewport.raf.push(this.oldFrame);
 		window.requestAnimationFrame(this.animationFrame);
-		this.statStatePaint1 += ((performance.now() - this.oldFrame.now) - this.statStatePaint1) * this.coef;
-		this.statStatePaint2 += ((this.oldFrame.msec) - this.statStatePaint2) * this.coef;
+		this.zoomer.statStatePaint1 += ((performance.now() - this.oldFrame.now) - this.zoomer.statStatePaint1) * this.zoomer.coef;
+		this.zoomer.statStatePaint2 += ((this.oldFrame.msec) - this.zoomer.statStatePaint2) * this.zoomer.coef;
 	} else {
-		this.wworkers[this.frameNr & 3].postMessage(this.oldFrame, [this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer]);
+		this.zoomer.wworkers[this.zoomer.frameNr & 3].postMessage(this.oldFrame, [this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer]);
 	}
 
 	/*
 	 * update stats
 	 */
 	now = performance.now();
-	this.statStateCopy += ((now - last) - this.statStateCopy) * this.coef;
+	this.zoomer.statStateCopy += ((now - last) - this.zoomer.statStateCopy) * this.zoomer.coef;
 
-	if (this.zoomer.onEndFrame) this.zoomer.onEndFrame(this);
+	if (this.zoomer.onEndFrame) this.zoomer.onEndFrame(this.zoomer);
 
-	this.state = 2;
+	this.zoomer.state = 2;
 	window.postMessage("mainloop", "*");
 	return true;
 };
@@ -1998,7 +2004,7 @@ Viewport.prototype.updateAutopilot = function (lookPixelRadius, borderPixelRadiu
 
 GUI.prototype.autopilotOn = function () {
 
-	var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+	var viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
 	Config.autopilotX = Config.centerX;
 	Config.autopilotY = Config.centerY;
 
