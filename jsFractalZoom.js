@@ -151,7 +151,7 @@ function Config() {
  * @param {number} now
  * @returns {number}
  */
-Config.linearToLog = function(min, max, now) {
+Config.linearToLog = function (min, max, now) {
 
 	var v = Math.exp((now - min) / (max - min)); // 1 <= result <= E
 
@@ -167,7 +167,7 @@ Config.linearToLog = function(min, max, now) {
  * @param {number} now
  * @returns {number}
  */
-Config.logTolinear = function(min, max, now) {
+Config.logTolinear = function (min, max, now) {
 
 	var v = 1 + (now - min) * (Math.E - 1) / (max - min);
 
@@ -177,7 +177,7 @@ Config.logTolinear = function(min, max, now) {
 /**
  * set initial position
  */
-Config.home = function() {
+Config.home = function () {
 	if (Formula) {
 		var initial = Formula.initial[Formula.formula];
 
@@ -235,7 +235,7 @@ function Frame(viewWidth, viewHeight) {
 function Palette()
 {
 	/** @member {ArrayBuffer} - palette data */
-	this.paletteBuffer = new ArrayBuffer(65536*4);
+	this.paletteBuffer = new ArrayBuffer(65536 * 4);
 
 	/** @member {number} - background red */
 	this.backgroundRed = 0;
@@ -256,11 +256,11 @@ function Palette()
 	 * @param n
 	 * @returns {number}
 	 */
-	var random = function(n) {
+	var random = function (n) {
 		return Math.floor(Math.random() * n);
 	};
 
-	this.mksmooth = function(nsegments, segmentsize, R, G, B) {
+	this.mksmooth = function (nsegments, segmentsize, R, G, B) {
 		var i, j, k;
 
 		// set palette modulo size
@@ -334,7 +334,7 @@ function Palette()
 		var G = new Array(nsegments);
 		var B = new Array(nsegments);
 
-		for (var i=0; i<nsegments; i++) {
+		for (var i = 0; i < nsegments; i++) {
 			R[i] = (!whitemode) * 255;
 			G[i] = (!whitemode) * 255;
 			B[i] = (!whitemode) * 255;
@@ -353,7 +353,7 @@ function Palette()
 		this.mksmooth(nsegments, segmentsize, R, G, B);
 	};
 
-	this.randomize_segments3 = function(whitemode, nsegments, segmentsize) {
+	this.randomize_segments3 = function (whitemode, nsegments, segmentsize) {
 		var h, s, v, i;
 		var R = new Array(nsegments);
 		var G = new Array(nsegments);
@@ -432,7 +432,7 @@ function Palette()
 		var segmentsize, nsegments;
 		var whitemode = random(2);
 
-		segmentsize  = random(85 + 4);
+		segmentsize = random(85 + 4);
 		segmentsize += random(85 + 4);
 		segmentsize += random(85 + 4);
 		segmentsize += random(85 + 4);	/* Make smaller segments with higher probability */
@@ -445,17 +445,17 @@ function Palette()
 
 		switch (random(6)) {
 			case 0:
-				segmentsize = Math.floor(segmentsize/2)*2;
+				segmentsize = Math.floor(segmentsize / 2) * 2;
 				nsegments = Math.floor(256 / segmentsize);
 				this.randomize_segments1(whitemode, nsegments, segmentsize);
 				break;
 			case 1:
-				segmentsize = Math.floor(segmentsize/3)*3;
+				segmentsize = Math.floor(segmentsize / 3) * 3;
 				nsegments = Math.floor(256 / segmentsize);
 				this.randomize_segments2(whitemode, nsegments, segmentsize);
 				break;
 			case 2:
-				segmentsize = Math.floor(segmentsize/6)*6;
+				segmentsize = Math.floor(segmentsize / 6) * 6;
 				nsegments = Math.floor(256 / segmentsize);
 				this.randomize_segments3(whitemode, nsegments, segmentsize);
 				break;
@@ -471,7 +471,7 @@ function Palette()
 		}
 	};
 
-	this.mkdefault = function() {
+	this.mkdefault = function () {
 		var gray = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff];
 		this.mksmooth(16, 1, gray, gray, gray);
 	};
@@ -482,7 +482,7 @@ function Palette()
 	 * @param {ArrayBuffer} paletteBuffer
 	 * @param {number} offset
 	 */
-	this.setPaletteBuffer = function(paletteBuffer, offset) {
+	this.setPaletteBuffer = function (paletteBuffer, offset) {
 		var paletteSize = Config.paletteSize;
 		var out32 = new Uint32Array(paletteBuffer);
 		var i, j, k;
@@ -579,7 +579,7 @@ function Viewport(width, height) {
  * @param {Float64Array} oldNearest - source ruler
  * @param {Float64Array} oldError - source ruler
  */
-Viewport.prototype.makeRuler = function(start, end, newCoord, newNearest, newError, newFrom, oldNearest, oldError) {
+Viewport.prototype.makeRuler = function (start, end, newCoord, newNearest, newError, newFrom, oldNearest, oldError) {
 
 	var iOld, iNew, nextError, currError, currCoord;
 
@@ -627,7 +627,7 @@ Viewport.prototype.makeRuler = function(start, end, newCoord, newNearest, newErr
  * @param {number} angle
  * @param {Viewport} oldViewport
  */
-Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
+Viewport.prototype.setPosition = function (x, y, radius, angle, oldViewport) {
 
 	/** @var {Frame} frame */
 	var frame;
@@ -675,7 +675,7 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 	/*
 	 * copy pixels
 	 */
-	var j=0, i=0, k=0, ji = 0;
+	var j = 0, i = 0, k = 0, ji = 0;
 	var xFrom = this.xFrom;
 	var yFrom = this.yFrom;
 	var newDiameter = this.diameter;
@@ -705,16 +705,16 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
 
 	// keep the froms with lowest error
 	for (i = 1; i < newDiameter; i++) {
-		if (xFrom[i-1] === xFrom[i] && this.xError[i-1] > this.xError[i])
-			xFrom[i-1] = -1;
-		if (yFrom[i-1] === yFrom[i] && this.yError[i-1] > this.yError[i])
-			yFrom[i-1] = -1;
+		if (xFrom[i - 1] === xFrom[i] && this.xError[i - 1] > this.xError[i])
+			xFrom[i - 1] = -1;
+		if (yFrom[i - 1] === yFrom[i] && this.yError[i - 1] > this.yError[i])
+			yFrom[i - 1] = -1;
 	}
-	for (i = newDiameter-2; i >= 0; i--) {
-		if (xFrom[i+1] === xFrom[i] && this.xError[i+1] > this.xError[i])
-			xFrom[i+1] = -1;
-		if (yFrom[i+1] === yFrom[i] && this.yError[i+1] > this.yError[i])
-			yFrom[i+1] = -1;
+	for (i = newDiameter - 2; i >= 0; i--) {
+		if (xFrom[i + 1] === xFrom[i] && this.xError[i + 1] > this.xError[i])
+			xFrom[i + 1] = -1;
+		if (yFrom[i + 1] === yFrom[i] && this.yError[i + 1] > this.yError[i])
+			yFrom[i + 1] = -1;
 	}
 };
 
@@ -723,11 +723,11 @@ Viewport.prototype.setPosition = function(x, y, radius, angle, oldViewport) {
  *
  * @returns {boolean}
  */
-Viewport.prototype.reachedLimits = function() {
+Viewport.prototype.reachedLimits = function () {
 	var ij;
 
-	for (ij=1; ij<this.diameter; ij++) {
-		if (this.xCoord[ij-1] === this.xCoord[ij] || this.yCoord[ij-1] === this.yCoord[ij])
+	for (ij = 1; ij < this.diameter; ij++) {
+		if (this.xCoord[ij - 1] === this.xCoord[ij] || this.yCoord[ij - 1] === this.yCoord[ij])
 			return true;
 
 	}
@@ -875,7 +875,7 @@ Viewport.prototype.draw = function (rgbaBuffer, pixelBuffer, paletteBuffer) {
  * @param {number} y
  * @returns {number}
  */
-Viewport.prototype.calculate = function(x, y) {
+Viewport.prototype.calculate = function (x, y) {
 	var zre = x;
 	var zim = y;
 	var pre = x;
@@ -900,7 +900,7 @@ Viewport.prototype.calculate = function(x, y) {
 /**
  * Simple background renderer
  */
-Viewport.prototype.renderLines = function() {
+Viewport.prototype.renderLines = function () {
 	// which tabstops have the worst error
 
 	var worstXerr = this.xError[0];
@@ -968,7 +968,7 @@ Viewport.prototype.renderLines = function() {
 			ji += diameter;
 		}
 
-		for (u=i+1; u < diameter; u++) {
+		for (u = i + 1; u < diameter; u++) {
 			if (xError[u] === 0 || xFrom[u] !== -1)
 				break;
 
@@ -999,7 +999,7 @@ Viewport.prototype.renderLines = function() {
 			pixels[ji++] = last;
 		}
 
-		for (v=j+1; v < diameter; v++) {
+		for (v = j + 1; v < diameter; v++) {
 			if (yError[v] === 0 || yFrom[v] !== -1)
 				break;
 
@@ -1014,7 +1014,7 @@ Viewport.prototype.renderLines = function() {
 	}
 };
 
-Viewport.prototype.fill = function() {
+Viewport.prototype.fill = function () {
 
 	this.frame = new Frame(this.viewWidth, this.viewHeight);
 	this.pixels = new Uint16Array(this.frame.pixelBuffer);
@@ -1128,11 +1128,48 @@ function GUI(config) {
 	/** @member {boolean} - fractal Y coordinate of pointer */
 	this.dragActiveY = 0;
 
+	this.zoomer = {
+		/**
+		 * Called to create the initial key frame
+		 */
+		onKeyFrame: (callback) => {
+			callback(this);
+		},
+
+		/**
+		 * Called to setup a frame. The place to update UI state and set x,y,radius,angle
+		 */
+		onBeginFrame: (callback) => {
+			callback(this);
+		},
+
+		/**
+		 * Called before rendering a frame. The place to update/apply palettes.
+		 */
+		onBeginRender: (callback) => {
+			callback(this, this.oldFrame);
+		},
+
+		/**
+		 * Called after a frame has been rendered. The place to update UI statistics
+		 */
+		onEndFrame: (callback) => {
+			callback(this);
+		},
+
+		/**
+		 * Called to inject imagedata into domZoomer
+		 */
+		onPutImageData: (callback) => {
+			callback(this);
+		}
+	};
+
 	// per second differences
 	this.lastNow = 0;
 	this.lastFrame = 0;
 	this.lastLoop = 0;
-	this.counters = [0,0,0,0,0,0,0];
+	this.counters = [0, 0, 0, 0, 0, 0, 0];
 	this.rafTime = 0;
 	this.lastTick = 0;
 	this.ctx = undefined;
@@ -1146,13 +1183,13 @@ function GUI(config) {
 	 * Find the elements and replace the string names for DOM references
 	 */
 	for (var property in this) {
-		if (this.hasOwnProperty(property) && property.substr(0,3) === "dom") {
+		if (this.hasOwnProperty(property) && property.substr(0, 3) === "dom") {
 			this[property] = document.getElementById(this[property]);
 		}
 	}
 
 	// get context
-	this.ctx = this.domZoomer.getContext("2d", { alpha: false });
+	this.ctx = this.domZoomer.getContext("2d", {alpha: false});
 	this.viewport0 = new Viewport(this.domZoomer.clientWidth, this.domZoomer.clientHeight);
 	this.viewport1 = new Viewport(this.domZoomer.clientWidth, this.domZoomer.clientHeight);
 	this.currentViewport = this.viewport0;
@@ -1216,35 +1253,35 @@ function GUI(config) {
 	var self = this;
 
 	// sliders
-	this.speed.setCallbackValueChange(function(newValue) {
+	this.speed.setCallbackValueChange(function (newValue) {
 		// scale exponentially
 		newValue = Config.linearToLog(Config.magnificationMin, Config.magnificationMax, newValue);
 		Config.magnificationNow = newValue;
 		self.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
 	});
-	this.rotateSpeed.setCallbackValueChange(function(newValue) {
+	this.rotateSpeed.setCallbackValueChange(function (newValue) {
 		Config.rotateSpeedNow = newValue;
 		self.domRotateLeft.innerHTML = newValue.toFixed(1);
 	});
-	this.paletteSpeed.setCallbackValueChange(function(newValue) {
+	this.paletteSpeed.setCallbackValueChange(function (newValue) {
 		Config.paletteSpeedNow = newValue;
 		self.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
 	});
-	this.depth.setCallbackValueChange(function(newValue) {
+	this.depth.setCallbackValueChange(function (newValue) {
 		newValue = Math.round(newValue);
 		// needs to be a multiple of 4
-		newValue = (newValue+3)&~3;
+		newValue = (newValue + 3) & ~3;
 		Config.depthNow = newValue;
 		self.domDepthLeft.innerHTML = newValue;
 	});
-	this.Framerate.setCallbackValueChange(function(newValue) {
+	this.Framerate.setCallbackValueChange(function (newValue) {
 		newValue = Math.round(newValue);
 		Config.framerateNow = newValue;
 		self.domFramerateLeft.innerHTML = newValue;
 	});
 
 	// listboxes
-	this.formula.listbox.setCallbackFocusChange(function(focusedItem) {
+	this.formula.listbox.setCallbackFocusChange(function (focusedItem) {
 		Config.formula = focusedItem.id;
 		this.domFormulaButton.innerText = focusedItem.innerText;
 		var formula = focusedItem.id.substr(8) | 0;
@@ -1252,21 +1289,21 @@ function GUI(config) {
 		Config.home();
 		this.reload();
 	}.bind(this));
-	this.incolour.listbox.setCallbackFocusChange(function(focusedItem) {
+	this.incolour.listbox.setCallbackFocusChange(function (focusedItem) {
 		Config.incolour = focusedItem.id;
 		this.domIncolourButton.innerText = focusedItem.innerText;
 		var incolour = focusedItem.id.substr(9) | 0;
 		Formula.incolour = incolour;
 		this.reload();
 	}.bind(this));
-	this.outcolour.listbox.setCallbackFocusChange(function(focusedItem) {
+	this.outcolour.listbox.setCallbackFocusChange(function (focusedItem) {
 		Config.outcolour = focusedItem.id;
 		this.domOutcolourButton.innerText = focusedItem.innerText;
 		var outcolour = focusedItem.id.substr(10) | 0;
 		Formula.outcolour = outcolour;
 		this.reload();
 	}.bind(this));
-	this.plane.listbox.setCallbackFocusChange(function(focusedItem) {
+	this.plane.listbox.setCallbackFocusChange(function (focusedItem) {
 		Config.plane = focusedItem.id;
 		this.domPlaneButton.innerText = focusedItem.innerText;
 		var plane = focusedItem.id.substr(6) | 0;
@@ -1277,13 +1314,13 @@ function GUI(config) {
 	}.bind(this));
 
 	// buttons
-	this.power.setCallbackValueChange(function(newValue) {
+	this.power.setCallbackValueChange(function (newValue) {
 		if (newValue)
 			self.start(); // power on
 		else
 			self.stop(); // power off
 	});
-	this.autoPilot.setCallbackValueChange(function(newValue) {
+	this.autoPilot.setCallbackValueChange(function (newValue) {
 		Config.autoPilot = newValue;
 		if (newValue) {
 			self.autopilotOn();
@@ -1291,14 +1328,14 @@ function GUI(config) {
 			self.autopilotOff();
 		}
 	});
-	this.home.setCallbackValueChange(function(newValue) {
+	this.home.setCallbackValueChange(function (newValue) {
 		Config.autopilotX = 0;
 		Config.autopilotY = 0;
 		Config.home();
 		this.reload();
 	}.bind(this));
 
-	this.paletteGroup.setCallbackFocusChange(function(newButton) {
+	this.paletteGroup.setCallbackFocusChange(function (newButton) {
 		if (newButton.domButton.id === "idRandomPaletteButton") {
 			window.palette.mkrandom();
 		} else {
@@ -1306,7 +1343,7 @@ function GUI(config) {
 		}
 		// fast clamp pixel values
 		var viewport = this.currentViewport;
-		for (var ji=0; ji<viewport.viewWidth*viewport.viewHeight; ji++)
+		for (var ji = 0; ji < viewport.viewWidth * viewport.viewHeight; ji++)
 			if (viewport.pixels[ji] != 65535)
 				viewport.pixels[ji] %= Config.paletteSize;
 	}.bind(this));
@@ -1319,7 +1356,7 @@ function GUI(config) {
 	var blobURL = (window.URL ? URL : webkitURL).createObjectURL(blob);
 
 	// create 4 workers
-	for (var i=0; i<4; i++) {
+	for (var i = 0; i < 4; i++) {
 		this.wworkers[i] = new Worker(blobURL);
 
 		this.wworkers[i].onmessage = function (e) {
@@ -1494,7 +1531,7 @@ GUI.prototype.handleBlur = function (event) {
  *
  * @param {MouseEvent} event
  */
-GUI.prototype.handleMouse = function(event) {
+GUI.prototype.handleMouse = function (event) {
 
 	var rect = this.domZoomer.getBoundingClientRect();
 
@@ -1511,7 +1548,7 @@ GUI.prototype.handleMouse = function(event) {
 	this.mouseI = event.pageX - rect.left;
 	this.mouseJ = event.pageY - rect.top;
 
-	var viewport = (this.frameNr&1) ? this.viewport1 : this.viewport0;
+	var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 
 	// relative to viewport center
 	var dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
@@ -1538,7 +1575,7 @@ GUI.prototype.handleMouse = function(event) {
  *
  * @param {message} event
  */
-GUI.prototype.handleMessage = function(event) {
+GUI.prototype.handleMessage = function (event) {
 	if (event.source === window && event.data === "mainloop") {
 		event.stopPropagation();
 		this.mainloop();
@@ -1548,7 +1585,7 @@ GUI.prototype.handleMessage = function(event) {
 /**
  * start the mainloop
  */
-GUI.prototype.start = function() {
+GUI.prototype.start = function () {
 	this.state = 1;
 	this.vsync = performance.now() + (1000 / Config.framerateNow); // vsync wakeup time
 	this.statStateCopy = this.statStateUpdate = this.statStatePaint1 = this.statStatePaint2 = 0;
@@ -1558,20 +1595,22 @@ GUI.prototype.start = function() {
 /**
  * stop the mainloop
  */
-GUI.prototype.stop = function() {
+GUI.prototype.stop = function () {
 	this.state = 0;
 };
 
 /**
  * (re)load initial frame
  */
-GUI.prototype.reload = function() {
+GUI.prototype.reload = function () {
 
-	// set all pixels of thumbnail
-	this.viewportInit.fill();
+	this.zoomer.onKeyFrame((zoomer) => {
+		// set all pixels of thumbnail
+		zoomer.viewportInit.fill();
 
-	// inject into current viewport
-	this.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+		// inject into current viewport
+		zoomer.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, zoomer.viewportInit);
+	});
 };
 
 /**
@@ -1579,18 +1618,22 @@ GUI.prototype.reload = function() {
  *
  * @param {number} time
  */
-GUI.prototype.animationFrame = function(time) {
+GUI.prototype.animationFrame = function (time) {
 	// paint image onto canvas
 
 	// move request to pending requestAnimationFrames()
 	while (Viewport.raf.length) {
 
 		var request = Viewport.raf.shift();
-		var rgba = new Uint8ClampedArray(request.rgbaBuffer);
-		var imagedata = new ImageData(rgba, request.viewWidth, request.viewHeight);
 
-		// draw frame onto canvas
-		this.ctx.putImageData(imagedata, 0, 0);
+		if (this.zoomer.onPutImageData) this.zoomer.onPutImageData((zoomer) => {
+
+			var rgba = new Uint8ClampedArray(request.rgbaBuffer);
+			var imagedata = new ImageData(rgba, request.viewWidth, request.viewHeight);
+
+			// draw frame onto canvas
+			this.ctx.putImageData(imagedata, 0, 0);
+		});
 
 		// move request to free list
 		Viewport.frames.push(request);
@@ -1605,7 +1648,7 @@ GUI.prototype.animationFrame = function(time) {
  *
  * @returns {boolean}
  */
-GUI.prototype.mainloop = function() {
+GUI.prototype.mainloop = function () {
 	if (!this.state) {
 		console.log("STOP");
 		return false;
@@ -1614,7 +1657,7 @@ GUI.prototype.mainloop = function() {
 
 	// make local for speed
 	var config = this.config;
-	var viewport = (this.frameNr&1) ? this.viewport1 : this.viewport0;
+	var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 
 
 	// current time
@@ -1687,10 +1730,10 @@ GUI.prototype.mainloop = function() {
 	}
 
 	/**
-	***
-	*** Start of new cycle
-	***
-	**/
+	 ***
+	 *** Start of new cycle
+	 ***
+	 **/
 	this.counters[1]++;
 	last = now;
 
@@ -1698,137 +1741,139 @@ GUI.prototype.mainloop = function() {
 	var diffSec = (now - this.lastTick) / 1000;
 	this.lastTick = now;
 
-	if (Config.autoPilot) {
-		if (this.frameNr & 1) {
-			if (this.viewport1.reachedLimits()) {
-				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-				window.gui.domAutopilot.style.border = '4px solid orange';
+	if (this.zoomer.onBeginFrame) this.zoomer.onBeginFrame((zoomer) => {
+
+		if (Config.autoPilot) {
+			if (zoomer.frameNr & 1) {
+				if (zoomer.viewport1.reachedLimits()) {
+					Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+					window.gui.domAutopilot.style.border = '4px solid orange';
+				} else {
+					this.domStatusQuality.innerHTML = "";
+					if (!zoomer.viewport1.updateAutopilot(4, 16))
+						if (!zoomer.viewport1.updateAutopilot(60, 16))
+							if (!zoomer.viewport1.updateAutopilot(zoomer.viewport1.diameter >> 1, 16))
+								Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+				}
 			} else {
-				this.domStatusQuality.innerHTML = "";
-				if (!this.viewport1.updateAutopilot(4, 16))
-					if (!this.viewport1.updateAutopilot(60, 16))
-						if (!this.viewport1.updateAutopilot(this.viewport1.diameter >> 1, 16))
-							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+				if (zoomer.viewport0.reachedLimits()) {
+					Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+					window.gui.domAutopilot.style.border = '4px solid orange';
+				} else {
+					this.domStatusQuality.innerHTML = "";
+					if (!zoomer.viewport0.updateAutopilot(4, 16))
+						if (!zoomer.viewport0.updateAutopilot(60, 16))
+							if (!zoomer.viewport0.updateAutopilot(zoomer.viewport0.diameter >> 1, 16))
+								Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+				}
 			}
-		} else {
-			if (this.viewport0.reachedLimits()) {
-				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-				window.gui.domAutopilot.style.border = '4px solid orange';
+
+			this.mouseX = Config.autopilotX;
+			this.mouseY = Config.autopilotY;
+			this.mouseButtons = Config.autopilotButtons;
+		}
+
+		/*
+		 * Update zoom (de-)acceleration. -1 <= zoomSpeed <= +1
+		 */
+		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
+			// zoom-in only
+			Config.zoomSpeed = +1 - (+1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+		} else if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
+			// zoom-out only
+			Config.zoomSpeed = -1 - (-1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+		} else if (this.mouseButtons === 0) {
+			// buttons released
+			Config.zoomSpeed = Config.zoomSpeed * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+
+			if (Config.zoomSpeed >= -0.001 && Config.zoomSpeed < +0.001)
+				Config.zoomSpeed = 0; // full stop
+		}
+
+		/*
+		 * test for viewport resize
+		 */
+		var domZoomer = this.domZoomer;
+		if (domZoomer.clientWidth !== domZoomer.width || domZoomer.clientHeight !== domZoomer.height) {
+			// set property
+			domZoomer.width = domZoomer.clientWidth;
+			domZoomer.height = domZoomer.clientHeight;
+
+			var oldViewport0 = zoomer.viewport0;
+			var oldViewport1 = zoomer.viewport1;
+
+			// create new viewports
+			zoomer.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+			zoomer.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+
+			// copy the contents
+			if (zoomer.frameNr & 1) {
+				zoomer.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport1);
+				zoomer.currentViewport = zoomer.viewport1;
 			} else {
-				this.domStatusQuality.innerHTML = "";
-				if (!this.viewport0.updateAutopilot(4, 16))
-					if (!this.viewport0.updateAutopilot(60, 16))
-						if (!this.viewport0.updateAutopilot(this.viewport0.diameter >> 1, 16))
-							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+				zoomer.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport0);
+				zoomer.currentViewport = zoomer.viewport0;
 			}
+
+			// update GUI
+			this.domWxH.innerHTML = "[" + domZoomer.clientWidth + "x" + domZoomer.clientHeight + "]";
 		}
 
-		this.mouseX = Config.autopilotX;
-		this.mouseY = Config.autopilotY;
-		this.mouseButtons = Config.autopilotButtons;
-	}
+		/*
+		 * Update palette cycle offset
+		 */
+		if (Config.paletteSpeedNow)
+			Config.paletteOffsetFloat -= diffSec * Config.paletteSpeedNow;
 
-	/*
-	 * Update zoom (de-)acceleration. -1 <= zoomSpeed <= +1
-	 */
-	if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
-		// zoom-in only
-		Config.zoomSpeed = +1 - (+1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-	} else if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
-		// zoom-out only
-		Config.zoomSpeed = -1 - (-1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-	} else if (this.mouseButtons === 0) {
-		// buttons released
-		Config.zoomSpeed = Config.zoomSpeed * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+		/*
+		 * Update viewport angle (before zoom gestures)
+		 */
+		if (Config.rotateSpeedNow)
+			Config.angle += diffSec * Config.rotateSpeedNow * 360;
 
-		if (Config.zoomSpeed >= -0.001 && Config.zoomSpeed < +0.001)
-			Config.zoomSpeed = 0; // full stop
-	}
+		// drag gesture
+		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
+			// need screen coordinates to avoid drifting
+			// relative to viewport center
+			var dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
+			var dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
+			// undo rotation
+			var x = dy * Config.rsin + dx * Config.rcos + Config.centerX;
+			var y = dy * Config.rcos - dx * Config.rsin + Config.centerY;
 
-	/*
-	 * test for viewport resize
-	 */
-	var domZoomer = this.domZoomer;
-	if (domZoomer.clientWidth !== domZoomer.width || domZoomer.clientHeight !== domZoomer.height) {
-		// set property
-		domZoomer.width = domZoomer.clientWidth;
-		domZoomer.height = domZoomer.clientHeight;
+			if (!this.dragActive) {
+				// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
+				this.dragActiveX = x;
+				this.dragActiveY = y;
+				this.dragActive = true;
+			}
 
-		var oldViewport0 = this.viewport0;
-		var oldViewport1 = this.viewport1;
-
-		// create new viewports
-		this.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
-		this.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
-
-		// copy the contents
-		if (this.frameNr & 1) {
-			this.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport1);
-			this.currentViewport = this.viewport1;
+			// update x/y but keep radius
+			Config.centerX = Config.centerX - x + this.dragActiveX;
+			Config.centerY = Config.centerY - y + this.dragActiveY;
 		} else {
-			this.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport0);
-			this.currentViewport = this.viewport0;
+			this.dragActive = false;
 		}
 
-		// update GUI
-		this.domWxH.innerHTML = "[" + domZoomer.clientWidth + "x" + domZoomer.clientHeight + "]";
-	}
+		// zoom-in/out gesture
+		if (Config.zoomSpeed) {
+			// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
+			var magnify = Math.pow(Config.magnificationNow, Config.zoomSpeed * diffSec);
 
-	/*
-	 * Update palette cycle offset
-	 */
-	if (Config.paletteSpeedNow)
-		Config.paletteOffsetFloat -= diffSec * Config.paletteSpeedNow;
-
-	/*
-	 * Update viewport angle (before zoom gestures)
-	 */
-	if (Config.rotateSpeedNow)
-		Config.angle += diffSec * Config.rotateSpeedNow * 360;
-
-	// drag gesture
-	if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
-		// need screen coordinates to avoid drifting
-		// relative to viewport center
-		var dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
-		var dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
-		// undo rotation
-		var x = dy * Config.rsin + dx * Config.rcos + Config.centerX;
-		var y = dy * Config.rcos - dx * Config.rsin + Config.centerY;
-
-		if (!this.dragActive) {
-			// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
-			this.dragActiveX = x;
-			this.dragActiveY = y;
-			this.dragActive = true;
+			// zoom, The mouse pointer coordinate should not change
+			Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
+			Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
+			Config.radius = Config.radius / magnify;
 		}
 
-		// update x/y but keep radius
-		Config.centerX = Config.centerX - x + this.dragActiveX;
-		Config.centerY = Config.centerY - y + this.dragActiveY;
-	} else {
-		this.dragActive = false;
-	}
-
-	// zoom-in/out gesture
-	if (Config.zoomSpeed) {
-		// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
-		var magnify = Math.pow(Config.magnificationNow, Config.zoomSpeed * diffSec);
-
-		// zoom, The mouse pointer coordinate should not change
-		Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
-		Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
-		Config.radius  = Config.radius / magnify;
-	}
-
-	this.domStatusQuality.innerHTML = JSON.stringify({lines:Viewport.doneX+Viewport.doneY, calc: Viewport.doneCalc,
-	x: Config.centerX, y: Config.centerY, r: Config.radius});
-	Viewport.doneX = 0;
-	Viewport.doneY = 0;
-	Viewport.doneCalc = 0;
+		this.domStatusQuality.innerHTML = JSON.stringify({lines: Viewport.doneX + Viewport.doneY, calc: Viewport.doneCalc, x: Config.centerX, y: Config.centerY, r: Config.radius});
+		Viewport.doneX = 0;
+		Viewport.doneY = 0;
+		Viewport.doneCalc = 0;
+	});
 
 	var oldViewport = this.currentViewport;
-	var oldFrame = oldViewport.frame;
+	this.oldFrame = oldViewport.frame;
 
 	/*
 	 * COPY
@@ -1847,22 +1892,24 @@ GUI.prototype.mainloop = function() {
 	/*
 	 * Create palette
 	 */
-	oldFrame.now = performance.now();
+	this.oldFrame.now = performance.now();
 
-	// inject palette into frame
-	palette.setPaletteBuffer(oldFrame.paletteBuffer, Math.round(Config.paletteOffsetFloat));
+	if (this.zoomer.onBeginRender) this.zoomer.onBeginRender((zoomer, previousFrame) => {
+		// inject palette into frame
+		palette.setPaletteBuffer(previousFrame.paletteBuffer, Math.round(Config.paletteOffsetFloat));
+	});
 
 	/*
 	 * The message queue is overloaded, so call direct until improved design
 	 */
 	if (1) {
-		oldViewport.draw(oldFrame.rgbaBuffer, oldFrame.pixelBuffer, oldFrame.paletteBuffer);
-		Viewport.raf.push(oldFrame);
+		oldViewport.draw(this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer);
+		Viewport.raf.push(this.oldFrame);
 		window.requestAnimationFrame(this.animationFrame);
-		this.statStatePaint1 += ((performance.now() - oldFrame.now) - this.statStatePaint1) * this.coef;
-		this.statStatePaint2 += ((oldFrame.msec) - this.statStatePaint2) * this.coef;
+		this.statStatePaint1 += ((performance.now() - this.oldFrame.now) - this.statStatePaint1) * this.coef;
+		this.statStatePaint2 += ((this.oldFrame.msec) - this.statStatePaint2) * this.coef;
 	} else {
-		this.wworkers[this.frameNr&3].postMessage(oldFrame, [oldFrame.rgbaBuffer, oldFrame.pixelBuffer, oldFrame.paletteBuffer]);
+		this.wworkers[this.frameNr & 3].postMessage(this.oldFrame, [this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer]);
 	}
 
 	/*
@@ -1871,22 +1918,25 @@ GUI.prototype.mainloop = function() {
 	now = performance.now();
 	this.statStateCopy += ((now - last) - this.statStateCopy) * this.coef;
 
-	// window.gui.domStatusQuality.innerHTML = JSON.stringify(this.counters);
+	if (this.zoomer.onEndFrame) this.zoomer.onEndFrame((zoomer) => {
 
-	this.domStatusRect.innerHTML =
-		"zoom:" + this.statStateCopy.toFixed(3) +
-		"mSec("+ (this.statStateCopy*100/(1000 / Config.framerateNow)).toFixed(0) +
-		"%), update:" + this.statStateUpdate.toFixed(3) +
-		"mSec, paint:" + this.statStatePaint1.toFixed(3) +
-		"mSec("+ (this.statStatePaint1*100/(1000 / Config.framerateNow)).toFixed(0) +
-		"%)+"+this.statStatePaint2.toFixed(3)+", rAF:" + this.statStateRAF.toFixed(3) ;
+		// window.gui.domStatusQuality.innerHTML = JSON.stringify(this.counters);
 
-	if (Math.floor(now/1000) !== this.lastNow) {
-		this.domStatusLoad.innerHTML = "FPS:"+(this.frameNr - this.lastFrame) + " IPS:" + (this.mainloopNr - this.lastLoop);
-		this.lastNow = 	Math.floor(now/1000);
-		this.lastFrame = this.frameNr;
-		this.lastLoop = this.mainloopNr;
-	}
+		this.domStatusRect.innerHTML =
+			"zoom:" + zoomer.statStateCopy.toFixed(3) +
+			"mSec(" + (zoomer.statStateCopy * 100 / (1000 / Config.framerateNow)).toFixed(0) +
+			"%), update:" + zoomer.statStateUpdate.toFixed(3) +
+			"mSec, paint:" + zoomer.statStatePaint1.toFixed(3) +
+			"mSec(" + (zoomer.statStatePaint1 * 100 / (1000 / Config.framerateNow)).toFixed(0) +
+			"%)+" + zoomer.statStatePaint2.toFixed(3) + ", rAF:" + zoomer.statStateRAF.toFixed(3);
+
+		if (Math.floor(now / 1000) !== zoomer.lastNow) {
+			this.domStatusLoad.innerHTML = "FPS:" + (zoomer.frameNr - zoomer.lastFrame) + " IPS:" + (zoomer.mainloopNr - zoomer.lastLoop);
+			zoomer.lastNow = Math.floor(now / 1000);
+			zoomer.lastFrame = zoomer.frameNr;
+			zoomer.lastLoop = zoomer.mainloopNr;
+		}
+	});
 
 	this.state = 2;
 	window.postMessage("mainloop", "*");
@@ -1898,7 +1948,7 @@ GUI.prototype.mainloop = function() {
  * @param {number} borderPixelRadius
  * @returns {boolean}
  */
-Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius) {
+Viewport.prototype.updateAutopilot = function (lookPixelRadius, borderPixelRadius) {
 
 	var config = window.config;
 	var pixels = this.pixels;
@@ -1914,47 +1964,47 @@ Viewport.prototype.updateAutopilot = function(lookPixelRadius, borderPixelRadius
 	var max = min * 3;
 
 
-		// outside center rectangle, adjust autopilot heading
-		for (var k = 0; k < 450; k++) {
-			var i0 = api + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
-			var j0 = apj + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
-			// convert to x/y
-			var x = (i0 / this.diameter * 2 - 1) * Config.radius + Config.centerX;
-			var y = (j0 / this.diameter * 2 - 1) * Config.radius + Config.centerY;
-			// convert to viewport coords (use '>>1' as integer '/2'
+	// outside center rectangle, adjust autopilot heading
+	for (var k = 0; k < 450; k++) {
+		var i0 = api + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+		var j0 = apj + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+		// convert to x/y
+		var x = (i0 / this.diameter * 2 - 1) * Config.radius + Config.centerX;
+		var y = (j0 / this.diameter * 2 - 1) * Config.radius + Config.centerY;
+		// convert to viewport coords (use '>>1' as integer '/2'
+		var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
+		var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
+		// must be visable
+		if (i < borderPixelRadius || j < borderPixelRadius || i >= this.viewWidth - borderPixelRadius || j >= this.viewHeight - borderPixelRadius)
+			continue;
+
+		var c = 0;
+		for (j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
+			for (i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
+				if (pixels[j * this.diameter + i] === 65535)
+					c++;
+		if (c >= min && c <= max) {
+			Config.autopilotX = x;
+			Config.autopilotY = y;
+			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
+
 			var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
 			var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
-			// must be visable
-			if (i < borderPixelRadius || j < borderPixelRadius || i >= this.viewWidth-borderPixelRadius || j >= this.viewHeight-borderPixelRadius)
-				continue;
-
-			var c = 0;
-			for (j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
-				for (i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
-					if (pixels[j * this.diameter + i] === 65535)
-						c++;
-			if (c >= min && c <= max) {
-				Config.autopilotX = x;
-				Config.autopilotY = y;
-				Config.autopilotButtons = 1<<Aria.ButtonCode.BUTTON_LEFT;
-
-				var i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + this.radiusX) * this.viewWidth / this.radiusX) >> 1;
-				var j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + this.radiusY) * this.viewHeight / this.radiusY) >> 1;
-				window.gui.domAutopilot.style.top = (j - borderPixelRadius)+"px";
-				window.gui.domAutopilot.style.left = (i - borderPixelRadius)+"px";
-				window.gui.domAutopilot.style.width = (borderPixelRadius*2)+"px";
-				window.gui.domAutopilot.style.height = (borderPixelRadius*2)+"px";
-				window.gui.domAutopilot.style.border = '4px solid green';
-				return true;
-			}
+			window.gui.domAutopilot.style.top = (j - borderPixelRadius) + "px";
+			window.gui.domAutopilot.style.left = (i - borderPixelRadius) + "px";
+			window.gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
+			window.gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
+			window.gui.domAutopilot.style.border = '4px solid green';
+			return true;
 		}
+	}
 
 	Config.autopilotButtons = 0;
 	window.gui.domAutopilot.style.border = '4px solid red';
 	return false;
 };
 
-GUI.prototype.autopilotOn = function() {
+GUI.prototype.autopilotOn = function () {
 
 	var viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 	Config.autopilotX = Config.centerX;
@@ -1969,7 +2019,7 @@ GUI.prototype.autopilotOn = function() {
 	} while (lookPixelRadius > 2);
 };
 
-GUI.prototype.autopilotOff = function() {
+GUI.prototype.autopilotOff = function () {
 	this.mouseButtons = 0;
 	this.domAutopilot.style.border = 'none';
 
