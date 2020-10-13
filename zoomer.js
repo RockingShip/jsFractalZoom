@@ -18,6 +18,59 @@
 
 "use strict";
 
+/*
+ * Timing considerations
+ *
+ * Constructing a frame is a time consuming process that would severely impair the event/messaging queues and vsync.
+ * To make the code more responsive, frame constructing is split into 4 phases:
+ *
+ * - COPY, pre-fill a frame with data from a previous frame.
+ * 	The time required depends on window size and magnification factor (zoom speed).
+ * 	Times are unstable and can vary between 1 and 15mSec, typically 15mSec
+ *
+ * - UPDATE, improve quality by recalculating inaccurate pixels
+ * 	The time required depends on window size and magnification factor.
+ * 	Times are fairly short, typically well under 1mSec.
+ * 	In contrast to COPY/PAINT which are called once and take long
+ * 	UPDATES are many and take as short as possible to keep the system responsive.
+ *
+ * - IDLE, wait until animationEndFrameCallback triggers an event (VSYNC)
+ *      Waiting makes the event queue maximum responsive.
+ *
+ * - PAINT, Create RGBA imagedata ready to be written to DOM canvas
+ * 	The time required depends on window size and rotation angle.
+ * 	Times are fairly stable and can vary between 5 and 15mSec, typically 12mSec.
+ *
+ * There is also an optional embedded IDLE state. No calculations are performed 2mSec before a vsync,
+ * so that the event/message queues are highly responsive to the handling of requestAnimationEndFrame()
+ * for worst case situations that a long UPDATE will miss the vsync (animationEndFrameCallback).
+ *
+ * IDLEs may be omitted if updates are fast enough.
+ *
+ * There are also 2 sets of 2 alternating buffers, internal pixel data and context2D RGBA data.
+ *
+ * Read/write time diagram: R=Read, W=write, I=idle, rAF=requestAnimationEndFrame, AF=animationEndFrameCallback
+ *
+ *               COPY0  UPDATE0     COPY1  UPDATE1     COPY2  UPDATE2     COPY0  UPDATE0     COPY1  UPDATE1
+ * pixel0:      <--W--> WWWWIIWWWW <--R-->                               <--W--> WWWWIIWWWW <--R-->
+ * worker0                                <----paint---->                                          <----paint---->
+ * pixel1:                         <--W--> WWWWIIWWWW <--R-->                               <--W--> WWWWIIWWWW
+ * worker1                                                   <----paint---->
+ * pixel2:      <--R-->                               <--W--> WWWWIIWWWW <--R-->
+ * worker2             <----paint---->                                          <----paint---->
+ *                 ^rAF               ^rAF               ^rAF               ^rAF               ^rAF
+ *                    ^AF imagedata2     ^AF imagedata0      ^AF imagedata1     ^AF imagedata2     ^AF imagedata0
+ */
+
+/**
+ * Set the center coordinate and radius.
+ *
+ * @callback Calculator
+ * @param {float}   x	- Center x of view
+ * @param {float}   y	- Center y or view
+ * @return {int} - RGBA value for pixel
+ */
+
 /**
  * Frame, used to transport data between workers
  *
@@ -34,28 +87,37 @@ function Frame(viewWidth, viewHeight) {
 	/** @member {number} - duration in worker (not full round-reip) */
 	this.msec = 0;
 
-	/** @member {number} - width */
+	/** @member {int}
+	    @description Display width (pixels) */
 	this.viewWidth = viewWidth;
-	/** @member {number} - diameter */
+
+	/** @member {int}
+	    @description display diameter (pixels) */
 	this.viewHeight = viewHeight;
+
 	/** @member {number} - height */
 	this.diameter = Math.ceil(Math.sqrt(viewWidth * viewWidth + viewHeight * viewHeight));
-	/** @member {number} - angle */
+
+	/** @member {float}
+	    @description Rotational angle (degrees) */
 	this.angle = 0;
 
-	/** @member {ArrayBuffer} - (UINT8x4) RGBA for canvas */
+	/** @member {ArrayBuffer}
+	    @description Canvas pixel buffer (UINT8x4) */
 	this.rgbaBuffer = new ArrayBuffer(viewWidth * viewHeight * 4);
 
-	/** @member {ArrayBuffer} - (UINT16) pixels */
+	/** @member {ArrayBuffer}
+	    @description Pixels (UINT16) */
 	this.pixelBuffer = new ArrayBuffer(this.diameter * this.diameter * 2);
 
-	/** @member {ArrayBuffer} - (UINT8x4) red */
+	/** @member {ArrayBuffer}
+	    @description Worker RGBA palette (UINT8*4) */
 	this.paletteBuffer = new ArrayBuffer(65536 * 4);
 }
 
 function workerPaint() {
 	/**
-	 * Extract rotated viewport from pixels and store them in specified imnagedata
+	 * Extract rotated viewport from pixels and store them in specified imagedata
 	 * The pixel data is palette based, the imagedata is RGB
 	 *
 	 * @param {MessageEvent} e
@@ -153,13 +215,36 @@ function Viewport(width, height) {
 	/** @member {number} - distance between center and vertical viewport edge  (derived from this.radius) */
 	this.radiusY = 0;
 
+	/** @var {Float64Array}
+	    @description Logical x coordinate, what it should be */
 	this.xCoord = new Float64Array(this.diameter);
+
+	/** @var {Float64Array}
+	    @description Physical x coordinate, the older there larger the drift */
 	this.xNearest = new Float64Array(this.diameter);
+
+	/** @var {Float64Array}
+	    @description Cached distance between Logical/Physical */
 	this.xError = new Float64Array(this.diameter);
+
+	/** @var {Int32Array}
+	    @description Inherited index from previous update */
 	this.xFrom = new Int32Array(this.diameter);
+
+	/** @var {Float64Array}
+	    @description Logical y coordinate, what it should be */
 	this.yCoord = new Float64Array(this.diameter);
+
+	/** @var {Float64Array}
+	    @description Physical y coordinate, the older there larger the drift */
 	this.yNearest = new Float64Array(this.diameter);
+
+	/** @var {Float64Array}
+	    @description Cached distance between Logical/Physical */
 	this.yError = new Float64Array(this.diameter);
+
+	/** @var {Int32Array}
+	    @description Inherited index from previous update */
 	this.yFrom = new Int32Array(this.diameter);
 
 	/*
@@ -187,13 +272,11 @@ function Viewport(width, height) {
 	 */
 	this.makeRuler = (start, end, newCoord, newNearest, newError, newFrom, oldNearest, oldError) => {
 
-		let iOld, iNew;
-
 		/*
 		 *
 		 */
-		iOld = 0;
-		for (iNew = 0; iNew < newCoord.length && iOld < oldNearest.length; iNew++) {
+		let iOld, iNew;
+		for (iOld = 0, iNew = 0; iNew < newCoord.length && iOld < oldNearest.length; iNew++) {
 
 			// determine coordinate current tab stop
 			const currCoord = (end - start) * iNew / (newCoord.length - 1) + start;
@@ -279,7 +362,7 @@ function Viewport(width, height) {
 		 **/
 
 		/*
-		 * copy pixels
+		 * copy/inherit pixels TODO: check oldPixelHeight
 		 */
 		const xFrom = this.xFrom;
 		const yFrom = this.yFrom;
@@ -530,10 +613,12 @@ function Viewport(width, height) {
 		this.radiusX = Config.radius * this.viewWidth / this.diameter;
 		this.radiusY = Config.radius * this.viewHeight / this.diameter;
 
-		for (let i = 0; i < this.xCoord.length; i++)
-			this.xNearest[i] = this.xCoord[i] = ((Config.centerX + Config.radius) - (Config.centerX - Config.radius)) * i / (this.xCoord.length - 1) + (Config.centerX - Config.radius);
-		for (let i = 0; i < this.yCoord.length; i++)
-			this.yNearest[i] = this.yCoord[i] = ((Config.centerY + Config.radius) - (Config.centerY - Config.radius)) * i / (this.yCoord.length - 1) + (Config.centerY - Config.radius);
+		const {xCoord, xNearest, yCoord, yNearest, pixels, pixelWidth, pixelHeight} = this;
+
+		for (let i = 0; i < xCoord.length; i++)
+			xNearest[i] = xCoord[i] = ((Config.centerX + Config.radius) - (Config.centerX - Config.radius)) * i / (xCoord.length - 1) + (Config.centerX - Config.radius);
+		for (let i = 0; i < yCoord.length; i++)
+			yNearest[i] = yCoord[i] = ((Config.centerY + Config.radius) - (Config.centerY - Config.radius)) * i / (yCoord.length - 1) + (Config.centerY - Config.radius);
 
 		const  calculate = Formula.calculate;
 		let ji = 0;
@@ -542,7 +627,7 @@ function Viewport(width, height) {
 			for (let i = 0; i < this.diameter; i++) {
 				// distance to center
 				let x = (Config.centerX - Config.radius) + Config.radius * 2 * i / this.diameter;
-				this.pixels[ji++] = calculate(x, y);
+				pixels[ji++] = calculate(x, y);
 			}
 		}
 	};
@@ -551,13 +636,12 @@ function Viewport(width, height) {
 /**
  *
  * @class Zoomer
- * @param {HTMLCanvasElement}	[options.domZoomer]	- Element to detect a resize	 -
+ * @param {HTMLCanvasElement}	domZoomer		- Element to detect a resize	 -
  * @param {Object}		[options]   		- Template values for new frames. These may be changed during runtime.
- * @param {Element} 		[options.domZoomer]	- Element to detect a resize	 -
  * @param {float}		[options.frameRate]	- Frames per second
  * @param {float}		[options.updateSlice]	- UPDATEs get sliced into smaller  chucks to stay responsive and limit overshoot
  * @param {float}		[options.coef]		- Low-pass filter coefficient to dampen spikes
- * @param {boolean}		[options.disableWW]	- Disable Web Workers (default=false)
+ * @param {boolean}		[options.disableWW]	- Disable Web Workers
  * @param {function}		[options.onResize]	- Called when canvas resize detected.
  * @param {function}		[options.onKeyFrame]	- Create first/key frame.
  * @param {function}		[options.onBeginFrame]	- Called before start frame. Set x,y,radius,angle.
@@ -675,6 +759,7 @@ function Zoomer(domZoomer, options = {
 	 */
 	onPutImageData: (zoomer, frame) => {
 
+		// get final buffer
 		const rgba = new Uint8ClampedArray(frame.rgbaBuffer);
 		const imagedata = new ImageData(rgba, frame.viewWidth, frame.viewHeight);
 
@@ -683,26 +768,103 @@ function Zoomer(domZoomer, options = {
 	}
 
 }) {
-	this.onResize = options.onResize;
-	this.onKeyFrame = options.onKeyFrame;
-	this.onBeginFrame = options.onBeginFrame;
-	this.onRenderFrame = options.onRenderFrame;
-	this.onEndFrame = options.onEndFrame;
-	this.onPutImageData = options.onPutImageData;
+	/*
+	 * defaults
+	 */
 
-	/** @member {number} -  0=STOP 1=COPY 2=UPDATE-before-rAF 3=IDLE 4=rAF 5=UPDATE-after-rAF 6=PAINT */
+	/** @member {float}
+	    @description UPDATE get sliced in smaler time chucks */
+	this.updateSlice = options.updateSlice ? options.updateSlice : 2;
+
+	/** @member {float}
+	    @description Damping coefficient low-pass filter for following fields */
+	this.coef = options.coef ? options.coef : 0.05;
+
+	/** @member {float}
+	    @description Disable Web Workers and perform COPY from main event queue */
+	this.disableWW = options.disableWW ? options.disableWW : false;
+
+	/** @member {function}
+	    @description `domZoomer` resize detected */
+	this.onResize = options.onResize ? options.onResize : undefined;
+
+	/** @member {function}
+	    @description Create a key frame */
+	this.onKeyFrame = options.onKeyFrame ? options.onKeyFrame : undefined;
+
+	/** @member {function}
+	    @description Creation of frame. set x,y,radius,angle */
+	this.onBeginFrame = options.onBeginFrame ? options.onBeginFrame : undefined;
+
+	/** @member {function}
+	    @description Rendering of frame. set palette. */
+	this.onRenderFrame = options.onRenderFrame ? options.onRenderFrame : undefined;
+
+	/** @member {function}
+	    @description Frame submitted. Statistics. */
+	this.onEndFrame = options.onEndFrame ? options.onEndFrame : undefined;
+
+	/** @member {function}
+	    @description Inject frame into canvas. */
+	this.onPutImageData = options.onPutImageData ? options.onPutImageData : undefined;
+
+	/*
+	 * Main state settings
+	 */
+	
+	/**
+	 * @member {number} state
+	 * @property {number}  0 STOP
+	 * @property {number}  1 COPY
+	 * @property {number}  2 RENDER
+	 * @property {number}  3 UPDATE
+	 * @property {number}  4 PAINT
+	 */
 	this.state = 0;
+
+	const STOP = 0;
+	const COPY = 1;
+	const UPDATE = 2;
+	const IDLE = 3;
+
+	/** @member {int}
+	    @description Current frame number*/
+	this.frameNr = 0;
+
+	/** @member {Viewport}
+	    @description Viewport #0 for even frames */
+	this.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+
+	/** @member {Viewport}
+	    @description Viewport #1 for odd frames*/
+	this.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+
+	/** @member {Viewport}
+	    @description Active viewport */
+	this.currentViewport = this.viewport0;
+
+	/** @member {Worker[]}
+	    @description Web workers */
+	this.WWorkers = [];
+
+	/*
+	 * Statistics
+	 */
+
+	/** @member {int}
+	    @description Number of times mainloop called */
+	this.mainLoopNr = 0;
+
+	/** @member {int[]}
+	    @description Number of times state has been performed */
+	this.stateCounters = [0, 0, 0, 0, 0];
+
+	/** @member {float[]}
+	    @description average duration of states in milli seconds */
+	this.avgStateDuration = [0, 0, 0, 0, 0];
+
 	/** @member {number} - Timestamp next vsync */
 	this.vsync = 0;
-	/** @member {number} - Number of frames painted */
-	this.frameNr = 0;
-	/** @member {number} - Number of times mainloop called */
-	this.mainloopNr = 0;
-	/** @member {Viewport} - active viewport */
-	this.currentViewport = undefined;
-
-	/** @member {number} - Damping coefficient low-pass filter for following fields */
-	this.coef = 0.05;
 	/** @member {number} - Average time in mSec spent in COPY */
 	this.statStateCopy = 0;
 	/** @member {number} - Average time in mSec spent in UPDATE */
@@ -713,32 +875,25 @@ function Zoomer(domZoomer, options = {
 	/** @member {number} - Average time in mSec waiting for rAF() */
 	this.statStateRAF = 0;
 
-	this.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
-	this.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
-	this.currentViewport = this.viewport0;
-
 	// per second differences
 	this.counters = [0, 0, 0, 0, 0, 0, 0];
 	this.rafTime = 0;
 
-	// list of web workers
-	this.wworkers = [];
-
 	/**
-	 * start the mainloop
+	 * start the state machine
 	 */
 	this.start = () => {
-		this.state = 1;
+		this.state = COPY;
 		this.vsync = performance.now() + (1000 / Config.framerateNow); // vsync wakeup time
 		this.statStateCopy = this.statStateUpdate = this.statStatePaint1 = this.statStatePaint2 = 0;
-		window.postMessage("mainloop", "*");
+		postMessage("mainloop", "*");
 	};
 
 	/**
-	 * stop the mainloop
+	 * stop the state machine
 	 */
 	this.stop = () => {
-		this.state = 0;
+		this.state = STOP;
 	};
 
 	/**
@@ -748,7 +903,7 @@ function Zoomer(domZoomer, options = {
 	 */
 	this.mainloop = () => {
 		if (!this.state) {
-			console.log("STOP");
+			// return and don't call again
 			return false;
 		}
 		this.mainloopNr++;
@@ -765,20 +920,20 @@ function Zoomer(domZoomer, options = {
 		if (this.vsync === 0 || now > this.vsync + 2000) {
 			// Missed vsync by more than 2 seconds, resync
 			this.vsync = now + (1000 / Config.framerateNow);
-			this.state = 1;
+			this.state = COPY;
 			console.log("resync");
 		}
 
-		if (this.state === 2) {
+		if (this.state === UPDATE) {
 			/*
 			 * UPDATE-before-rAF. calculate inaccurate pixels
 			 */
-			this.counters[2]++;
+			this.counters[UPDATE]++;
 			last = now;
 
 			if (now >= this.vsync - 2) {
 				// don't even start if there is less than 2mSec left till next vsync
-				this.state = 3;
+				this.state = IDLE;
 			} else {
 				/*
 				 * update inaccurate pixels
@@ -804,24 +959,24 @@ function Zoomer(domZoomer, options = {
 				// update stats
 				this.statStateUpdate += ((now - last) / numLines - this.statStateUpdate) * this.coef;
 
-				window.postMessage("mainloop", "*");
+				postMessage("mainloop", "*");
 				return true;
 			}
 		}
 
-		if (this.state === 3) {
+		if (this.state === IDLE) {
 			/*
 			 * IDLE. Wait for vsync
 			 */
-			this.counters[3]++;
+			this.counters[IDLE]++;
 
 			if (now >= this.vsync) {
 				// vsync is NOW
-				this.state = 1;
+				this.state = COPY;
 				this.vsync += (1000 / Config.framerateNow); // time of next vsync
 				this.rafTime = now;
 			} else {
-				window.postMessage("mainloop", "*");
+				postMessage("mainloop", "*");
 				return true;
 			}
 		}
@@ -895,11 +1050,11 @@ function Zoomer(domZoomer, options = {
 		if (1) {
 			oldViewport.draw(this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer);
 			Viewport.raf.push(this.oldFrame);
-			window.requestAnimationFrame(this.animationFrame);
+			requestAnimationFrame(this.animationFrame);
 			this.statStatePaint1 += ((performance.now() - this.oldFrame.now) - this.statStatePaint1) * this.coef;
 			this.statStatePaint2 += ((this.oldFrame.msec) - this.statStatePaint2) * this.coef;
 		} else {
-			this.wworkers[this.frameNr & 3].postMessage(this.oldFrame, [this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer]);
+			this.WWorkers[this.frameNr & 3].postMessage(this.oldFrame, [this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer]);
 		}
 
 		/*
@@ -910,8 +1065,8 @@ function Zoomer(domZoomer, options = {
 
 		if (this.onEndFrame) this.onEndFrame(this);
 
-		this.state = 2;
-		window.postMessage("mainloop", "*");
+		this.state = UPDATE;
+		postMessage("mainloop", "*");
 		return true;
 	};
 
@@ -956,20 +1111,20 @@ function Zoomer(domZoomer, options = {
 	{
 		const dataObj = '(' + workerPaint + ')();'; // here is the trick to convert the above function to string
 		const blob = new Blob([dataObj]);
-		const blobURL = (window.URL ? URL : webkitURL).createObjectURL(blob);
+		const blobURL = (URL ? URL : webkitURL).createObjectURL(blob);
 
 		// create 4 workers
 		for (let i = 0; i < 4; i++) {
-			this.wworkers[i] = new Worker(blobURL);
+			this.WWorkers[i] = new Worker(blobURL);
 
-			this.wworkers[i].onmessage = (e) => {
+			this.WWorkers[i].onmessage = (e) => {
 				/** @var {Frame} */
 				const response = e.data;
 
 				// move request to pending requestAnimationFrames()
 				Viewport.raf.push(response);
 				// request animation
-				window.requestAnimationFrame(this.animationFrame);
+				requestAnimationFrame(this.animationFrame);
 
 				// keep track of round trip time
 				this.statStatePaint1 += ((performance.now() - response.now) - this.statStatePaint1) * this.coef;
