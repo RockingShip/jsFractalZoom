@@ -76,7 +76,7 @@
  *
  * NOTE: data only, do not include functions to minimize transport overhead
  *
- * @class Frame
+ * @class
  * @param {int}   viewWidth   - Screen width (pixels)
  * @param {int}   viewHeight  - Screen height (pixels)
  */
@@ -189,7 +189,7 @@ function workerPaint() {
  *
  * Coordinate system is the center x,y and radius.
  *
- * @class Viewport
+ * @class
  * @param {number} width
  * @param {number} height
  */
@@ -254,8 +254,6 @@ function Viewport(width, height) {
 	Viewport.doneY = 0;
 	Viewport.doneCalc = 0;
 
-	// list of free frames
-	Viewport.frames = [];
 	// list of pending requestAnimationFrames()
 	Viewport.raf = [];
 
@@ -317,20 +315,6 @@ function Viewport(width, height) {
 	 * @param {Viewport} oldViewport
 	 */
 	this.setPosition = (x, y, radius, angle, oldViewport) => {
-
-		/** @var {Frame} frame */
-		let frame;
-
-		/*
-		 * allocate a new frame
-		 */
-		do {
-			frame = Viewport.frames.shift();
-		} while (frame && (frame.viewWidth !== this.viewWidth || frame.viewHeight !== this.viewHeight));
-
-		if (!frame)
-			frame = new Frame(this.viewWidth, this.viewHeight);
-
 
 		this.frame = frame;
 		this.frame.angle = angle;
@@ -635,7 +619,7 @@ function Viewport(width, height) {
 
 /**
  *
- * @class Zoomer
+ * @class
  * @param {HTMLCanvasElement}	domZoomer		- Element to detect a resize	 -
  * @param {Object}		[options]   		- Template values for new frames. These may be changed during runtime.
  * @param {float}		[options.frameRate]	- Frames per second
@@ -843,6 +827,10 @@ function Zoomer(domZoomer, options = {
 	    @description Active viewport */
 	this.currentViewport = this.viewport0;
 
+	/** @member {Frame[]}
+	    @description list of free frames */
+	this.frames = [];
+
 	/** @member {Worker[]}
 	    @description Web workers */
 	this.WWorkers = [];
@@ -878,6 +866,56 @@ function Zoomer(domZoomer, options = {
 	// per second differences
 	this.counters = [0, 0, 0, 0, 0, 0, 0];
 	this.rafTime = 0;
+
+	/**
+	 * Allocate a new frame, reuse if same size otherwise let it garbage collect
+	 *
+	 * @param {int}   viewWidth   - Screen width (pixels)
+	 * @param {int}   viewHeight  - Screen height (pixels)
+	 * @param {float} angle       - Angle (degrees)
+	 * @return {Frame}
+	 */
+	this.allocFrame = (viewWidth, viewHeight, angle) => {
+		// find frame with matching dimensions
+		for (; ;) {
+			/** @var {Frame} */
+			let frame = this.frames.shift();
+
+			// allocate new if list empty
+			if (!frame)
+				frame = new Frame(viewWidth, viewHeight);
+
+			// return if dimensions match
+			if (frame.viewWidth === viewWidth && frame.viewHeight === viewHeight) {
+				frame.frameNr = this.frameNr;
+				frame.angle = angle;
+				return frame;
+			}
+		}
+	}
+
+	/**
+	 * Set the center coordinate and radius.
+	 *
+	 * @param {float}    centerX              - Center x of view
+	 * @param {float}    centerY              - Center y or view
+	 * @param {float}    radius               - Radius of view
+	 * @param {float}    [angle]              - Angle of view
+	 * @param {Viewport} [previousViewport]   - Previous viewport to inherit keyFrame rulers/pixels
+	 */
+	this.setPosition = (centerX, centerY, radius, angle, previousViewport) => {
+		this.centerX = centerX;
+		this.centerY = centerY;
+		this.radius = radius;
+		this.angle = angle ? angle : 0;
+
+		// optionally inject keyFrame into current viewport
+		if (previousViewport) {
+			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, this.angle, previousViewport);
+		}
+
+	};
 
 	/**
 	 * start the state machine
@@ -1004,6 +1042,8 @@ function Zoomer(domZoomer, options = {
 			this.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
 			this.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
 
+			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+
 			// copy the contents
 			if (this.frameNr & 1) {
 				this.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport1);
@@ -1026,6 +1066,7 @@ function Zoomer(domZoomer, options = {
 		 */
 
 		this.frameNr++;
+		const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
 
 		if (this.frameNr & 1) {
 			this.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport0);
@@ -1087,7 +1128,7 @@ function Zoomer(domZoomer, options = {
 			if (this.onPutImageData) this.onPutImageData(this, request);
 
 			// move request to free list
-			Viewport.frames.push(request);
+			this.frames.push(request);
 		}
 
 		this.statStateRAF += ((performance.now() - this.rafTime) - this.statStateRAF) * this.coef;

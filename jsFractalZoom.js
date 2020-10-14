@@ -197,7 +197,7 @@ Config.home = function () {
  * NOTE: Palette is always 65536 large (16 bits pixel value)
  * NOTE: color 65535 is always background colour
  *
- * @class Palette
+ * @class
  */
 function Palette()
 {
@@ -478,8 +478,8 @@ function Palette()
 /**
  * DOM bindings and event handlers
  *
- * @class GUI
- * @param config {Config}
+ * @class
+ * @param {Config} config
  */
 function GUI(config) {
 	/** @member {Config} - Reference to config object */
@@ -773,7 +773,7 @@ function GUI(config) {
 	// small viewport for initial image
 	this.viewportInit = new Viewport(64, 64);
 	this.viewportInit.fill();
-	this.zoomer.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 
 	// create formula engine
 	this.calculator = new Formula();

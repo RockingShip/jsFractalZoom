@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-14 01:05:20 Added `Zoomer.allocFrame()`.
 2020-10-14 00:33:55 Moved many (but not all) references to `Config` from `zoomer.js`.
 2020-10-13 01:24:20 Mostly comments and simple rewrites.
 2020-10-12 23:21:50 `Zoomer`,`jsFractalZoom` Modernised `var` usage.
