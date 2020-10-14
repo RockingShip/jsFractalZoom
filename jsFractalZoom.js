@@ -575,29 +575,6 @@ function GUI(config) {
 		},
 
 		/**
-		 * Create a keyframe.
-		 * Every frame requires a previous frame to inherit rulers/pixels.
-		 * The only exception are keyframes, who need all pixels rendered.
-		 * However, they can be any size and will be scaled accordingly.
-		 * `Zoomer` requires a preloaded key frame before calling `start()`.
-		 *
-		 * @param {Zoomer}   zoomer            - This
-		 * @param {Viewport} currentViewport   - Current viewport
-		 * @param {Frame}    currentFrame      - Current frame
-		 * @param {Viewport} previousViewport  - Previous viewport to extract rulers/pixels
-		 * @param {Frame}    previousFrame     - Previous frame
-		 */
-		onKeyFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
-			// set all pixels of thumbnail
-			this.viewportInit.fill();
-
-			// inject into current viewport
-			zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
-
-			this.lastTick = performance.now();
-		},
-
-		/**
 		 * Start of a new frame.
 		 * Process timed updates (piloting), set x,y,radius,angle.
 		 *
@@ -656,8 +633,12 @@ function GUI(config) {
 			/*
 			 * Update viewport angle (before zoom gestures)
 			 */
-			if (Config.rotateSpeedNow)
+			if (Config.rotateSpeedNow) {
 				Config.angle += diffSec * Config.rotateSpeedNow * 360;
+				Config.rsin = Math.sin(Config.angle * Math.PI / 180);
+				Config.rcos = Math.cos(Config.angle * Math.PI / 180);
+				this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
+			}
 
 			// drag gesture
 			if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
@@ -693,6 +674,8 @@ function GUI(config) {
 				Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
 				Config.radius = Config.radius / magnify;
 			}
+
+			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
 			this.domStatusQuality.innerHTML = JSON.stringify({lines: Viewport.doneX + Viewport.doneY, calc: Viewport.doneCalc, x: Config.centerX, y: Config.centerY, r: Config.radius});
 			Viewport.doneX = 0;
@@ -905,8 +888,8 @@ function GUI(config) {
 		// fast clamp pixel values
 		const viewport = this.zoomer.currentViewport;
 		for (let ji = 0; ji < viewport.viewWidth * viewport.viewHeight; ji++)
-			if (viewport.pixels[ji] !== 65535)
-				viewport.pixels[ji] %= Config.paletteSize;
+			if (viewport.pixels16[ji] !== 65535)
+				viewport.pixels16[ji] %= Config.paletteSize;
 	});
 }
 
@@ -1125,7 +1108,7 @@ GUI.prototype.reload = function () {
 GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixelRadius) {
 
 	const config = window.config;
-	const pixels = viewport.pixels;
+	const pixels16 = viewport.pixels16;
 
 	// use '>>1' as integer '/2'
 
@@ -1155,7 +1138,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 		let c = 0;
 		for (let j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
 			for (let i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
-				if (pixels[j * viewport.diameter + i] === 65535)
+				if (pixels16[j * viewport.diameter + i] === 65535)
 					c++;
 		if (c >= min && c <= max) {
 			Config.autopilotX = x;

@@ -127,11 +127,12 @@ function Frame(viewWidth, viewHeight) {
  * @param {Frame} frame
  */
 function renderFrame(frame) {
-	const now = performance.now();
+
+	frame.durationRender = performance.now();
 
 	// typed wrappers for Arrays
 	const rgba = new Uint32Array(frame.rgbaBuffer);
-	const pixels = new Uint16Array(frame.pixelBuffer);
+	const pixels16 = new Uint16Array(frame.pixelBuffer);
 	const palette32 = new Uint32Array(frame.paletteBuffer);
 
 	/**
@@ -143,6 +144,7 @@ function renderFrame(frame) {
 	const {viewWidth, viewHeight, diameter, angle} = frame;
 
 	if (angle === 0) {
+
 		// FAST extract viewport
 		let i = (diameter - viewWidth) >> 1;
 		let j = (diameter - viewHeight) >> 1;
@@ -152,16 +154,19 @@ function renderFrame(frame) {
 		let vu = 0;
 
 		if (palette32) {
+			// Palette translated
 			for (let v = 0; v < viewHeight; v++) {
 				for (let u = 0; u < viewWidth; u++)
-					rgba[vu++] = palette32[pixels[ji++]];
+					rgba[vu++] = palette32[pixels16[ji++]];
 				ji += diameter - viewWidth;
 			}
 		} else if (diameter === viewWidth) {
-			memcpy(rgba, vu, pixels, ji, viewWidth * viewHeight)
+			// 1:1
+			memcpy(rgba, vu, pixels16, ji, viewWidth * viewHeight)
 		} else {
+			// cropped
 			for (let v = 0; v < viewHeight; v++) {
-				memcpy(rgba, vu, pixels, ji, viewWidth);
+				memcpy(rgba, vu, pixels16, ji, viewWidth);
 				vu += viewWidth;
 				ji += viewWidth;
 
@@ -170,6 +175,7 @@ function renderFrame(frame) {
 		}
 
 	} else {
+
 		// SLOW viewport rotation
 		const rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
 		const rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
@@ -184,43 +190,56 @@ function renderFrame(frame) {
 		let vu = 0;
 		for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
 			for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
-				rgba[vu++] = palette32[pixels[(iy >> 16) * diameter + (ix >> 16)]];
+				rgba[vu++] = palette32[pixels16[(iy >> 16) * diameter + (ix >> 16)]];
 			}
 		}
 	}
+
+	frame.durationRender = performance.now() - frame.durationRender;
 }
 
 /**
  * Viewport to the fractal world.
- * The actual pixel area is square and the viewport is a smaller rectangle that can rotate fully within
- *
- * Coordinate system is the center x,y and radius.
  *
  * @class
- * @param {number} width
- * @param {number} height
+ * @param {int}   viewWidth   - Screen width (pixels)
+ * @param {int}   viewHeight  - Screen height (pixels)
  */
-function Viewport(width, height) {
-
-	// don't go zero
-	if (width <= 0)
-		width = 1;
-	if (height <= 0)
-		height = 1;
+function Viewport(viewWidth, viewHeight) {
 
 	/** @member {number} - width of viewport */
-	this.viewWidth = width;
+	this.viewWidth = viewWidth;
 	/** @member {number} - height of viewport */
-	this.viewHeight = height;
+	this.viewHeight = viewHeight;
 	/** @member {number} - diameter of the pixel data */
 	this.diameter = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
 	/** @member {Uint16Array} - pixel data (must be square) */
-	this.pixels = undefined;
+	this.pixels16 = undefined;
+
+	/*
+	 * Visual center
+	 */
+
+	/** @var {float}
+	    @description Center X coordinate - vsync updated */
+	this.centerX = 0;
+
+	/** @var {float}
+	    @description Center Y coordinate - vsync updated */
+	this.centerY = 0;
+
+	/** @var {float}
+	    @description Distance between center and viewport corner - vsync updated */
+	this.radius = 0;
 
 	/** @member {number} - distance between center and horizontal viewport edge (derived from this.radius) */
 	this.radiusX = 0;
 	/** @member {number} - distance between center and vertical viewport edge  (derived from this.radius) */
 	this.radiusY = 0;
+
+	/*
+	 * Rulers
+	 */
 
 	/** @var {Float64Array}
 	    @description Logical x coordinate, what it should be */
@@ -255,7 +274,7 @@ function Viewport(width, height) {
 	this.yFrom = new Int32Array(this.diameter);
 
 	/*
-	 * Static members
+	 * Statistics
 	 */
 	Viewport.doneX = 0;
 	Viewport.doneY = 0;
@@ -311,38 +330,31 @@ function Viewport(width, height) {
 
 	/**
 	 * Set the center coordinate and radius.
+	 * Inherit pixels from oldViewport based on rulers.
+	 * Previous viewport/frame may have different dimensions.
 	 *
-	 * @param {Frame} frame
-	 * @param {number} x
-	 * @param {number} y
-	 * @param {number} radius
-	 * @param {number} angle
-	 * @param {Viewport} previousViewport
+	 * @param {Frame}    frame		- Current frame
+	 * @param {float}    centerX		- Center x of view
+	 * @param {float}    centerY		- Center y or view
+	 * @param {float}    radius		- Radius of view
+	 * @param {Viewport} previousViewport	- Previous frame to inherit pixels from
 	 */
-	this.setPosition = (frame, x, y, radius, angle, previousViewport) => {
+	this.setPosition = (frame, centerX, centerY, radius, previousViewport) => {
 
 		this.frame = frame;
-		this.frame.angle = angle;
-		this.pixels = new Uint16Array(frame.pixelBuffer);
+		this.pixels16 = new Uint16Array(frame.pixelBuffer);
 
-		Config.centerX = x;
-		Config.centerY = y;
-		Config.radius = radius;
+		this.centerX = centerX;
+		this.centerY = centerY;
+		this.radius = radius;
 		this.radiusX = radius * this.viewWidth / this.diameter;
 		this.radiusY = radius * this.viewHeight / this.diameter;
-
-		// set angle
-		Config.angle = angle;
-		Config.rsin = Math.sin(angle * Math.PI / 180);
-		Config.rcos = Math.cos(angle * Math.PI / 180);
-
-		// window.gui.domStatusQuality.innerHTML = JSON.stringify({x:x, y:y, r:radius, a:angle});
 
 		/*
 		 * setup new rulers
 		 */
-		this.makeRuler(Config.centerX - Config.radius, Config.centerX + Config.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, previousViewport.xNearest, previousViewport.xError);
-		this.makeRuler(Config.centerY - Config.radius, Config.centerY + Config.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, previousViewport.yNearest, previousViewport.yError);
+		this.makeRuler(this.centerX - this.radius, this.centerX + this.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, previousViewport.xNearest, previousViewport.xError);
+		this.makeRuler(this.centerY - this.radius, this.centerY + this.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, previousViewport.yNearest, previousViewport.yError);
 
 		/**
 		 **!
@@ -357,14 +369,14 @@ function Viewport(width, height) {
 		const yFrom = this.yFrom;
 		const newDiameter = this.diameter;
 		const oldDiameter = previousViewport.diameter;
-		const newPixels = this.pixels;
-		const oldPixels = previousViewport.pixels;
+		const newPixels16 = this.pixels16;
+		const oldPixels16 = previousViewport.pixels16;
 		let ji = 0;
 
 		// first line
 		let k = yFrom[0] * oldDiameter;
 		for (let i = 0; i < newDiameter; i++)
-			newPixels[ji++] = oldPixels[k + xFrom[i]];
+			newPixels16[ji++] = oldPixels16[k + xFrom[i]];
 
 		// followups
 		for (let j = 1; j < newDiameter; j++) {
@@ -372,13 +384,13 @@ function Viewport(width, height) {
 				// this line is identical to the previous
 				let k = ji - newDiameter;
 				for (let i = 0; i < newDiameter; i++)
-					newPixels[ji++] = newPixels[k++];
+					newPixels16[ji++] = newPixels16[k++];
 
 			} else {
 				// extract line from previous frame
 				let k = yFrom[j] * oldDiameter;
 				for (let i = 0; i < newDiameter; i++)
-					newPixels[ji++] = oldPixels[k + xFrom[i]];
+					newPixels16[ji++] = oldPixels16[k + xFrom[i]];
 			}
 		}
 
@@ -418,26 +430,31 @@ function Viewport(width, height) {
 
 	/**
 	 * Simple background renderer
+	 *
+	 * @param {Calculator} calculate
 	 */
-	this.renderLines = () => {
+	this.renderLines = (calculate) => {
+
+		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom} = this;
+
 		// which tabstops have the worst error
 
-		let worstXerr = this.xError[0];
+		let worstXerr = xError[0];
 		let worstXi = 0;
-		let worstYerr = this.yError[0];
+		let worstYerr = yError[0];
 		let worstYj = 0;
 		const diameter = this.diameter;
 
 		for (let i = 1; i < diameter; i++) {
-			if (this.xError[i] > worstXerr) {
+			if (xError[i] > worstXerr) {
 				worstXi = i;
-				worstXerr = this.xError[i];
+				worstXerr = xError[i];
 			}
 		}
 		for (let j = 1; j < diameter; j++) {
-			if (this.yError[j] > worstYerr) {
+			if (yError[j] > worstYerr) {
 				worstYj = j;
-				worstYerr = this.yError[j];
+				worstYerr = yError[j];
 			}
 		}
 
@@ -450,38 +467,29 @@ function Viewport(width, height) {
 		 **!
 		 **/
 
-		const xCoord = this.xCoord;
-		const xNearest = this.xNearest;
-		const xError = this.xError;
-		const xFrom = this.xFrom;
-		const yCoord = this.yCoord;
-		const yNearest = this.yNearest;
-		const yError = this.yError;
-		const yFrom = this.yFrom;
-		const pixels = this.pixels;
-		const calculate = Formula.calculate;
+		const pixels16 = this.pixels16;
 
 		if (worstXerr > worstYerr) {
 
 			let i = worstXi;
-			let x = this.xCoord[i];
+			let x = xCoord[i];
 
 			let ji = 0 * diameter + i;
-			let last = calculate(x, this.yCoord[0]);
-			pixels[ji] = last;
+			let last = calculate(x, yCoord[0]);
+			pixels16[ji] = last;
 			ji += diameter;
 			Viewport.doneCalc++;
 
 			for (let j = 1; j < diameter; j++) {
 				/*
-				 * Logic would say 'this.yFrom[j] === -1', but haven't been able to figure out why this works better
+				 * Logic would say 'yFrom[j] === -1', but haven't been able to figure out why this works better
 				 * ..and 3 other places
 				 */
 				if (yError[j] === 0 || yFrom[j] !== -1) {
 					last = calculate(x, yCoord[j]);
 					Viewport.doneCalc++;
 				}
-				pixels[ji] = last;
+				pixels16[ji] = last;
 				ji += diameter;
 			}
 
@@ -490,7 +498,7 @@ function Viewport(width, height) {
 					break;
 
 				for (let v = 0; v < diameter; v++) {
-					pixels[v * diameter + u] = pixels[v * diameter + i];
+					pixels16[v * diameter + u] = pixels16[v * diameter + i];
 				}
 			}
 
@@ -505,14 +513,14 @@ function Viewport(width, height) {
 
 			let ji = j * diameter + 0;
 			let last = calculate(xCoord[0], y);
-			pixels[ji++] = last;
+			pixels16[ji++] = last;
 			Viewport.doneCalc++;
 			for (let i = 1; i < diameter; i++) {
 				if (xError[i] === 0 || xFrom[i] !== -1) {
 					last = calculate(xCoord[i], y);
 					Viewport.doneCalc++;
 				}
-				pixels[ji++] = last;
+				pixels16[ji++] = last;
 			}
 
 			for (let v = j + 1; v < diameter; v++) {
@@ -520,7 +528,7 @@ function Viewport(width, height) {
 					break;
 
 				for (let u = 0; u < diameter; u++) {
-					pixels[v * diameter + u] = pixels[j * diameter + u];
+					pixels16[v * diameter + u] = pixels16[j * diameter + u];
 				}
 			}
 
@@ -536,33 +544,38 @@ function Viewport(width, height) {
 	this.fill = () => {
 
 		// NOTE: attached frame will leak and GC
-		this.frame = new Frame(this.viewWidth, this.viewHeight);
-		this.pixels = new Uint16Array(this.frame.pixelBuffer);
+		this.frame = new Frame(this.viewWidth, this.viewHeight);3
+		this.pixels16 = new Uint16Array(this.frame.pixelBuffer);
 
-		this.radiusX = Config.radius * this.viewWidth / this.diameter;
-		this.radiusY = Config.radius * this.viewHeight / this.diameter;
+		this.radiusX = this.radius * this.viewWidth / this.diameter;
+		this.radiusY = this.radius * this.viewHeight / this.diameter;
 
-		const {xCoord, xNearest, yCoord, yNearest, pixels, pixelWidth, pixelHeight} = this;
+		const {xCoord, xNearest, yCoord, yNearest, pixels16, pixelWidth, pixelHeight} = this;
 
 		for (let i = 0; i < xCoord.length; i++)
-			xNearest[i] = xCoord[i] = ((Config.centerX + Config.radius) - (Config.centerX - Config.radius)) * i / (xCoord.length - 1) + (Config.centerX - Config.radius);
+			xNearest[i] = xCoord[i] = ((this.centerX + this.radius) - (this.centerX - this.radius)) * i / (xCoord.length - 1) + (this.centerX - this.radius);
 		for (let i = 0; i < yCoord.length; i++)
-			yNearest[i] = yCoord[i] = ((Config.centerY + Config.radius) - (Config.centerY - Config.radius)) * i / (yCoord.length - 1) + (Config.centerY - Config.radius);
+			yNearest[i] = yCoord[i] = ((this.centerY + this.radius) - (this.centerY - this.radius)) * i / (yCoord.length - 1) + (this.centerY - this.radius);
 
 		const calculate = Formula.calculate;
 		let ji = 0;
 		for (let j = 0; j < this.diameter; j++) {
-			let y = (Config.centerY - Config.radius) + Config.radius * 2 * j / this.diameter;
+			let y = (this.centerY - this.radius) + this.radius * 2 * j / this.diameter;
 			for (let i = 0; i < this.diameter; i++) {
 				// distance to center
-				let x = (Config.centerX - Config.radius) + Config.radius * 2 * i / this.diameter;
-				pixels[ji++] = calculate(x, y);
+				let x = (this.centerX - this.radius) + this.radius * 2 * i / this.diameter;
+				pixels16[ji++] = calculate(x, y);
 			}
 		}
 	};
 }
 
 /**
+ *
+ * When using angles:
+ * The frame must be square and its size must be the diagonal of the viewing area.
+ *
+ * Viewing direction is the center x,y and radius. Angle is part of `Frame` rendering.
  *
  * @class
  * @param {HTMLCanvasElement}	domZoomer		- Element to detect a resize	 -
@@ -722,6 +735,22 @@ function Zoomer(domZoomer, options = {
 	 * Authoritative Visual center
 	 */
 
+	/** @var {float}
+	    @description Center X coordinate - vsync updated */
+	this.centerX = 0;
+
+	/** @var {float}
+	    @description Center Y coordinate - vsync updated */
+	this.centerY = 0;
+
+	/** @var {float}
+	    @description Distance between center and viewport corner - vsync updated */
+	this.radius = 0;
+
+	/** @var {float}
+	    @description Current viewport angle (degrees) */
+	this.angle = 0;
+
 	/** @member {int}
 	    @description Display width (pixels) */
 	this.viewWidth = domZoomer.clientWidth;
@@ -831,6 +860,7 @@ function Zoomer(domZoomer, options = {
 
 	/**
 	 * Set the center coordinate and radius.
+	 * NOTE: set angle before position
 	 *
 	 * @param {float}    centerX              - Center x of view
 	 * @param {float}    centerY              - Center y or view
@@ -847,7 +877,7 @@ function Zoomer(domZoomer, options = {
 		// optionally inject keyFrame into current viewport
 		if (previousViewport) {
 			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
-			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, this.angle, previousViewport);
+			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
 		}
 	};
 
@@ -922,7 +952,7 @@ function Zoomer(domZoomer, options = {
 
 				let numLines = 0;
 				while (now < endtime) {
-					viewport.renderLines();
+					viewport.renderLines(Formula.calculate);
 
 					now = performance.now();
 					numLines++;
@@ -972,23 +1002,18 @@ function Zoomer(domZoomer, options = {
 			domZoomer.width = this.viewWidth
 			domZoomer.height = this.viewHeight
 
-			const oldViewport0 = this.viewport0;
-			const oldViewport1 = this.viewport1;
+			const previousViewport0 = this.viewport0;
+			const previousViewport1 = this.viewport1;
+			const previousViewport = this.currentViewport;
 
 			// create new viewports
 			this.viewport0 = new Viewport(this.viewWidth, this.viewHeight);
 			this.viewport1 = new Viewport(this.viewWidth, this.viewHeight);
-
-			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+			this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 
 			// copy the contents
-			if (this.frameNr & 1) {
-				this.viewport1.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport1);
-				this.currentViewport = this.viewport1;
-			} else {
-				this.viewport0.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport0);
-				this.currentViewport = this.viewport0;
-			}
+			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
 
 			// TODO: 5 arguments
 			if (this.onResize) this.onResize(this, this.currentViewport.viewWidth, this.currentViewport.viewHeight);
@@ -1005,7 +1030,7 @@ function Zoomer(domZoomer, options = {
 		const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
 
 		this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
-		this.currentViewport.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, previousViewport);
+		this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
 
 		if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, previousViewport, previousFrame);
 
