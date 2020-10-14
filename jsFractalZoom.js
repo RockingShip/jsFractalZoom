@@ -554,6 +554,14 @@ function GUI(config) {
 	this.zoomer = new Zoomer(this.domZoomer, {
 
 		/**
+		 * Disable web-workers.
+		 * Offload frame rendering to web-workers
+		 *
+		 * @member {boolean} - Frames per second
+		 */
+		disableWW: true,
+
+		/**
 		 * Size change detected for `domZoomer`
 		 *
 		 * @param {Zoomer} zoomer      - This
@@ -724,7 +732,7 @@ function GUI(config) {
 				"%), update:" + zoomer.statStateUpdate.toFixed(3) +
 				"mSec, paint:" + zoomer.statStatePaint1.toFixed(3) +
 				"mSec(" + (zoomer.statStatePaint1 * 100 / (1000 / Config.framerateNow)).toFixed(0) +
-				"%)+" + zoomer.statStatePaint2.toFixed(3) + ", rAF:" + zoomer.statStateRAF.toFixed(3);
+				"%)+" + zoomer.statStatePaint2.toFixed(3);
 
 			if (Math.floor(now / 1000) !== this.lastNow) {
 				this.domStatusLoad.innerHTML = "FPS:" + (zoomer.frameNr - this.lastFrame) + " IPS:" + (zoomer.mainloopNr - this.lastLoop);

@@ -18,6 +18,11 @@
 
 "use strict";
 
+function memcpy(dst, dstOffset, src, srcOffset, length) {
+	src = src.subarray(srcOffset, srcOffset + length);
+	dst.set(src, dstOffset);
+}
+
 /*
  * Timing considerations
  *
@@ -115,71 +120,73 @@ function Frame(viewWidth, viewHeight) {
 	this.paletteBuffer = new ArrayBuffer(65536 * 4);
 }
 
-function workerPaint() {
+/**
+ * Extract rotated viewport from pixels and store them in specified imagedata
+ * The pixel data is palette based, the imagedata is RGB
+ *
+ * @param {Frame} frame
+ */
+function renderFrame(frame) {
+	const now = performance.now();
+
+	// typed wrappers for Arrays
+	const rgba = new Uint32Array(frame.rgbaBuffer);
+	const pixels = new Uint16Array(frame.pixelBuffer);
+	const palette32 = new Uint32Array(frame.paletteBuffer);
+
 	/**
-	 * Extract rotated viewport from pixels and store them in specified imagedata
-	 * The pixel data is palette based, the imagedata is RGB
-	 *
-	 * @param {MessageEvent} e
-	 */
-	this.onmessage = function (e) {
-		const now = performance.now();
+	 **!
+	 **! The following loop is a severe performance hit
+	 **!
+	 **/
 
-		/** @var {Frame} */
-		const request = e.data;
+	const {viewWidth, viewHeight, diameter, angle} = frame;
 
-		// typed wrappers for Arrays
-		const rgba = new Uint32Array(request.rgbaBuffer);
-		const pixels = new Uint16Array(request.pixelBuffer);
-		const palette32 = new Uint32Array(request.paletteBuffer);
+	if (angle === 0) {
+		// FAST extract viewport
+		let i = (diameter - viewWidth) >> 1;
+		let j = (diameter - viewHeight) >> 1;
 
-		const diameter = request.diameter;
-		const viewWidth = request.viewWidth;
-		const viewHeight = request.viewHeight;
-		const angle = request.angle;
+		// copy pixels
+		let ji = j * diameter + i;
+		let vu = 0;
 
-		/**
-		 **!
-		 **! The following loop is a severe performance hit
-		 **!
-		 **/
-
-		if (angle === 0) {
-			// FAST extract viewport
-			let i = (diameter - viewWidth) >> 1;
-			let j = (diameter - viewHeight) >> 1;
-
-			// copy pixels
-			let ji = j * diameter + i;
-			let vu = 0;
+		if (palette32) {
 			for (let v = 0; v < viewHeight; v++) {
 				for (let u = 0; u < viewWidth; u++)
 					rgba[vu++] = palette32[pixels[ji++]];
 				ji += diameter - viewWidth;
 			}
-
+		} else if (diameter === viewWidth) {
+			memcpy(rgba, vu, pixels, ji, viewWidth * viewHeight)
 		} else {
-			// SLOW viewport rotation
-			const rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
-			const rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
-			const xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
-			const ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
-			const ixstep = Math.floor(rcos * 65536);
-			const iystep = Math.floor(rsin * -65536);
-			const jxstep = Math.floor(rsin * 65536);
-			const jystep = Math.floor(rcos * 65536);
+			for (let v = 0; v < viewHeight; v++) {
+				memcpy(rgba, vu, pixels, ji, viewWidth);
+				vu += viewWidth;
+				ji += viewWidth;
 
-			// copy pixels
-			let vu = 0;
-			for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
-				for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
-					rgba[vu++] = palette32[pixels[(iy >> 16) * diameter + (ix >> 16)]];
-				}
+				ji += diameter - viewWidth;
 			}
 		}
 
-		request.msec = performance.now() - now;
-		this.postMessage(request, [request.rgbaBuffer, request.pixelBuffer, request.paletteBuffer]);
+	} else {
+		// SLOW viewport rotation
+		const rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
+		const rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
+		const xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
+		const ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
+		const ixstep = Math.floor(rcos * 65536);
+		const iystep = Math.floor(rsin * -65536);
+		const jxstep = Math.floor(rsin * 65536);
+		const jystep = Math.floor(rcos * 65536);
+
+		// copy pixels
+		let vu = 0;
+		for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
+			for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
+				rgba[vu++] = palette32[pixels[(iy >> 16) * diameter + (ix >> 16)]];
+			}
+		}
 	}
 }
 
@@ -253,9 +260,6 @@ function Viewport(width, height) {
 	Viewport.doneX = 0;
 	Viewport.doneY = 0;
 	Viewport.doneCalc = 0;
-
-	// list of pending requestAnimationFrames()
-	Viewport.raf = [];
 
 	/**
 	 *
@@ -410,67 +414,6 @@ function Viewport(width, height) {
 
 		}
 		return false;
-	};
-
-	/**
-	 * Extract rotated viewport from pixels and store them in specified imnagedata
-	 * The pixel data is palette based, the imagedata is RGB
-	 *
-	 * @param {ArrayBuffer} rgbaBuffer
-	 * @param {ArrayBuffer} pixelBuffer
-	 * @param {ArrayBuffer} paletteBuffer
-	 */
-	this.draw = (rgbaBuffer, pixelBuffer, paletteBuffer) => {
-
-		// make references local
-		const rgba = new Uint32Array(rgbaBuffer); // canvas pixel data
-		const pixels = new Uint16Array(pixelBuffer); // pixel data
-		const palette32 = new Uint32Array(paletteBuffer);
-
-		const diameter = this.diameter; // pixel scanline width (it's square)
-		const viewWidth = this.viewWidth; // viewport width
-		const viewHeight = this.viewHeight; // viewport height
-		const angle = Config.angle;
-
-		/**
-		 **!
-		 **! The following loop is a severe performance hit
-		 **!
-		 **/
-
-		if (angle === 0) {
-			// FAST extract viewport
-			let i = (diameter - viewWidth) >> 1;
-			let j = (diameter - viewHeight) >> 1;
-
-			// copy pixels
-			let ji = j * diameter + i;
-			let vu = 0;
-			for (let v = 0; v < viewHeight; v++) {
-				for (let u = 0; u < viewWidth; u++)
-					rgba[vu++] = palette32[pixels[ji++]];
-				ji += diameter - viewWidth;
-			}
-
-		} else {
-			// SLOW viewport rotation
-			const rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
-			const rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
-			const xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
-			const ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
-			const ixstep = Math.floor(rcos * 65536);
-			const iystep = Math.floor(rsin * -65536);
-			const jxstep = Math.floor(rsin * 65536);
-			const jystep = Math.floor(rcos * 65536);
-
-			// copy pixels
-			let vu = 0;
-			for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
-				for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
-					rgba[vu++] = palette32[pixels[(iy >> 16) * diameter + (ix >> 16)]];
-				}
-			}
-		}
 	};
 
 	/**
@@ -855,12 +798,9 @@ function Zoomer(domZoomer, options = {
 	/** @member {number} - Average time in mSec spent in PAINT */
 	this.statStatePaint1 = 0;
 	this.statStatePaint2 = 0;
-	/** @member {number} - Average time in mSec waiting for rAF() */
-	this.statStateRAF = 0;
 
 	// per second differences
 	this.counters = [0, 0, 0, 0, 0, 0, 0];
-	this.rafTime = 0;
 
 	/**
 	 * Allocate a new frame, reuse if same size otherwise let it garbage collect
@@ -958,7 +898,7 @@ function Zoomer(domZoomer, options = {
 
 		if (this.state === UPDATE) {
 			/*
-			 * UPDATE-before-rAF. calculate inaccurate pixels
+			 * UPDATE. calculate inaccurate pixels
 			 */
 			this.counters[UPDATE]++;
 			last = now;
@@ -1006,7 +946,6 @@ function Zoomer(domZoomer, options = {
 				// vsync is NOW
 				this.state = COPY;
 				this.vsync += (1000 / Config.framerateNow); // time of next vsync
-				this.rafTime = now;
 			} else {
 				postMessage("mainloop", "*");
 				return true;
@@ -1080,14 +1019,19 @@ function Zoomer(domZoomer, options = {
 		/*
 		 * The message queue is overloaded, so call direct until improved design
 		 */
-		if (1) {
-			previousViewport.draw(previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer);
-			Viewport.raf.push(previousFrame);
-			requestAnimationFrame(this.animationFrame);
+		if (!this.disableWW) {
+			this.WWorkers[this.frameNr & 3].postMessage(previousFrame, [previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer]);
+		} else {
+			renderFrame(previousFrame);
+
+			if (this.onPutImageData) this.onPutImageData(this, previousFrame);
+
 			this.statStatePaint1 += ((performance.now() - previousFrame.now) - this.statStatePaint1) * this.coef;
 			this.statStatePaint2 += ((previousFrame.msec) - this.statStatePaint2) * this.coef;
-		} else {
-			this.WWorkers[this.frameNr & 3].postMessage(previousFrame, [previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer]);
+
+			// move request to free list
+			this.frames.push(previousFrame);
+			previousViewport.frame = undefined;
 		}
 
 		/*
@@ -1103,29 +1047,6 @@ function Zoomer(domZoomer, options = {
 		return true;
 	};
 
-
-	/**
-	 * Synchronise screen updates
-	 *
-	 * @param {number} time
-	 */
-	this.animationFrame = (time) => {
-		// paint image onto canvas
-
-		// move request to pending requestAnimationFrames()
-		while (Viewport.raf.length) {
-
-			const request = Viewport.raf.shift();
-
-			if (this.onPutImageData) this.onPutImageData(this, request);
-
-			// move request to free list
-			this.frames.push(request);
-		}
-
-		this.statStateRAF += ((performance.now() - this.rafTime) - this.statStateRAF) * this.coef;
-	};
-
 	/**
 	 * Use message queue as highspeed queue handler. SetTimeout() is throttled.
 	 *
@@ -1139,30 +1060,55 @@ function Zoomer(domZoomer, options = {
 	};
 
 	/*
-	 * create 4 workers
+	 * create 2 workers
 	 */
-	{
-		const dataObj = '(' + workerPaint + ')();'; // here is the trick to convert the above function to string
+
+	if (this.disableWW) {
+		let dataObj = "( function () { \n";
+		dataObj += memcpy;
+		dataObj += "\n";
+		dataObj += renderFrame;
+		dataObj += "\n";
+		dataObj += "addEventListener(\"message\", (e) => { \n";
+		dataObj += "const frame = e.data;\n";
+		dataObj += "renderFrame(frame);\n";
+		dataObj += "postMessage(frame, [frame.rgbaBuffer, frame.pixelBuffer, frame.paletteBuffer]);\n";
+		dataObj += "})})\n";
+
 		const blob = new Blob([dataObj]);
 		const blobURL = (URL ? URL : webkitURL).createObjectURL(blob);
 
-		// create 4 workers
-		for (let i = 0; i < 4; i++) {
+		// create workers
+		for (let i = 0; i < 2; i++) {
 			this.WWorkers[i] = new Worker(blobURL);
 
-			this.WWorkers[i].onmessage = (e) => {
+			this.WWorkers[i].addEventListener("message", (e) => {
 				/** @var {Frame} */
-				const response = e.data;
+				const frame = e.data;
 
-				// move request to pending requestAnimationFrames()
-				Viewport.raf.push(response);
-				// request animation
-				requestAnimationFrame(this.animationFrame);
+				// perform PAINT
 
-				// keep track of round trip time
-				this.statStatePaint1 += ((performance.now() - response.now) - this.statStatePaint1) * this.coef;
-				this.statStatePaint2 += ((response.msec) - this.statStatePaint2) * this.coef;
-			};
+				const stime = performance.now();
+
+				if (this.onPutImageData) this.onPutImageData(this, frame);
+
+				// stastics
+				const etime = performance.now();
+
+				this.avgFrameConstruct += (frame.durationConstruct - this.avgFrameConstruct) * this.coef;
+				this.avgFrameRender += (frame.durationRender - this.avgFrameRender) * this.coef;
+				this.avgFrameRoundTrip += (frame.durationRoundTrip - this.avgFrameRoundTrip) * this.coef;
+
+				// return frame to free pool
+				this.frames.push(frame);
+
+				this.avgCycleDuration += ((etime - this.imeStart[COPY]) - this.avgCycleDuration) * this.coef;
+
+				this.avgStateDuration[0] += (frame.durationRender - this.avgStateDuration[0]) * this.coef;
+				this.avgStateDuration[PAINT] += ((etime - stime) - this.avgStateDuration[PAINT]) * this.coef;
+
+				this.onEndFrame(this);
+			});
 		}
 	}
 }
