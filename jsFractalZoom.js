@@ -199,8 +199,7 @@ Config.home = function () {
  *
  * @class
  */
-function Palette()
-{
+function Palette() {
 	/** @member {ArrayBuffer} - palette data */
 	this.paletteBuffer = new ArrayBuffer(65536 * 4);
 
@@ -254,8 +253,7 @@ function Palette()
 		}
 	};
 
-	this.randomize_segments1 = function(whitemode, nsegments, segmentsize)
-	{
+	this.randomize_segments1 = function (whitemode, nsegments, segmentsize) {
 		const R = new Array(nsegments);
 		const G = new Array(nsegments);
 		const B = new Array(nsegments);
@@ -292,8 +290,7 @@ function Palette()
 		this.mksmooth(nsegments, segmentsize, R, G, B);
 	};
 
-	this.randomize_segments2 = function(whitemode, nsegments, segmentsize)
-	{
+	this.randomize_segments2 = function (whitemode, nsegments, segmentsize) {
 		const R = new Array(nsegments);
 		const G = new Array(nsegments);
 		const B = new Array(nsegments);
@@ -345,7 +342,7 @@ function Palette()
 				if (s === 0) {
 					R[i] = G[i] = B[i] = v;
 				} else {
-					const  hue = h * 6;
+					const hue = h * 6;
 
 					const f = hue & 255;
 					const p = v * (256 - s) >> 8;
@@ -390,7 +387,7 @@ function Palette()
 		this.mksmooth(nsegments, segmentsize, R, G, B);
 	};
 
-	this.mkrandom = function() {
+	this.mkrandom = function () {
 		// 85 = 255 / 3
 		let segmentsize, nsegments;
 		const whitemode = random(2);
@@ -446,7 +443,7 @@ function Palette()
 	 * @param {number} offset
 	 */
 	this.setPaletteBuffer = function (paletteBuffer, offset) {
-		const  paletteSize = Config.paletteSize;
+		const paletteSize = Config.paletteSize;
 		const out32 = new Uint32Array(paletteBuffer);
 
 		// palette offset may not be negative
@@ -587,7 +584,7 @@ function GUI(config) {
 			this.viewportInit.fill();
 
 			// inject into current viewport
-			zoomer.currentViewport.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+			zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 
 			this.lastTick = performance.now();
 		},
@@ -609,28 +606,15 @@ function GUI(config) {
 			this.lastTick = now;
 
 			if (Config.autoPilot) {
-				if (zoomer.frameNr & 1) {
-					if (zoomer.viewport1.reachedLimits()) {
-						Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-						window.gui.domAutopilot.style.border = '4px solid orange';
-					} else {
-						this.domStatusQuality.innerHTML = "";
-						if (!this.updateAutopilot(zoomer.viewport1, 4, 16))
-							if (!this.updateAutopilot(zoomer.viewport1, 60, 16))
-								if (!this.updateAutopilot(zoomer.viewport1, zoomer.viewport1.diameter >> 1, 16))
-									Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-					}
+				if (currentViewport.reachedLimits()) {
+					Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+					window.gui.domAutopilot.style.border = '4px solid orange';
 				} else {
-					if (zoomer.viewport0.reachedLimits()) {
-						Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-						window.gui.domAutopilot.style.border = '4px solid orange';
-					} else {
-						this.domStatusQuality.innerHTML = "";
-						if (!this.updateAutopilot(zoomer.viewport0, 4, 16))
-							if (!this.updateAutopilot(zoomer.viewport0, 60, 16))
-								if (!this.updateAutopilot(zoomer.viewport0, zoomer.viewport0.diameter >> 1, 16))
-									Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-					}
+					this.domStatusQuality.innerHTML = "";
+					if (!this.updateAutopilot(currentViewport, 4, 16))
+						if (!this.updateAutopilot(currentViewport, 60, 16))
+							if (!this.updateAutopilot(currentViewport, currentViewport.diameter >> 1, 16))
+								Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 				}
 
 				this.mouseX = Config.autopilotX;
@@ -671,8 +655,8 @@ function GUI(config) {
 			if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
 				// need screen coordinates to avoid drifting
 				// relative to viewport center
-				const dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
-				const dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
+				const dx = this.mouseI * currentViewport.radiusX * 2 / currentViewport.viewWidth - currentViewport.radiusX;
+				const dy = this.mouseJ * currentViewport.radiusY * 2 / currentViewport.viewHeight - currentViewport.radiusY;
 				// undo rotation
 				const x = dy * Config.rsin + dx * Config.rcos + Config.centerX;
 				const y = dy * Config.rcos - dx * Config.rsin + Config.centerY;
@@ -924,7 +908,7 @@ function GUI(config) {
  * @param {KeyboardEvent} event
  */
 GUI.prototype.handleKeyDown = function (event) {
-	conat = event.which || event.keyCode;
+	const key = event.which || event.keyCode;
 
 	// Grab the keydown and click events
 	switch (key) {
@@ -1116,7 +1100,13 @@ GUI.prototype.handleMouse = function (event) {
  * (re)load initial frame
  */
 GUI.prototype.reload = function () {
-	if (this.zoomer.onKeyFrame) this.zoomer.onKeyFrame(this.zoomer, this.zoomer.currentViewport, this.zoomer.currentFrame);
+	// set all pixels of thumbnail
+	this.viewportInit.fill();
+
+	// inject into current viewport
+	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+
+	this.lastTick = performance.now();
 };
 
 /**
@@ -1182,7 +1172,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 
 GUI.prototype.autopilotOn = function () {
 
-	const viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
+	const viewport = this.zoomer.currentViewport;
 	Config.autopilotX = Config.centerX;
 	Config.autopilotY = Config.centerY;
 

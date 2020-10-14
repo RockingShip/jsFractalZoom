@@ -308,13 +308,14 @@ function Viewport(width, height) {
 	/**
 	 * Set the center coordinate and radius.
 	 *
+	 * @param {Frame} frame
 	 * @param {number} x
 	 * @param {number} y
 	 * @param {number} radius
 	 * @param {number} angle
-	 * @param {Viewport} oldViewport
+	 * @param {Viewport} previousViewport
 	 */
-	this.setPosition = (x, y, radius, angle, oldViewport) => {
+	this.setPosition = (frame, x, y, radius, angle, previousViewport) => {
 
 		this.frame = frame;
 		this.frame.angle = angle;
@@ -336,8 +337,8 @@ function Viewport(width, height) {
 		/*
 		 * setup new rulers
 		 */
-		this.makeRuler(Config.centerX - Config.radius, Config.centerX + Config.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, oldViewport.xNearest, oldViewport.xError);
-		this.makeRuler(Config.centerY - Config.radius, Config.centerY + Config.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, oldViewport.yNearest, oldViewport.yError);
+		this.makeRuler(Config.centerX - Config.radius, Config.centerX + Config.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, previousViewport.xNearest, previousViewport.xError);
+		this.makeRuler(Config.centerY - Config.radius, Config.centerY + Config.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, previousViewport.yNearest, previousViewport.yError);
 
 		/**
 		 **!
@@ -351,9 +352,9 @@ function Viewport(width, height) {
 		const xFrom = this.xFrom;
 		const yFrom = this.yFrom;
 		const newDiameter = this.diameter;
-		const oldDiameter = oldViewport.diameter;
+		const oldDiameter = previousViewport.diameter;
 		const newPixels = this.pixels;
-		const oldPixels = oldViewport.pixels;
+		const oldPixels = previousViewport.pixels;
 		let ji = 0;
 
 		// first line
@@ -515,7 +516,7 @@ function Viewport(width, height) {
 		const yError = this.yError;
 		const yFrom = this.yFrom;
 		const pixels = this.pixels;
-		const  calculate = Formula.calculate;
+		const calculate = Formula.calculate;
 
 		if (worstXerr > worstYerr) {
 
@@ -591,6 +592,7 @@ function Viewport(width, height) {
 	 */
 	this.fill = () => {
 
+		// NOTE: attached frame will leak and GC
 		this.frame = new Frame(this.viewWidth, this.viewHeight);
 		this.pixels = new Uint16Array(this.frame.pixelBuffer);
 
@@ -604,7 +606,7 @@ function Viewport(width, height) {
 		for (let i = 0; i < yCoord.length; i++)
 			yNearest[i] = yCoord[i] = ((Config.centerY + Config.radius) - (Config.centerY - Config.radius)) * i / (yCoord.length - 1) + (Config.centerY - Config.radius);
 
-		const  calculate = Formula.calculate;
+		const calculate = Formula.calculate;
 		let ji = 0;
 		for (let j = 0; j < this.diameter; j++) {
 			let y = (Config.centerY - Config.radius) + Config.radius * 2 * j / this.diameter;
@@ -627,7 +629,6 @@ function Viewport(width, height) {
  * @param {float}		[options.coef]		- Low-pass filter coefficient to dampen spikes
  * @param {boolean}		[options.disableWW]	- Disable Web Workers
  * @param {function}		[options.onResize]	- Called when canvas resize detected.
- * @param {function}		[options.onKeyFrame]	- Create first/key frame.
  * @param {function}		[options.onBeginFrame]	- Called before start frame. Set x,y,radius,angle.
  * @param {function}		[options.onRenderFrame]	- Called directly before rendering. Set palette.
  * @param {function}		[options.onEndFrame]	- Called directly after frame complete. Update statistics
@@ -683,20 +684,6 @@ function Zoomer(domZoomer, options = {
 	 * @param {int}    pixelHeight - Storage Heignt (pixels)
 	 */
 	onResize: (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
-	},
-
-	/**
-	 * Create a keyframe.
-	 * Every frame requires a previous frame to inherit rulers/pixels.
-	 * The only exception are keyframes, who need all pixels rendered.
-	 * However, they can be any size and will be scaled accordingly.
-	 * `Zoomer` requires a preloaded key frame before calling `start()`.
-	 *
-	 * @param {Zoomer}   zoomer            - This
-	 * @param {Viewport} currentViewport   - Current viewport
-	 * @param {Frame}    currentFrame      - Current frame
-	 */
-	onKeyFrame: (zoomer, currentViewport, currentFrame) => {
 	},
 
 	/**
@@ -773,10 +760,6 @@ function Zoomer(domZoomer, options = {
 	this.onResize = options.onResize ? options.onResize : undefined;
 
 	/** @member {function}
-	    @description Create a key frame */
-	this.onKeyFrame = options.onKeyFrame ? options.onKeyFrame : undefined;
-
-	/** @member {function}
 	    @description Creation of frame. set x,y,radius,angle */
 	this.onBeginFrame = options.onBeginFrame ? options.onBeginFrame : undefined;
 
@@ -793,9 +776,21 @@ function Zoomer(domZoomer, options = {
 	this.onPutImageData = options.onPutImageData ? options.onPutImageData : undefined;
 
 	/*
+	 * Authoritative Visual center
+	 */
+
+	/** @member {int}
+	    @description Display width (pixels) */
+	this.viewWidth = domZoomer.clientWidth;
+
+	/** @member {int}
+	    @description display diameter (pixels) */
+	this.viewHeight = domZoomer.clientHeight;
+
+	/*
 	 * Main state settings
 	 */
-	
+
 	/**
 	 * @member {number} state
 	 * @property {number}  0 STOP
@@ -817,11 +812,11 @@ function Zoomer(domZoomer, options = {
 
 	/** @member {Viewport}
 	    @description Viewport #0 for even frames */
-	this.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+	this.viewport0 = new Viewport(this.viewWidth, this.viewHeight);
 
 	/** @member {Viewport}
 	    @description Viewport #1 for odd frames*/
-	this.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+	this.viewport1 = new Viewport(this.viewWidth, this.viewHeight);
 
 	/** @member {Viewport}
 	    @description Active viewport */
@@ -914,7 +909,6 @@ function Zoomer(domZoomer, options = {
 			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
 			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, this.angle, previousViewport);
 		}
-
 	};
 
 	/**
@@ -1030,26 +1024,30 @@ function Zoomer(domZoomer, options = {
 		/*
 		 * test for DOM resize
 		 */
-		if (domZoomer.clientWidth !== domZoomer.width || domZoomer.clientHeight !== domZoomer.height) {
+		if (domZoomer.clientWidth !== this.viewWidth || domZoomer.clientHeight !== this.viewHeight) {
+
+			this.viewWidth = domZoomer.clientWidth;
+			this.viewHeight = domZoomer.clientHeight;
+
 			// set property
-			domZoomer.width = domZoomer.clientWidth;
-			domZoomer.height = domZoomer.clientHeight;
+			domZoomer.width = this.viewWidth
+			domZoomer.height = this.viewHeight
 
 			const oldViewport0 = this.viewport0;
 			const oldViewport1 = this.viewport1;
 
 			// create new viewports
-			this.viewport0 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
-			this.viewport1 = new Viewport(domZoomer.clientWidth, domZoomer.clientHeight);
+			this.viewport0 = new Viewport(this.viewWidth, this.viewHeight);
+			this.viewport1 = new Viewport(this.viewWidth, this.viewHeight);
 
 			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
 
 			// copy the contents
 			if (this.frameNr & 1) {
-				this.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport1);
+				this.viewport1.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport1);
 				this.currentViewport = this.viewport1;
 			} else {
-				this.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport0);
+				this.viewport0.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, oldViewport0);
 				this.currentViewport = this.viewport0;
 			}
 
@@ -1057,45 +1055,39 @@ function Zoomer(domZoomer, options = {
 			if (this.onResize) this.onResize(this, this.currentViewport.viewWidth, this.currentViewport.viewHeight);
 		}
 
-
-		const oldViewport = this.currentViewport;
-		this.oldFrame = oldViewport.frame;
-
 		/*
 		 * COPY
 		 */
 
+		const previousViewport = this.currentViewport;
+		const previousFrame = previousViewport.frame;
+
 		this.frameNr++;
 		const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
 
-		if (this.frameNr & 1) {
-			this.viewport1.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport0);
-			this.currentViewport = this.viewport1;
-		} else {
-			this.viewport0.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewport1);
-			this.currentViewport = this.viewport0;
-		}
+		this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+		this.currentViewport.setPosition(frame, Config.centerX, Config.centerY, Config.radius, Config.angle, previousViewport);
 
-		if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, oldViewport, this.oldFrame);
+		if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, previousViewport, previousFrame);
 
 		/*
 		 * Create palette
 		 */
-		this.oldFrame.now = performance.now();
+		previousFrame.now = performance.now();
 
-		if (this.onRenderFrame) this.onRenderFrame(this, this.oldFrame);
+		if (this.onRenderFrame) this.onRenderFrame(this, previousFrame);
 
 		/*
 		 * The message queue is overloaded, so call direct until improved design
 		 */
 		if (1) {
-			oldViewport.draw(this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer);
-			Viewport.raf.push(this.oldFrame);
+			previousViewport.draw(previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer);
+			Viewport.raf.push(previousFrame);
 			requestAnimationFrame(this.animationFrame);
-			this.statStatePaint1 += ((performance.now() - this.oldFrame.now) - this.statStatePaint1) * this.coef;
-			this.statStatePaint2 += ((this.oldFrame.msec) - this.statStatePaint2) * this.coef;
+			this.statStatePaint1 += ((performance.now() - previousFrame.now) - this.statStatePaint1) * this.coef;
+			this.statStatePaint2 += ((previousFrame.msec) - this.statStatePaint2) * this.coef;
 		} else {
-			this.WWorkers[this.frameNr & 3].postMessage(this.oldFrame, [this.oldFrame.rgbaBuffer, this.oldFrame.pixelBuffer, this.oldFrame.paletteBuffer]);
+			this.WWorkers[this.frameNr & 3].postMessage(previousFrame, [previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer]);
 		}
 
 		/*
