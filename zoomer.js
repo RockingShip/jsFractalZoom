@@ -867,6 +867,10 @@ function Zoomer(domZoomer, options = {
 	    @description Active viewport (frame being updated/rendered) */
 	this.currentViewport = this.viewport0;
 
+	/** @member {Viewport}
+	    @description Active viewport (frame being painted) */
+	this.previousViewport = this.viewport0;
+
 	/** @member {Frame[]}
 	    @description list of free frames */
 	this.frames = [];
@@ -929,6 +933,9 @@ function Zoomer(domZoomer, options = {
 
 	/** @member {number} - Timestamp next vsync */
 	this.vsync = 0;
+
+	// initial call callbacks
+	if (this.onResize) this.onResize(this, this.currentViewport.viewWidth, this.currentViewport.viewHeight);
 
 	/**
 	 * Allocate a new frame, reuse if same size otherwise let it garbage collect
@@ -1007,6 +1014,14 @@ function Zoomer(domZoomer, options = {
 			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
 			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
 		}
+
+		// abort current frame and change state
+		if (this.state !== STOP) {
+			const now = performance.now();
+			this.avgStateDuration[this.state] += ((now - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
+			this.state = COPY;
+			this.stateStart[this.state] = now;
+		}
 	};
 
 	/**
@@ -1074,6 +1089,137 @@ function Zoomer(domZoomer, options = {
 			console.log("resync");
 		}
 
+		if (this.state === COPY) {
+			/*
+			 * COPY. start a new frame and inherit from the previous
+			 */
+
+			last = now;
+
+			/*
+			 * Test for DOM resize
+			 */
+			if (domZoomer.clientWidth !== this.viewWidth || domZoomer.clientHeight !== this.viewHeight) {
+
+				this.viewWidth = domZoomer.clientWidth;
+				this.viewHeight = domZoomer.clientHeight;
+
+				// set DOME size property
+				domZoomer.width = this.viewWidth;
+				domZoomer.height = this.viewHeight;
+
+				this.previousViewport = this.currentViewport;
+
+				// create new viewports
+				this.viewport0 = new Viewport(this.viewWidth, this.viewHeight);
+				this.viewport1 = new Viewport(this.viewWidth, this.viewHeight);
+				this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+
+				// copy the contents
+				const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+				this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, this.previousViewport);
+
+				// TODO: 5 arguments
+				if (this.onResize) this.onResize(this, this.currentViewport.viewWidth, this.currentViewport.viewHeight);
+			}
+
+			/*
+			 * allocate new frame
+			 */
+			this.frameNr++;
+
+			this.previousViewport = this.currentViewport;
+			const previousFrame = this.previousViewport.frame;
+
+			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+			frame.timeStart = now;
+
+			this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, this.previousViewport);
+			frame.durationCOPY += performance.now() - now;
+
+			if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, this.previousViewport, previousFrame);
+
+			previousFrame.now = performance.now();
+
+			if (!this.disableWW) {
+				// submit previous frame for rendering to worker
+				previousFrame.durationRender = now;
+				this.WWorkers[this.frameNr & 3].postMessage(previousFrame, [previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer]);
+			}
+
+			// change state
+			now = performance.now();
+			this.avgStateDuration[this.state] += ((now - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
+			this.state = this.disableWW ? RENDER : UPDATE;
+			this.stateStart[this.state] = now;
+
+			// return and call again.
+			postMessage("mainloop", "*");
+			return true;
+		}
+
+		if (this.state === RENDER) {
+			/*
+			 * RENDER. Render the frame in `Window` context.
+			 */
+			const previousFrame = this.previousViewport.frame;
+
+			if (this.onRenderFrame) this.onRenderFrame(this, previousFrame);
+
+			renderFrame(previousFrame);
+
+			// change state
+			now = performance.now();
+			this.avgStateDuration[this.state] += ((now - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
+			this.state = PAINT
+			this.stateStart[this.state] = now;
+
+			// return and call again.
+			postMessage("mainloop", "*");
+			return true;
+		}
+
+		if (this.state === PAINT) {
+			/*
+			 * PAINT. Paint is asynchronous. Embed it here.
+			 */
+			const previousFrame = this.previousViewport.frame;
+
+			const stime = performance.now();
+			if (this.onPutImageData) this.onPutImageData(this, previousFrame);
+
+			// update statistics
+			now = performance.now();
+			previousFrame.timeEnd = now;
+			previousFrame.durationPAINT += now - stime;
+
+			this.updateStatistics(previousFrame);
+			this.avgFrameRate += (1000 / (now - this.timeLastFrame) - this.avgFrameRate) * this.coef;
+
+			this.timeLastFrame = now;
+
+			// move request to free list
+			this.frames.push(previousFrame);
+			this.previousViewport.frame = undefined;
+
+			/*
+			 * update stats
+			 */
+			now = performance.now();
+
+			if (this.onEndFrame) this.onEndFrame(this);
+
+			// state change
+			this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
+			this.state = UPDATE;
+			this.stateStart[this.state] = performance.now();
+
+			// return and call again.
+			postMessage("mainloop", "*");
+			return true;
+		}
+
 		if (this.state === UPDATE) {
 			/*
 			 * UPDATE. calculate inaccurate pixels
@@ -1111,6 +1257,7 @@ function Zoomer(domZoomer, options = {
 				// update stats
 				viewport.frame.durationUPDATE += performance.now() - stime;
 
+				// return and call again.
 				postMessage("mainloop", "*");
 				return true;
 			}
@@ -1134,105 +1281,15 @@ function Zoomer(domZoomer, options = {
 				postMessage("mainloop", "*");
 				return true;
 			}
+
+			// return and call again.
+			postMessage("mainloop", "*");
+			return true;
 		}
 
-		/**
-		 ***
-		 *** Start of new cycle
-		 ***
-		 **/
-		last = now;
-
-		/*
-		 * test for DOM resize
-		 */
-		if (domZoomer.clientWidth !== this.viewWidth || domZoomer.clientHeight !== this.viewHeight) {
-
-			this.viewWidth = domZoomer.clientWidth;
-			this.viewHeight = domZoomer.clientHeight;
-
-			// set property
-			domZoomer.width = this.viewWidth
-			domZoomer.height = this.viewHeight
-
-			const previousViewport0 = this.viewport0;
-			const previousViewport1 = this.viewport1;
-			const previousViewport = this.currentViewport;
-
-			// create new viewports
-			this.viewport0 = new Viewport(this.viewWidth, this.viewHeight);
-			this.viewport1 = new Viewport(this.viewWidth, this.viewHeight);
-			this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
-
-			// copy the contents
-			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
-			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
-
-			// TODO: 5 arguments
-			if (this.onResize) this.onResize(this, this.currentViewport.viewWidth, this.currentViewport.viewHeight);
-		}
-
-		/*
-		 * COPY
-		 */
-
-		const previousViewport = this.currentViewport;
-		const previousFrame = previousViewport.frame;
-
-		this.frameNr++;
-		const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
-		frame.timeStart = now;
-
-		this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
-		this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
-		frame.durationCOPY += performance.now() - now;
-
-		if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, previousViewport, previousFrame);
-
-		previousFrame.now = performance.now();
-
-		if (this.onRenderFrame) this.onRenderFrame(this, previousFrame);
-
-		/*
-		 * The message queue is overloaded, so call direct until improved design
-		 */
-		if (!this.disableWW) {
-			this.WWorkers[this.frameNr & 3].postMessage(previousFrame, [previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer]);
-		} else {
-			renderFrame(previousFrame);
-
-			const stime = performance.now();
-			if (this.onPutImageData) this.onPutImageData(this, previousFrame);
-
-			// update statistics
-			now = performance.now();
-			previousFrame.timeEnd = now;
-			previousFrame.durationPAINT += now - stime;
-
-			this.updateStatistics(previousFrame);
-			this.avgFrameRate += (1000/(now - this.timeLastFrame) - this.avgFrameRate) * this.coef;
-
-			this.timeLastFrame = now;
-
-			// move request to free list
-			this.frames.push(previousFrame);
-			previousViewport.frame = undefined;
-		}
-
-		/*
-		 * update stats
-		 */
-		now = performance.now();
-
-		if (this.onEndFrame) this.onEndFrame(this);
-
-		// state change
-		this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
-		this.state = UPDATE;
-		this.stateStart[this.state] = performance.now();
-
-		postMessage("mainloop", "*");
-		return true;
+		// shouldn't reach here
+		this.stop();
+		return false;
 	};
 
 	/**

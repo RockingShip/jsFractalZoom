@@ -898,6 +898,14 @@ function GUI(config) {
 		for (let ji = 0; ji < viewport.viewWidth * viewport.viewHeight; ji++)
 			if (viewport.pixels16[ji] !== 65535)
 				viewport.pixels16[ji] %= Config.paletteSize;
+
+		/*
+		 * @date 2020-10-15 13:02:00
+		 * call `setPosition` to force a new frame to avoid colour glitching.
+		 * This shouldn't happen because of event queue isolation.
+		 * However, this handler is UI event context and `renderFrame()` is `postMessage()` context.
+		 */
+		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 	});
 }
 
