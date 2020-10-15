@@ -241,6 +241,11 @@ function renderFrame(frame) {
 /**
  * Viewport to the fractal world.
  *
+ * When using angles:
+ * The frame must be square and its size must be the diagonal of the viewing area.
+ *
+ * Coordinate system is the center x,y and radius. Angle is part of `Frame` rendering.
+ *
  * @class
  * @param {int}   viewWidth   - Screen width (pixels)
  * @param {int}   viewHeight  - Screen height (pixels)
@@ -251,6 +256,7 @@ function Viewport(viewWidth, viewHeight) {
 	this.viewWidth = viewWidth;
 	/** @member {number} - height of viewport */
 	this.viewHeight = viewHeight;
+
 	/** @member {number} - diameter of the pixel data */
 	this.diameter = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
 
@@ -266,15 +272,15 @@ function Viewport(viewWidth, viewHeight) {
 	 * Visual center
 	 */
 
-	/** @var {float}
+	/** @member {float}
 	    @description Center X coordinate - vsync updated */
 	this.centerX = 0;
 
-	/** @var {float}
+	/** @member {float}
 	    @description Center Y coordinate - vsync updated */
 	this.centerY = 0;
 
-	/** @var {float}
+	/** @member {float}
 	    @description Distance between center and viewport corner - vsync updated */
 	this.radius = 0;
 
@@ -287,35 +293,35 @@ function Viewport(viewWidth, viewHeight) {
 	 * Rulers
 	 */
 
-	/** @var {Float64Array}
+	/** @member {Float64Array}
 	    @description Logical x coordinate, what it should be */
 	this.xCoord = new Float64Array(this.diameter);
 
-	/** @var {Float64Array}
+	/** @member {Float64Array}
 	    @description Physical x coordinate, the older there larger the drift */
 	this.xNearest = new Float64Array(this.diameter);
 
-	/** @var {Float64Array}
+	/** @member {Float64Array}
 	    @description Cached distance between Logical/Physical */
 	this.xError = new Float64Array(this.diameter);
 
-	/** @var {Int32Array}
+	/** @member {Int32Array}
 	    @description Inherited index from previous update */
 	this.xFrom = new Int32Array(this.diameter);
 
-	/** @var {Float64Array}
+	/** @member {Float64Array}
 	    @description Logical y coordinate, what it should be */
 	this.yCoord = new Float64Array(this.diameter);
 
-	/** @var {Float64Array}
+	/** @member {Float64Array}
 	    @description Physical y coordinate, the older there larger the drift */
 	this.yNearest = new Float64Array(this.diameter);
 
-	/** @var {Float64Array}
+	/** @member {Float64Array}
 	    @description Cached distance between Logical/Physical */
 	this.yError = new Float64Array(this.diameter);
 
-	/** @var {Int32Array}
+	/** @member {Int32Array}
 	    @description Inherited index from previous update */
 	this.yFrom = new Int32Array(this.diameter);
 
@@ -444,7 +450,7 @@ function Viewport(viewWidth, viewHeight) {
 			}
 		}
 
-		// keep the froms with lowest error
+		// keep the `From`s with lowest error
 		for (let i = 1; i < newDiameter; i++) {
 			if (xFrom[i - 1] === xFrom[i] && this.xError[i - 1] > this.xError[i])
 				xFrom[i - 1] = -1;
@@ -593,6 +599,7 @@ function Viewport(viewWidth, viewHeight) {
 	};
 
 	/**
+	 * brute-force fill of all pixels. Intended for small/initial viewports
 	 *
 	 */
 	this.fill = () => {
@@ -790,19 +797,19 @@ function Zoomer(domZoomer, options = {
 	 * Authoritative Visual center
 	 */
 
-	/** @var {float}
+	/** @member {float}
 	    @description Center X coordinate - vsync updated */
 	this.centerX = 0;
 
-	/** @var {float}
+	/** @member {float}
 	    @description Center Y coordinate - vsync updated */
 	this.centerY = 0;
 
-	/** @var {float}
+	/** @member {float}
 	    @description Distance between center and viewport corner - vsync updated */
 	this.radius = 0;
 
-	/** @var {float}
+	/** @member {float}
 	    @description Current viewport angle (degrees) */
 	this.angle = 0;
 
@@ -852,7 +859,7 @@ function Zoomer(domZoomer, options = {
 	this.viewport1 = new Viewport(this.viewWidth, this.viewHeight);
 
 	/** @member {Viewport}
-	    @description Active viewport */
+	    @description Active viewport (frame being updated/rendered) */
 	this.currentViewport = this.viewport0;
 
 	/** @member {Frame[]}
@@ -977,7 +984,6 @@ function Zoomer(domZoomer, options = {
 
 	/**
 	 * Set the center coordinate and radius.
-	 * NOTE: set angle before position
 	 *
 	 * @param {float}    centerX              - Center x of view
 	 * @param {float}    centerY              - Center y or view
@@ -1178,9 +1184,6 @@ function Zoomer(domZoomer, options = {
 
 		if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, previousViewport, previousFrame);
 
-		/*
-		 * Create palette
-		 */
 		previousFrame.now = performance.now();
 
 		if (this.onRenderFrame) this.onRenderFrame(this, previousFrame);
