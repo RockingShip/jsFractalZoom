@@ -87,11 +87,6 @@ function memcpy(dst, dstOffset, src, srcOffset, length) {
  */
 function Frame(viewWidth, viewHeight) {
 
-	/** @member {number} - start of round-trip */
-	this.now = 0;
-	/** @member {number} - duration in worker (not full round-reip) */
-	this.msec = 0;
-
 	/** @member {int}
 	    @description Display width (pixels) */
 	this.viewWidth = viewWidth;
@@ -118,6 +113,51 @@ function Frame(viewWidth, viewHeight) {
 	/** @member {ArrayBuffer}
 	    @description Worker RGBA palette (UINT8*4) */
 	this.paletteBuffer = new ArrayBuffer(65536 * 4);
+
+	/*
+	 * Statistics
+	 */
+
+	/** @member {int}
+	    @description Timestamp of `allocFrame()` */
+	this.timeStart = 0;
+
+	/** @member {int}
+	    @description Timestamp after `onPutImageData()` */
+	this.timeEnd = 0;
+
+	/** @member {int}
+	    @description Time of `COPY`  */
+	this.durationCOPY = 0;
+
+	/** @member {int}
+	    @description Time of `UPDATE`  */
+	this.durationUPDATE = 0;
+
+	/** @member {int}
+	    @description Time of `RENDER`  */
+	this.durationRENDER = 0;
+
+	/** @member {int}
+	    @description Time of `PAINT`  */
+	this.durationPAINT = 0;
+
+	/** @member {int}
+	    @description Worker round-trip time */
+	this.durationRoundTrip = 0;
+
+	/** @member {int}
+	    @description number of calculated pixels */
+	this.cntPixels = 0;
+
+	/** @member {int}
+	    @description number of horizontal lines */
+	this.cntHLines = 0;
+
+	/** @member {int}
+	    @description number of vertical lines */
+	this.cntVLines = 0;
+
 }
 
 /**
@@ -213,7 +253,13 @@ function Viewport(viewWidth, viewHeight) {
 	this.viewHeight = viewHeight;
 	/** @member {number} - diameter of the pixel data */
 	this.diameter = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
-	/** @member {Uint16Array} - pixel data (must be square) */
+
+	/** @member {Frame}
+	    @description Frame being managed */
+	this.frame = undefined;
+
+	/** @member {Uint16Array}
+	    @description Uint16Array(frame.pixelBuffer) */
 	this.pixels16 = undefined;
 
 	/*
@@ -273,13 +319,6 @@ function Viewport(viewWidth, viewHeight) {
 	    @description Inherited index from previous update */
 	this.yFrom = new Int32Array(this.diameter);
 
-	/*
-	 * Statistics
-	 */
-	Viewport.doneX = 0;
-	Viewport.doneY = 0;
-	Viewport.doneCalc = 0;
-
 	/**
 	 *
 	 * @param {number} start - start coordinate
@@ -296,6 +335,8 @@ function Viewport(viewWidth, viewHeight) {
 		/*
 		 *
 		 */
+		let cntExact = 0;
+
 		let iOld, iNew;
 		for (iOld = 0, iNew = 0; iNew < newCoord.length && iOld < oldNearest.length; iNew++) {
 
@@ -313,6 +354,9 @@ function Viewport(viewWidth, viewHeight) {
 				nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
 			}
 
+			if (currError === 0)
+				cntExact++;
+
 			// populate
 			newCoord[iNew] = currCoord;
 			newNearest[iNew] = oldNearest[iOld];
@@ -326,6 +370,8 @@ function Viewport(viewWidth, viewHeight) {
 			newError[iNew] = Math.abs(newCoord[iNew] - oldNearest[iOld]);
 			newFrom[iNew] = iOld;
 		}
+
+		return cntExact;
 	};
 
 	/**
@@ -353,8 +399,12 @@ function Viewport(viewWidth, viewHeight) {
 		/*
 		 * setup new rulers
 		 */
-		this.makeRuler(this.centerX - this.radius, this.centerX + this.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, previousViewport.xNearest, previousViewport.xError);
-		this.makeRuler(this.centerY - this.radius, this.centerY + this.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, previousViewport.yNearest, previousViewport.yError);
+		const exactX = this.makeRuler(this.centerX - this.radius, this.centerX + this.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, previousViewport.xNearest, previousViewport.xError);
+		const exactY = this.makeRuler(this.centerY - this.radius, this.centerY + this.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, previousViewport.yNearest, previousViewport.yError);
+
+		frame.cntPixels += exactX * exactY;
+		frame.cntHLines += exactX; // todo: might need to swap
+		frame.cntVLines += exactY;
 
 		/**
 		 **!
@@ -467,6 +517,7 @@ function Viewport(viewWidth, viewHeight) {
 		 **!
 		 **/
 
+		const frame = this.frame;
 		const pixels16 = this.pixels16;
 
 		if (worstXerr > worstYerr) {
@@ -476,9 +527,10 @@ function Viewport(viewWidth, viewHeight) {
 
 			let ji = 0 * diameter + i;
 			let last = calculate(x, yCoord[0]);
+			frame.cntPixels++;
+
 			pixels16[ji] = last;
 			ji += diameter;
-			Viewport.doneCalc++;
 
 			for (let j = 1; j < diameter; j++) {
 				/*
@@ -487,7 +539,7 @@ function Viewport(viewWidth, viewHeight) {
 				 */
 				if (yError[j] === 0 || yFrom[j] !== -1) {
 					last = calculate(x, yCoord[j]);
-					Viewport.doneCalc++;
+					frame.cntPixels++;
 				}
 				pixels16[ji] = last;
 				ji += diameter;
@@ -504,7 +556,7 @@ function Viewport(viewWidth, viewHeight) {
 
 			xNearest[i] = x;
 			xError[i] = 0;
-			Viewport.doneX++;
+			frame.cntVLines++;
 
 		} else {
 
@@ -513,12 +565,14 @@ function Viewport(viewWidth, viewHeight) {
 
 			let ji = j * diameter + 0;
 			let last = calculate(xCoord[0], y);
+			frame.cntPixels++;
+
 			pixels16[ji++] = last;
 			Viewport.doneCalc++;
 			for (let i = 1; i < diameter; i++) {
 				if (xError[i] === 0 || xFrom[i] !== -1) {
 					last = calculate(xCoord[i], y);
-					Viewport.doneCalc++;
+					frame.cntPixels++;
 				}
 				pixels16[ji++] = last;
 			}
@@ -534,7 +588,7 @@ function Viewport(viewWidth, viewHeight) {
 
 			yNearest[j] = y;
 			yError[j] = 0;
-			Viewport.doneY++;
+			frame.cntHLines++;
 		}
 	};
 
@@ -544,7 +598,7 @@ function Viewport(viewWidth, viewHeight) {
 	this.fill = () => {
 
 		// NOTE: attached frame will leak and GC
-		this.frame = new Frame(this.viewWidth, this.viewHeight);3
+		this.frame = new Frame(this.viewWidth, this.viewHeight);
 		this.pixels16 = new Uint16Array(this.frame.pixelBuffer);
 
 		this.radiusX = this.radius * this.viewWidth / this.diameter;
@@ -567,6 +621,7 @@ function Viewport(viewWidth, viewHeight) {
 				pixels16[ji++] = calculate(x, y);
 			}
 		}
+		this.frame.cntPixels += this.diameter * this.diameter;
 	};
 }
 
@@ -774,13 +829,19 @@ function Zoomer(domZoomer, options = {
 	this.state = 0;
 
 	const STOP = 0;
-	const COPY = 1;
-	const UPDATE = 2;
-	const IDLE = 3;
+	const COPY = 1; // start of new frame
+	const UPDATE = 2; // update current frame
+	const RENDER = 3; // render old frame
+	const PAINT = 4; // paint old frame
+	const IDLE = 5;
 
 	/** @member {int}
 	    @description Current frame number*/
 	this.frameNr = 0;
+
+	/** @member {int}
+	    @description Number of times mainloop called */
+	this.mainloopNr = 0;
 
 	/** @member {Viewport}
 	    @description Viewport #0 for even frames */
@@ -803,33 +864,59 @@ function Zoomer(domZoomer, options = {
 	this.WWorkers = [];
 
 	/*
+	 * Timestamps
+	 */
+
+	/** @member {float[]}
+	    @description Start timestamps for states */
+	this.stateStart = [0, 0, 0, 0, 0, 0];
+
+	/** @member {int}
+	    @description Timestamp of last PAINT (for fps calculation) */
+	this.timeLastFrame = 0;
+
+	/*
 	 * Statistics
 	 */
 
-	/** @member {int}
-	    @description Number of times mainloop called */
-	this.mainLoopNr = 0;
+	/** @member {int[]}
+	    @description Number of times state was handled with `mainloop` */
+	this.stateTicks = [0, 0, 0, 0, 0, 0];
 
 	/** @member {int[]}
 	    @description Number of times state has been performed */
 	this.stateCounters = [0, 0, 0, 0, 0];
 
 	/** @member {float[]}
-	    @description average duration of states in milli seconds */
-	this.avgStateDuration = [0, 0, 0, 0, 0];
+	    @description Average duration of states in milli seconds */
+	this.avgStateDuration = [0, 0, 0, 0, 0, 0];
+
+	/** @member {float[]}
+	    @description Average duration of states in milli seconds */
+	this.avgFrameDuration = [0, 0, 0, 0, 0, 0];
+
+	/** @member {float[]}
+	    @description Average calculated pixels per frame */
+	this.avgPixelsPerFrame = 0;
+
+	/** @member {float[]}
+	    @description Average calculated lines per frame */
+	this.avgLinesPerFrame = 0;
+
+	/** @member {float[]}
+	    @description Average worker round-trip time */
+	this.avgRoundTrip = 0;
+
+	/** @member {float[]}
+	    @description Average real frame rate */
+	this.avgFrameRate = 0;
+
+	/** @member {float[]}
+	    @description Average quality (0..1) */
+	this.avgQuality = 0;
 
 	/** @member {number} - Timestamp next vsync */
 	this.vsync = 0;
-	/** @member {number} - Average time in mSec spent in COPY */
-	this.statStateCopy = 0;
-	/** @member {number} - Average time in mSec spent in UPDATE */
-	this.statStateUpdate = 0;
-	/** @member {number} - Average time in mSec spent in PAINT */
-	this.statStatePaint1 = 0;
-	this.statStatePaint2 = 0;
-
-	// per second differences
-	this.counters = [0, 0, 0, 0, 0, 0, 0];
 
 	/**
 	 * Allocate a new frame, reuse if same size otherwise let it garbage collect
@@ -853,10 +940,40 @@ function Zoomer(domZoomer, options = {
 			if (frame.viewWidth === viewWidth && frame.viewHeight === viewHeight) {
 				frame.frameNr = this.frameNr;
 				frame.angle = angle;
+
+				// clear statistics
+				frame.timeStart = 0;
+				frame.timeEnd = 0;
+				frame.durationCOPY = 0;
+				frame.durationUPDATE = 0;
+				frame.durationRENDER = 0;
+				frame.durationPAINT = 0;
+				frame.durationRoundTrip = 0;
+				frame.cntPixels = 0;
+				frame.cntHLines = 0;
+				frame.cntVLines = 0;
+
 				return frame;
 			}
 		}
 	}
+
+	/**
+	 * Update statistics with frame metrics
+	 *
+	 * @param {Frame} frame
+	 */
+	this.updateStatistics = (frame) => {
+		this.avgFrameDuration[COPY] += (frame.durationCOPY - this.avgFrameDuration[COPY]) * this.coef;
+		this.avgFrameDuration[UPDATE] += (frame.durationUPDATE - this.avgFrameDuration[UPDATE]) * this.coef;
+		this.avgFrameDuration[RENDER] += (frame.durationRENDER - this.avgFrameDuration[RENDER]) * this.coef;
+		this.avgFrameDuration[PAINT] += (frame.durationPAINT - this.avgFrameDuration[PAINT]) * this.coef;
+		this.avgPixelsPerFrame += (frame.cntPixels - this.avgPixelsPerFrame) * this.coef;
+		this.avgLinesPerFrame += ((frame.cntHLines + frame.cntVLines) - this.avgLinesPerFrame) * this.coef;
+		this.avgRoundTrip += (frame.durationRoundTrip - this.avgRoundTrip) * this.coef;
+		this.avgQuality += ((frame.cntPixels / (frame.diameter * frame.diameter)) - this.avgQuality) * this.coef;
+
+	};
 
 	/**
 	 * Set the center coordinate and radius.
@@ -885,9 +1002,17 @@ function Zoomer(domZoomer, options = {
 	 * start the state machine
 	 */
 	this.start = () => {
+		// test if already running
+		if (this.state !== STOP)
+			return;
+
+		// change state
 		this.state = COPY;
+		this.stateStart[this.state] = performance.now();
+
 		this.vsync = performance.now() + (1000 / Config.framerateNow); // vsync wakeup time
-		this.statStateCopy = this.statStateUpdate = this.statStatePaint1 = this.statStatePaint2 = 0;
+
+		// send message to start engine
 		postMessage("mainloop", "*");
 	};
 
@@ -895,6 +1020,12 @@ function Zoomer(domZoomer, options = {
 	 * stop the state machine
 	 */
 	this.stop = () => {
+		// test if already stopped
+		if (this.state === STOP)
+			return;
+
+		// change state
+		this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
 		this.state = STOP;
 	};
 
@@ -918,11 +1049,17 @@ function Zoomer(domZoomer, options = {
 		// current time
 		let last;
 		let now = performance.now();
+		this.stateTicks[this.state]++;
 
 		if (this.vsync === 0 || now > this.vsync + 2000) {
 			// Missed vsync by more than 2 seconds, resync
 			this.vsync = now + (1000 / Config.framerateNow);
+
+			// state change
+			this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
 			this.state = COPY;
+			this.stateStart[this.state] = performance.now();
+
 			console.log("resync");
 		}
 
@@ -930,12 +1067,15 @@ function Zoomer(domZoomer, options = {
 			/*
 			 * UPDATE. calculate inaccurate pixels
 			 */
-			this.counters[UPDATE]++;
 			last = now;
 
 			if (now >= this.vsync - 2) {
 				// don't even start if there is less than 2mSec left till next vsync
+
+				// state change
+				this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
 				this.state = IDLE;
+				this.stateStart[this.state] = performance.now();
 			} else {
 				/*
 				 * update inaccurate pixels
@@ -950,16 +1090,15 @@ function Zoomer(domZoomer, options = {
 				 * Calculate lines
 				 */
 
-				let numLines = 0;
+				const stime = performance.now();
 				while (now < endtime) {
 					viewport.renderLines(Formula.calculate);
 
 					now = performance.now();
-					numLines++;
 				}
 
 				// update stats
-				this.statStateUpdate += ((now - last) / numLines - this.statStateUpdate) * this.coef;
+				viewport.frame.durationUPDATE += performance.now() - stime;
 
 				postMessage("mainloop", "*");
 				return true;
@@ -970,11 +1109,15 @@ function Zoomer(domZoomer, options = {
 			/*
 			 * IDLE. Wait for vsync
 			 */
-			this.counters[IDLE]++;
 
 			if (now >= this.vsync) {
 				// vsync is NOW
+
+				// state change
+				this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
 				this.state = COPY;
+				this.stateStart[this.state] = performance.now();
+
 				this.vsync += (1000 / Config.framerateNow); // time of next vsync
 			} else {
 				postMessage("mainloop", "*");
@@ -987,7 +1130,6 @@ function Zoomer(domZoomer, options = {
 		 *** Start of new cycle
 		 ***
 		 **/
-		this.counters[1]++;
 		last = now;
 
 		/*
@@ -1028,9 +1170,11 @@ function Zoomer(domZoomer, options = {
 
 		this.frameNr++;
 		const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+		frame.timeStart = now;
 
 		this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 		this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
+		frame.durationCOPY += performance.now() - now;
 
 		if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, previousViewport, previousFrame);
 
@@ -1049,10 +1193,18 @@ function Zoomer(domZoomer, options = {
 		} else {
 			renderFrame(previousFrame);
 
+			const stime = performance.now();
 			if (this.onPutImageData) this.onPutImageData(this, previousFrame);
 
-			this.statStatePaint1 += ((performance.now() - previousFrame.now) - this.statStatePaint1) * this.coef;
-			this.statStatePaint2 += ((previousFrame.msec) - this.statStatePaint2) * this.coef;
+			// update statistics
+			now = performance.now();
+			previousFrame.timeEnd = now;
+			previousFrame.durationPAINT += now - stime;
+
+			this.updateStatistics(previousFrame);
+			this.avgFrameRate += (1000/(now - this.timeLastFrame) - this.avgFrameRate) * this.coef;
+
+			this.timeLastFrame = now;
 
 			// move request to free list
 			this.frames.push(previousFrame);
@@ -1063,11 +1215,14 @@ function Zoomer(domZoomer, options = {
 		 * update stats
 		 */
 		now = performance.now();
-		this.statStateCopy += ((now - last) - this.statStateCopy) * this.coef;
 
 		if (this.onEndFrame) this.onEndFrame(this);
 
+		// state change
+		this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
 		this.state = UPDATE;
+		this.stateStart[this.state] = performance.now();
+
 		postMessage("mainloop", "*");
 		return true;
 	};
@@ -1110,24 +1265,24 @@ function Zoomer(domZoomer, options = {
 			this.WWorkers[i].addEventListener("message", (e) => {
 				/** @var {Frame} */
 				const frame = e.data;
+				const stime = performance.now();
+				frame.durationRender = stime - frame.durationRender;
 
 				// perform PAINT
-
-				const stime = performance.now();
-
 				if (this.onPutImageData) this.onPutImageData(this, frame);
 
-				// stastics
 				const etime = performance.now();
 
-				this.avgFrameConstruct += (frame.durationConstruct - this.avgFrameConstruct) * this.coef;
-				this.avgFrameRender += (frame.durationRender - this.avgFrameRender) * this.coef;
-				this.avgFrameRoundTrip += (frame.durationRoundTrip - this.avgFrameRoundTrip) * this.coef;
+				// update statistics
+				frame.timeEnd = etime;
+				frame.durationPAINT += etime - stime;
+				this.updateStatistics(frame);
+
+				this.avgFrameRate += (1000/(etime - this.timeLastFrame) - this.avgFrameRate) * this.coef;
+				this.timeLastFrame = etime;
 
 				// return frame to free pool
 				this.frames.push(frame);
-
-				this.avgCycleDuration += ((etime - this.imeStart[COPY]) - this.avgCycleDuration) * this.coef;
 
 				this.avgStateDuration[0] += (frame.durationRender - this.avgStateDuration[0]) * this.coef;
 				this.avgStateDuration[PAINT] += ((etime - stime) - this.avgStateDuration[PAINT]) * this.coef;

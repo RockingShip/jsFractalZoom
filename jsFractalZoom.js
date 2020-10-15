@@ -486,7 +486,7 @@ function GUI(config) {
 	 * DOM elements and their matching id's
 	 */
 	this.domZoomer = "idZoomer";
-	this.domStatusQuality = "idStatusQuality";
+	this.domStatusPosition = "idStatusPosition";
 	this.domStatusLoad = "idStatusLoad";
 	this.domStatusRect = "idStatusRect";
 	this.domPowerButton = "idPowerButton";
@@ -538,8 +538,8 @@ function GUI(config) {
 
 	// per second differences
 	this.lastNow = 0;
-	this.lastFrame = 0;
-	this.lastLoop = 0;
+	this.lastFrameNr = 0;
+	this.lastMainloopNr = 0;
 	this.lastTick = 0;
 
 	/*
@@ -595,7 +595,7 @@ function GUI(config) {
 					Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 					window.gui.domAutopilot.style.border = '4px solid orange';
 				} else {
-					this.domStatusQuality.innerHTML = "";
+					this.domStatusPosition.innerHTML = "";
 					if (!this.updateAutopilot(currentViewport, 4, 16))
 						if (!this.updateAutopilot(currentViewport, 60, 16))
 							if (!this.updateAutopilot(currentViewport, currentViewport.diameter >> 1, 16))
@@ -677,10 +677,7 @@ function GUI(config) {
 
 			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
-			this.domStatusQuality.innerHTML = JSON.stringify({lines: Viewport.doneX + Viewport.doneY, calc: Viewport.doneCalc, x: Config.centerX, y: Config.centerY, r: Config.radius});
-			Viewport.doneX = 0;
-			Viewport.doneY = 0;
-			Viewport.doneCalc = 0;
+			this.domStatusPosition.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, r: Config.radius, a: Config.angle});
 		},
 
 		/**
@@ -705,23 +702,34 @@ function GUI(config) {
 		 */
 		onEndFrame: (zoomer, currentFrame) => {
 
-			// window.gui.domStatusQuality.innerHTML = JSON.stringify(this.counters);
+			// window.gui.domStatusPosition.innerHTML = JSON.stringify(this.counters);
 
 			const now = performance.now();
 
-			this.domStatusRect.innerHTML =
-				"zoom:" + zoomer.statStateCopy.toFixed(3) +
-				"mSec(" + (zoomer.statStateCopy * 100 / (1000 / Config.framerateNow)).toFixed(0) +
-				"%), update:" + zoomer.statStateUpdate.toFixed(3) +
-				"mSec, paint:" + zoomer.statStatePaint1.toFixed(3) +
-				"mSec(" + (zoomer.statStatePaint1 * 100 / (1000 / Config.framerateNow)).toFixed(0) +
-				"%)+" + zoomer.statStatePaint2.toFixed(3);
+			if (now - this.lastNow >= 250) {
 
-			if (Math.floor(now / 1000) !== this.lastNow) {
-				this.domStatusLoad.innerHTML = "FPS:" + (zoomer.frameNr - this.lastFrame) + " IPS:" + (zoomer.mainloopNr - this.lastLoop);
-				this.lastNow = Math.floor(now / 1000);
-				this.lastFrame = zoomer.frameNr;
-				this.lastLoop = zoomer.mainloopNr;
+				// round for displaying
+				for (let i=0; i<zoomer.stateTicks.length; i++) {
+					zoomer.avgStateDuration[i] = Math.round(zoomer.avgStateDuration[i]);
+					zoomer.avgFrameDuration[i] = Math.round(zoomer.avgFrameDuration[i]);
+				}
+
+				this.domStatusLoad.innerHTML = JSON.stringify({
+					ticks: zoomer.stateTicks,
+					state: zoomer.avgStateDuration,
+					frame: zoomer.avgFrameDuration,
+					ppf: Math.round(zoomer.avgPixelsPerFrame),
+					lpf: Math.round(zoomer.avgLinesPerFrame),
+					rt: Math.round(zoomer.avgRoundTrip),
+					fps: Math.round(zoomer.avgFrameRate),
+					qual: zoomer.avgQuality, // Math.round(zoomer.avgQuality * 1000) / 10,
+				});
+
+				// this.domStatusRect.innerHTML = "FPS:" + (zoomer.frameNr - this.lastFrameNr) + " IPS:" + (zoomer.mainloopNr - this.lastMainloopNr);
+
+				this.lastNow = now;
+				this.lastFrameNr = zoomer.frameNr;
+				this.lastMainloopNr = zoomer.mainloopNr;
 			}
 		},
 
