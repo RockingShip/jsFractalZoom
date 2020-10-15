@@ -74,9 +74,9 @@ function Config() {
 	/** @member {number} - zoom magnification slider Min */
 	Config.zoomSpeedMin = 1.0;
 	/** @member {number} - zoom magnification slider Max */
-	Config.zoomSpeedMax = 300.0;
+	Config.zoomSpeedMax = 50.0;
 	/** @member {number} - zoom magnification slider Now */
-	Config.zoomSpeedNow = Config.logTolinear(Config.zoomSpeedMin, Config.zoomSpeedMax, 100);
+	Config.zoomSpeedNow = Config.logTolinear(Config.zoomSpeedMin, Config.zoomSpeedMax, 20);
 
 	/** @member {number} - rotate speed slider Min */
 	Config.rotateSpeedMin = -0.5;
@@ -486,6 +486,7 @@ function GUI(config) {
 	 * DOM elements and their matching id's
 	 */
 	this.domZoomer = "idZoomer";
+	this.domStatusTitle = "idStatusTitle";
 	this.domStatusPosition = "idStatusPosition";
 	this.domStatusLoad = "idStatusLoad";
 	this.domStatusRect = "idStatusRect";
@@ -559,7 +560,7 @@ function GUI(config) {
 		 *
 		 * @member {boolean} - Frames per second
 		 */
-		disableWW: true,
+		disableWW: false,
 
 		/**
 		 * Size change detected for `domZoomer`
@@ -677,7 +678,7 @@ function GUI(config) {
 
 			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
-			this.domStatusPosition.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, r: Config.radius, a: Config.angle});
+			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, r: Config.radius, a: Config.angle, qual: this.zoomer.avgQuality});
 		},
 
 		/**
@@ -698,9 +699,9 @@ function GUI(config) {
 		 * Frame construction complete. Update statistics.
 		 *
 		 * @param {Zoomer}   zoomer       - This
-		 * @param {Frame}    currentFrame - Current frame
+		 * @param {Frame}    previousFrame - Current frame
 		 */
-		onEndFrame: (zoomer, currentFrame) => {
+		onEndFrame: (zoomer, previousFrame) => {
 
 			// window.gui.domStatusPosition.innerHTML = JSON.stringify(this.counters);
 
@@ -722,7 +723,7 @@ function GUI(config) {
 					lpf: Math.round(zoomer.avgLinesPerFrame),
 					rt: Math.round(zoomer.avgRoundTrip),
 					fps: Math.round(zoomer.avgFrameRate),
-					qual: zoomer.avgQuality, // Math.round(zoomer.avgQuality * 1000) / 10,
+					// qual: zoomer.avgQuality, // Math.round(zoomer.avgQuality * 1000) / 10,
 				});
 
 				// this.domStatusRect.innerHTML = "FPS:" + (zoomer.frameNr - this.lastFrameNr) + " IPS:" + (zoomer.mainloopNr - this.lastMainloopNr);
@@ -750,12 +751,17 @@ function GUI(config) {
 		}
 	});
 
-	// get context
-	this.ctx = this.domZoomer.getContext("2d", {alpha: false});
+	/*
+	 * @date 2020-10-15 13:08:13
+	 * `desynchronized` dramatically speed enhances `putImageData()` but it might also glitch mouse movement when hovering over the canvas.
+	 * `alpha` might have an effect, however not noticed yet.
+	 */
+	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
 
 	// small viewport for initial image
+	Config.home(); // load default formula and initial position
 	this.viewportInit = new Viewport(64, 64);
-	this.viewportInit.fill();
+	this.viewportInit.fill(Config.centerX, Config.centerY, Config.radius, Config.angle);
 	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 
 	// create formula engine
@@ -896,8 +902,8 @@ function GUI(config) {
 		// fast clamp pixel values
 		const viewport = this.zoomer.currentViewport;
 		for (let ji = 0; ji < viewport.viewWidth * viewport.viewHeight; ji++)
-			if (viewport.pixels16[ji] !== 65535)
-				viewport.pixels16[ji] %= Config.paletteSize;
+			if (viewport.pixel16[ji] !== 65535)
+				viewport.pixel16[ji] %= Config.paletteSize;
 
 		/*
 		 * @date 2020-10-15 13:02:00
@@ -1107,8 +1113,8 @@ GUI.prototype.handleMouse = function (event) {
  * (re)load initial frame
  */
 GUI.prototype.reload = function () {
-	// set all pixels of thumbnail
-	this.viewportInit.fill();
+	// set all pixels of thumbnail with latest set `calculate`
+	this.viewportInit.fill(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
 	// inject into current viewport
 	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
@@ -1124,7 +1130,7 @@ GUI.prototype.reload = function () {
 GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixelRadius) {
 
 	const config = window.config;
-	const pixels16 = viewport.pixels16;
+	const pixel16 = viewport.pixel16;
 
 	// use '>>1' as integer '/2'
 
@@ -1154,7 +1160,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 		let c = 0;
 		for (let j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
 			for (let i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
-				if (pixels16[j * viewport.diameter + i] === 65535)
+				if (pixel16[j * viewport.diameter + i] === 65535)
 					c++;
 		if (c >= min && c <= max) {
 			Config.autopilotX = x;

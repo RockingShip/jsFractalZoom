@@ -49,6 +49,11 @@ body {
 	height: 100%;
 }
 
+#idStatusTitle {
+	font-size: small;
+	vertical-align: super;
+}
+
 #idAutopilot {
 	position: absolute;
 }

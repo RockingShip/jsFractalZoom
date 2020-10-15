@@ -56,14 +56,14 @@ function memcpy(dst, dstOffset, src, srcOffset, length) {
  * 	Times are fairly stable and can vary between 5 and 15mSec, typically 12mSec.
  *
  * There is also an optional embedded IDLE state. No calculations are performed 2mSec before a vsync,
- * so that the event/message queues are highly responsive to the handling of requestAnimationEndFrame()
+ * so that the event/message queues are highly responsive to the handling of requestAnimationFrame()
  * for worst case situations that a long UPDATE will miss the vsync (animationEndFrameCallback).
  *
  * IDLEs may be omitted if updates are fast enough.
  *
  * There are also 2 sets of 2 alternating buffers, internal pixel data and context2D RGBA data.
  *
- * Read/write time diagram: R=Read, W=write, I=idle, rAF=requestAnimationEndFrame, AF=animationEndFrameCallback
+ * Read/write time diagram: R=Read, W=write, I=idle, rAF=requestAnimationFrame, AF=animationFrameCallback
  *
  *               COPY0  UPDATE0     COPY1  UPDATE1     COPY2  UPDATE2     COPY0  UPDATE0     COPY1  UPDATE1
  * pixel0:      <--W--> WWWWIIWWWW <--R-->                               <--W--> WWWWIIWWWW <--R-->
@@ -177,11 +177,11 @@ function Frame(viewWidth, viewHeight) {
  */
 function renderFrame(frame) {
 
-	frame.durationRender = performance.now();
+	frame.durationRENDER = performance.now();
 
 	// typed wrappers for Arrays
 	const rgba = new Uint32Array(frame.rgbaBuffer);
-	const pixels16 = new Uint16Array(frame.pixelBuffer);
+	const pixel16 = new Uint16Array(frame.pixelBuffer);
 	const palette32 = new Uint32Array(frame.paletteBuffer);
 
 	/**
@@ -206,16 +206,16 @@ function renderFrame(frame) {
 			// Palette translated
 			for (let v = 0; v < viewHeight; v++) {
 				for (let u = 0; u < viewWidth; u++)
-					rgba[vu++] = palette32[pixels16[ji++]];
+					rgba[vu++] = palette32[pixel16[ji++]];
 				ji += diameter - viewWidth;
 			}
 		} else if (diameter === viewWidth) {
 			// 1:1
-			memcpy(rgba, vu, pixels16, ji, viewWidth * viewHeight)
+			memcpy(rgba, vu, pixel16, ji, viewWidth * viewHeight)
 		} else {
 			// cropped
 			for (let v = 0; v < viewHeight; v++) {
-				memcpy(rgba, vu, pixels16, ji, viewWidth);
+				memcpy(rgba, vu, pixel16, ji, viewWidth);
 				vu += viewWidth;
 				ji += viewWidth;
 
@@ -239,12 +239,12 @@ function renderFrame(frame) {
 		let vu = 0;
 		for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
 			for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
-				rgba[vu++] = palette32[pixels16[(iy >> 16) * diameter + (ix >> 16)]];
+				rgba[vu++] = palette32[pixel16[(iy >> 16) * diameter + (ix >> 16)]];
 			}
 		}
 	}
 
-	frame.durationRender = performance.now() - frame.durationRender;
+	frame.durationRENDER = performance.now() - frame.durationRENDER;
 }
 
 /**
@@ -275,22 +275,22 @@ function Viewport(viewWidth, viewHeight) {
 
 	/** @member {Uint16Array}
 	    @description Uint16Array(frame.pixelBuffer) */
-	this.pixels16 = undefined;
+	this.pixel16 = undefined;
 
 	/*
 	 * Visual center
 	 */
 
 	/** @member {float}
-	    @description Center X coordinate - vsync updated */
+	    @description Center X coordinate */
 	this.centerX = 0;
 
 	/** @member {float}
-	    @description Center Y coordinate - vsync updated */
+	    @description Center Y coordinate */
 	this.centerY = 0;
 
 	/** @member {float}
-	    @description Distance between center and viewport corner - vsync updated */
+	    @description Distance between center and viewport corner */
 	this.radius = 0;
 
 	/** @member {number} - distance between center and horizontal viewport edge (derived from this.radius) */
@@ -403,7 +403,7 @@ function Viewport(viewWidth, viewHeight) {
 	this.setPosition = (frame, centerX, centerY, radius, previousViewport) => {
 
 		this.frame = frame;
-		this.pixels16 = new Uint16Array(frame.pixelBuffer);
+		this.pixel16 = new Uint16Array(frame.pixelBuffer);
 
 		this.centerX = centerX;
 		this.centerY = centerY;
@@ -432,28 +432,28 @@ function Viewport(viewWidth, viewHeight) {
 		 */
 		const newDiameter = this.diameter;
 		const oldDiameter = previousViewport.diameter;
-		const newPixels16 = this.pixels16;
-		const oldPixels16 = previousViewport.pixels16;
+		const newpixel16 = this.pixel16;
+		const oldpixel16 = previousViewport.pixel16;
 
 		let ji = 0;
 
 		// first line
 		let k = yFrom[0] * oldDiameter;
 		for (let i = 0; i < newDiameter; i++)
-			newPixels16[ji++] = oldPixels16[k + xFrom[i]];
+			newpixel16[ji++] = oldpixel16[k + xFrom[i]];
 
 		// followups
 		for (let j = 1; j < newDiameter; j++) {
 			if (yFrom[j] === yFrom[j - 1]) {
 				// this line is identical to the previous
-				newPixels16.copyWithin(ji, ji - newDiameter, ji + newDiameter);
+				newpixel16.copyWithin(ji, ji - newDiameter, ji + newDiameter);
 				ji += newDiameter;
 
 			} else {
 				// extract line from previous frame
 				let k = yFrom[j] * oldDiameter;
 				for (let i = 0; i < newDiameter; i++)
-					newPixels16[ji++] = oldPixels16[k + xFrom[i]];
+					newpixel16[ji++] = oldpixel16[k + xFrom[i]];
 			}
 		}
 
@@ -478,13 +478,15 @@ function Viewport(viewWidth, viewHeight) {
 	 * @returns {boolean}
 	 */
 	this.reachedLimits = () => {
+
+		const {xCoord, yCoord, diameter} = this;
 		/*
 		 * @date 2020-10-12 18:30:14
 		 * NOTE: First duplicate ruler coordinate is sufficient to mark endpoint.
 		 *       This to prevent zooming full screen into a single pixel
 		 */
-		for (let ij = 1; ij < this.diameter; ij++) {
-			if (this.xCoord[ij - 1] === this.xCoord[ij] || this.yCoord[ij - 1] === this.yCoord[ij])
+		for (let ij = 1; ij < diameter; ij++) {
+			if (xCoord[ij - 1] === xCoord[ij] || yCoord[ij - 1] === yCoord[ij])
 				return true;
 
 		}
@@ -498,7 +500,7 @@ function Viewport(viewWidth, viewHeight) {
 	 */
 	this.updateLines = (calculate) => {
 
-		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixels16} = this;
+		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixel16} = this;
 
 		// which tabstops have the worst error
 		let worstXerr = xError[0];
@@ -540,7 +542,7 @@ function Viewport(viewWidth, viewHeight) {
 			frame.cntPixels++;
 
 			let ji = 0 * diameter + i;
-			pixels16[ji] = last;
+			pixel16[ji] = last;
 			ji += diameter;
 
 			for (let j = 1; j < diameter; j++) {
@@ -552,7 +554,8 @@ function Viewport(viewWidth, viewHeight) {
 					last = calculate(x, yCoord[j]);
 					frame.cntPixels++;
 				}
-				pixels16[ji] = last;
+
+				pixel16[ji] = last;
 				ji += diameter;
 			}
 
@@ -561,7 +564,7 @@ function Viewport(viewWidth, viewHeight) {
 					break;
 
 				for (let v = 0; v < diameter; v++) {
-					pixels16[v * diameter + u] = pixels16[v * diameter + i];
+					pixel16[v * diameter + u] = pixel16[v * diameter + i];
 				}
 			}
 
@@ -578,14 +581,14 @@ function Viewport(viewWidth, viewHeight) {
 			frame.cntPixels++;
 
 			let ji = j * diameter + 0;
-			pixels16[ji++] = last;
+			pixel16[ji++] = last;
 
 			for (let i = 1; i < diameter; i++) {
 				if (xError[i] === 0 || xFrom[i] !== -1) {
 					last = calculate(xCoord[i], y);
 					frame.cntPixels++;
 				}
-				pixels16[ji++] = last;
+				pixel16[ji++] = last;
 			}
 
 			for (let v = j + 1; v < diameter; v++) {
@@ -593,7 +596,7 @@ function Viewport(viewWidth, viewHeight) {
 					break;
 
 				for (let u = 0; u < diameter; u++) {
-					pixels16[v * diameter + u] = pixels16[j * diameter + u];
+					pixel16[v * diameter + u] = pixel16[j * diameter + u];
 				}
 			}
 
@@ -606,17 +609,23 @@ function Viewport(viewWidth, viewHeight) {
 	/**
 	 * brute-force fill of all pixels. Intended for small/initial viewports
 	 *
+	 * @param {float}    centerX              - Center x of view
+	 * @param {float}    centerY              - Center y or view
+	 * @param {float}    radius               - Radius of view
 	 */
-	this.fill = () => {
+	this.fill = (centerX, centerY, radius) => {
 
 		// NOTE: attached frame will leak and GC
 		this.frame = new Frame(this.viewWidth, this.viewHeight);
-		this.pixels16 = new Uint16Array(this.frame.pixelBuffer);
+		this.pixel16 = new Uint16Array(this.frame.pixelBuffer);
 
-		this.radiusX = this.radius * this.viewWidth / this.diameter;
-		this.radiusY = this.radius * this.viewHeight / this.diameter;
+		this.centerX = centerX;
+		this.centerY = centerY;
+		this.radius = radius;
+		this.radiusX = radius * this.viewWidth / this.diameter;
+		this.radiusY = radius * this.viewHeight / this.diameter;
 
-		const {xCoord, xNearest, yCoord, yNearest, pixels16, pixelWidth, pixelHeight} = this;
+		const {xCoord, xNearest, yCoord, yNearest, pixel16, pixelWidth, pixelHeight} = this;
 
 		for (let i = 0; i < xCoord.length; i++)
 			xNearest[i] = xCoord[i] = ((this.centerX + this.radius) - (this.centerX - this.radius)) * i / (xCoord.length - 1) + (this.centerX - this.radius);
@@ -630,10 +639,10 @@ function Viewport(viewWidth, viewHeight) {
 			for (let i = 0; i < this.diameter; i++) {
 				// distance to center
 				let x = (this.centerX - this.radius) + this.radius * 2 * i / this.diameter;
-				pixels16[ji++] = calculate(x, y);
+				pixel16[ji++] = calculate(x, y);
 			}
 		}
-		this.frame.cntPixels += this.diameter * this.diameter;
+		this.frame.cntPixels = this.diameter * this.diameter;
 	};
 }
 
@@ -739,9 +748,9 @@ function Zoomer(domZoomer, options = {
 	 * Frame might be in transit to the web-worker and is not available as parameter.
 	 *
 	 * @param {Zoomer}   zoomer       - This
-	 * @param {Frame}    currentFrame - Current frame
+	 * @param {Frame}    previousFrame - Previous frame
 	 */
-	onEndFrame: (zoomer, currentFrame) => {
+	onEndFrame: (zoomer, previousFrame) => {
 	},
 
 	/**
@@ -765,6 +774,10 @@ function Zoomer(domZoomer, options = {
 	/*
 	 * defaults
 	 */
+
+	/** @member {float}
+	    @description Number of frames/second */
+	this.frameRate = options.frameRate ? options.frameRate : 20;
 
 	/** @member {float}
 	    @description UPDATE get sliced in smaler time chucks */
@@ -803,15 +816,15 @@ function Zoomer(domZoomer, options = {
 	 */
 
 	/** @member {float}
-	    @description Center X coordinate - vsync updated */
+	    @description Center X coordinate */
 	this.centerX = 0;
 
 	/** @member {float}
-	    @description Center Y coordinate - vsync updated */
+	    @description Center Y coordinate */
 	this.centerY = 0;
 
 	/** @member {float}
-	    @description Distance between center and viewport corner - vsync updated */
+	    @description Distance between center and viewport corner */
 	this.radius = 0;
 
 	/** @member {float}
@@ -834,8 +847,8 @@ function Zoomer(domZoomer, options = {
 	 * @member {number} state
 	 * @property {number}  0 STOP
 	 * @property {number}  1 COPY
-	 * @property {number}  2 RENDER
-	 * @property {number}  3 UPDATE
+	 * @property {number}  2 UPDATE
+	 * @property {number}  3 RENDER
 	 * @property {number}  4 PAINT
 	 */
 	this.state = 0;
@@ -845,7 +858,6 @@ function Zoomer(domZoomer, options = {
 	const UPDATE = 2; // update current frame
 	const RENDER = 3; // render old frame
 	const PAINT = 4; // paint old frame
-	const IDLE = 5;
 
 	/** @member {int}
 	    @description Current frame number*/
@@ -885,7 +897,7 @@ function Zoomer(domZoomer, options = {
 
 	/** @member {float[]}
 	    @description Start timestamps for states */
-	this.stateStart = [0, 0, 0, 0, 0, 0];
+	this.stateStart = [0, 0, 0, 0, 0];
 
 	/** @member {int}
 	    @description Timestamp of last PAINT (for fps calculation) */
@@ -896,20 +908,16 @@ function Zoomer(domZoomer, options = {
 	 */
 
 	/** @member {int[]}
-	    @description Number of times state was handled with `mainloop` */
-	this.stateTicks = [0, 0, 0, 0, 0, 0];
-
-	/** @member {int[]}
-	    @description Number of times state has been performed */
-	this.stateCounters = [0, 0, 0, 0, 0];
+	    @description Number of times state was handled by `mainloop` */
+	this.stateTicks = [0, 0, 0, 0, 0];
 
 	/** @member {float[]}
 	    @description Average duration of states in milli seconds */
-	this.avgStateDuration = [0, 0, 0, 0, 0, 0];
+	this.avgStateDuration = [0, 0, 0, 0, 0];
 
 	/** @member {float[]}
 	    @description Average duration of states in milli seconds */
-	this.avgFrameDuration = [0, 0, 0, 0, 0, 0];
+	this.avgFrameDuration = [0, 0, 0, 0, 0];
 
 	/** @member {float[]}
 	    @description Average calculated pixels per frame */
@@ -931,8 +939,9 @@ function Zoomer(domZoomer, options = {
 	    @description Average quality (0..1) */
 	this.avgQuality = 0;
 
-	/** @member {number} - Timestamp next vsync */
-	this.vsync = 0;
+	/** @member {float}
+	    @description Total number of milli seconds UPDATE was prolonged. calculate() takes too long, increase msBeforeIdle. */
+	this.timeOvershoot = 0;
 
 	// initial call callbacks
 	if (this.onResize) this.onResize(this, this.currentViewport.viewWidth, this.currentViewport.viewHeight);
@@ -1036,8 +1045,6 @@ function Zoomer(domZoomer, options = {
 		this.state = COPY;
 		this.stateStart[this.state] = performance.now();
 
-		this.vsync = performance.now() + (1000 / Config.framerateNow); // vsync wakeup time
-
 		// send message to start engine
 		postMessage("mainloop", "*");
 	};
@@ -1068,33 +1075,15 @@ function Zoomer(domZoomer, options = {
 		this.mainloopNr++;
 
 		// make local for speed
-		const config = this.config;
 		const viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 
-
 		// current time
-		let last;
-		let now = performance.now();
 		this.stateTicks[this.state]++;
-
-		if (this.vsync === 0 || now > this.vsync + 2000) {
-			// Missed vsync by more than 2 seconds, resync
-			this.vsync = now + (1000 / Config.framerateNow);
-
-			// state change
-			this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
-			this.state = COPY;
-			this.stateStart[this.state] = performance.now();
-
-			console.log("resync");
-		}
 
 		if (this.state === COPY) {
 			/*
 			 * COPY. start a new frame and inherit from the previous
 			 */
-
-			last = now;
 
 			/*
 			 * Test for DOM resize
@@ -1123,6 +1112,8 @@ function Zoomer(domZoomer, options = {
 				if (this.onResize) this.onResize(this, this.currentViewport.viewWidth, this.currentViewport.viewHeight);
 			}
 
+			let now = performance.now();
+
 			/*
 			 * allocate new frame
 			 */
@@ -1134,18 +1125,25 @@ function Zoomer(domZoomer, options = {
 			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
 			frame.timeStart = now;
 
+			// COPY (performance hit)
 			this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, this.previousViewport);
-			frame.durationCOPY += performance.now() - now;
+
+			now = performance.now();
+			frame.durationCOPY = now - frame.timeStart;
 
 			if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, this.previousViewport, previousFrame);
 
-			previousFrame.now = performance.now();
-
 			if (!this.disableWW) {
-				// submit previous frame for rendering to worker
-				previousFrame.durationRender = now;
-				this.WWorkers[this.frameNr & 3].postMessage(previousFrame, [previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer]);
+				// RENDER `Worker` context
+				if (this.onRenderFrame) this.onRenderFrame(this, previousFrame);
+
+				now = performance.now();
+				this.stateStart[RENDER] = now; // mark activation of worker
+
+				// transfer frame to worker
+				previousFrame.durationRENDER = now;
+				this.WWorkers[this.frameNr & 1].postMessage(previousFrame, [previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer]);
 			}
 
 			// change state
@@ -1161,59 +1159,61 @@ function Zoomer(domZoomer, options = {
 
 		if (this.state === RENDER) {
 			/*
-			 * RENDER. Render the frame in `Window` context.
+			 * RENDER `Window` context.
+			 * NOTE: Should be near identical to worker listen handler.
 			 */
-			const previousFrame = this.previousViewport.frame;
 
-			if (this.onRenderFrame) this.onRenderFrame(this, previousFrame);
+			/*
+			 * @date 2020-10-15 19:17:28
+			 * With `getContext("2d", {desynchronized: true}))`, `putImageData()` has been reduces to ~1mSec.
+			 * To reduce overhead, don't schedule the state `PAINT` but append directly
+			 */
+			const frame = this.previousViewport.frame;
+			this.previousViewport.frame = undefined; // unlink frame
 
-			renderFrame(previousFrame);
+			// inform invoker
+			if (this.onRenderFrame) this.onRenderFrame(this, frame);
+
+			// render frame
+			renderFrame(frame);
 
 			// change state
 			now = performance.now();
 			this.avgStateDuration[this.state] += ((now - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
-			this.state = PAINT
+			this.state = PAINT;
 			this.stateStart[this.state] = now;
 
-			// return and call again.
-			postMessage("mainloop", "*");
-			return true;
-		}
-
-		if (this.state === PAINT) {
 			/*
-			 * PAINT. Paint is asynchronous. Embed it here.
+			 * perform PAINT
 			 */
-			const previousFrame = this.previousViewport.frame;
 
-			const stime = performance.now();
-			if (this.onPutImageData) this.onPutImageData(this, previousFrame);
+			const stime = now;
+
+			if (this.onPutImageData) this.onPutImageData(this, frame);
+
+			now = performance.now();
 
 			// update statistics
-			now = performance.now();
-			previousFrame.timeEnd = now;
-			previousFrame.durationPAINT += now - stime;
+			frame.timeEnd = now;
+			frame.durationPAINT = now - stime;
+			this.updateStatistics(frame);
 
-			this.updateStatistics(previousFrame);
-			this.avgFrameRate += (1000 / (now - this.timeLastFrame) - this.avgFrameRate) * this.coef;
-
+			// update actual framerate
+			if (this.timeLastFrame)
+				this.avgFrameRate += (1000 / (now - this.timeLastFrame) - this.avgFrameRate) * this.coef;
 			this.timeLastFrame = now;
 
-			// move request to free list
-			this.frames.push(previousFrame);
-			this.previousViewport.frame = undefined;
+			// frame end-of-life
+			if (this.onEndFrame) this.onEndFrame(this, frame);
 
-			/*
-			 * update stats
-			 */
-			now = performance.now();
-
-			if (this.onEndFrame) this.onEndFrame(this);
+			// return frame to free pool
+			this.frames.push(frame);
 
 			// state change
-			this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
+			now = performance.now();
+			this.avgStateDuration[this.state] += ((now - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
 			this.state = UPDATE;
-			this.stateStart[this.state] = performance.now();
+			this.stateStart[this.state] = now;
 
 			// return and call again.
 			postMessage("mainloop", "*");
@@ -1224,62 +1224,38 @@ function Zoomer(domZoomer, options = {
 			/*
 			 * UPDATE. calculate inaccurate pixels
 			 */
-			last = now;
 
-			if (now >= this.vsync - 2) {
-				// don't even start if there is less than 2mSec left till next vsync
+			let nextsync = this.stateStart[COPY] + 1000 / this.frameRate - this.avgStateDuration[COPY] - this.avgStateDuration[PAINT];
+			if (this.disableWW)
+				nextsync -= this.avgStateDuration[PAINT];
 
-				// state change
-				this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
-				this.state = IDLE;
-				this.stateStart[this.state] = performance.now();
-			} else {
-				/*
-				 * update inaccurate pixels
-				 */
+			// time of next frame
+			let etime = nextsync;
+			// throttle to updateRate
+			if (etime > now + this.updateSlice)
+				etime = now + this.updateSlice;
 
-				// end time is 2mSec before next vertical sync
-				let endtime = this.vsync - 2;
-				if (endtime > now + 2)
-					endtime = now + 2;
+			// update inaccurate pixels
+			const stime = performance.now();
+			while (now < etime) {
+				viewport.updateLines(Formula.calculate);
 
-				/*
-				 * Calculate lines
-				 */
-
-				const stime = performance.now();
-				while (now < endtime) {
-					viewport.updateLines(Formula.calculate);
-
-					now = performance.now();
-				}
-
-				// update stats
-				viewport.frame.durationUPDATE += performance.now() - stime;
-
-				// return and call again.
-				postMessage("mainloop", "*");
-				return true;
+				now = performance.now();
 			}
-		}
 
-		if (this.state === IDLE) {
-			/*
-			 * IDLE. Wait for vsync
-			 */
+			// update stats
+			viewport.frame.durationUPDATE += now - stime; // cumulative
 
-			if (now >= this.vsync) {
-				// vsync is NOW
+			// end time reached?
+			etime = nextsync;
+			if (now >= etime) {
+				// register overshoot
+				this.timeOvershoot += now - etime;
 
-				// state change
-				this.avgStateDuration[this.state] += ((performance.now() - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
+				// change state
+				this.avgStateDuration[this.state] += ((now - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
 				this.state = COPY;
-				this.stateStart[this.state] = performance.now();
-
-				this.vsync += (1000 / Config.framerateNow); // time of next vsync
-			} else {
-				postMessage("mainloop", "*");
-				return true;
+				this.stateStart[this.state] = now;
 			}
 
 			// return and call again.
@@ -1289,6 +1265,8 @@ function Zoomer(domZoomer, options = {
 
 		// shouldn't reach here
 		this.stop();
+
+		// return and don't call again
 		return false;
 	};
 
@@ -1308,7 +1286,7 @@ function Zoomer(domZoomer, options = {
 	 * create 2 workers
 	 */
 
-	if (this.disableWW) {
+	if (!this.disableWW) {
 		let dataObj = "( function () { \n";
 		dataObj += memcpy;
 		dataObj += "\n";
@@ -1330,29 +1308,43 @@ function Zoomer(domZoomer, options = {
 			this.WWorkers[i].addEventListener("message", (e) => {
 				/** @var {Frame} */
 				const frame = e.data;
-				const stime = performance.now();
-				frame.durationRender = stime - frame.durationRender;
 
-				// perform PAINT
+				let now = performance.now();
+				frame.durationRoundTrip = now - frame.durationRoundTrip;
+
+				// update RENDER statistics (as-if state change)
+				this.avgStateDuration[RENDER] += (frame.durationRENDER - this.avgStateDuration[RENDER]) * this.coef;
+				this.stateStart[PAINT] = now;
+
+				/*
+				 * perform PAINT
+				 */
+
+				const stime = now;
+
 				if (this.onPutImageData) this.onPutImageData(this, frame);
 
-				const etime = performance.now();
+				now = performance.now();
 
 				// update statistics
-				frame.timeEnd = etime;
-				frame.durationPAINT += etime - stime;
+				frame.timeEnd = now;
+				frame.durationPAINT = now - stime;
 				this.updateStatistics(frame);
 
-				this.avgFrameRate += (1000/(etime - this.timeLastFrame) - this.avgFrameRate) * this.coef;
-				this.timeLastFrame = etime;
+				// update actual framerate
+				if (this.timeLastFrame)
+					this.avgFrameRate += (1000 / (now - this.timeLastFrame) - this.avgFrameRate) * this.coef;
+				this.timeLastFrame = now;
+
+				// frame end-of-life
+				if (this.onEndFrame) this.onEndFrame(this, frame);
 
 				// return frame to free pool
 				this.frames.push(frame);
 
-				this.avgStateDuration[0] += (frame.durationRender - this.avgStateDuration[0]) * this.coef;
-				this.avgStateDuration[PAINT] += ((etime - stime) - this.avgStateDuration[PAINT]) * this.coef;
+				// update PAINT statistics (as-if state change)
+				this.avgStateDuration[PAINT] += ((now - this.stateStart[PAINT]) - this.avgStateDuration[PAINT]) * this.coef;
 
-				this.onEndFrame(this);
 			});
 		}
 	}
