@@ -18,6 +18,15 @@
 
 "use strict";
 
+/**
+ * memcpy over 2 arrays.
+ *
+ * @param {ArrayBuffer} dst       - Destination array
+ * @param {int}         dstOffset - Starting offset in destination
+ * @param {ArrayBuffer} src       - Source array
+ * @param {int}         srcOffset - Starting offset in source
+ * @param {int}         length    - Number of elements to be copyied
+ */
 function memcpy(dst, dstOffset, src, srcOffset, length) {
 	src = src.subarray(srcOffset, srcOffset + length);
 	dst.set(src, dstOffset);
@@ -402,11 +411,11 @@ function Viewport(viewWidth, viewHeight) {
 		this.radiusX = radius * this.viewWidth / this.diameter;
 		this.radiusY = radius * this.viewHeight / this.diameter;
 
-		/*
-		 * setup new rulers
-		 */
-		const exactX = this.makeRuler(this.centerX - this.radius, this.centerX + this.radius, this.xCoord, this.xNearest, this.xError, this.xFrom, previousViewport.xNearest, previousViewport.xError);
-		const exactY = this.makeRuler(this.centerY - this.radius, this.centerY + this.radius, this.yCoord, this.yNearest, this.yError, this.yFrom, previousViewport.yNearest, previousViewport.yError);
+		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixelWidth, pixelHeight} = this;
+
+		// setup new rulers
+		const exactX = this.makeRuler(centerX - radius, centerX + radius, xCoord, xNearest, xError, xFrom, previousViewport.xNearest, previousViewport.xError);
+		const exactY = this.makeRuler(centerY - radius, centerY + radius, yCoord, yNearest, yError, yFrom, previousViewport.yNearest, previousViewport.yError);
 
 		frame.cntPixels += exactX * exactY;
 		frame.cntHLines += exactX; // todo: might need to swap
@@ -421,12 +430,11 @@ function Viewport(viewWidth, viewHeight) {
 		/*
 		 * copy/inherit pixels TODO: check oldPixelHeight
 		 */
-		const xFrom = this.xFrom;
-		const yFrom = this.yFrom;
 		const newDiameter = this.diameter;
 		const oldDiameter = previousViewport.diameter;
 		const newPixels16 = this.pixels16;
 		const oldPixels16 = previousViewport.pixels16;
+
 		let ji = 0;
 
 		// first line
@@ -438,9 +446,8 @@ function Viewport(viewWidth, viewHeight) {
 		for (let j = 1; j < newDiameter; j++) {
 			if (yFrom[j] === yFrom[j - 1]) {
 				// this line is identical to the previous
-				let k = ji - newDiameter;
-				for (let i = 0; i < newDiameter; i++)
-					newPixels16[ji++] = newPixels16[k++];
+				newPixels16.copyWithin(ji, ji - newDiameter, ji + newDiameter);
+				ji += newDiameter;
 
 			} else {
 				// extract line from previous frame
@@ -452,15 +459,15 @@ function Viewport(viewWidth, viewHeight) {
 
 		// keep the `From`s with lowest error
 		for (let i = 1; i < newDiameter; i++) {
-			if (xFrom[i - 1] === xFrom[i] && this.xError[i - 1] > this.xError[i])
+			if (xFrom[i - 1] === xFrom[i] && xError[i - 1] > xError[i])
 				xFrom[i - 1] = -1;
-			if (yFrom[i - 1] === yFrom[i] && this.yError[i - 1] > this.yError[i])
+			if (yFrom[i - 1] === yFrom[i] && yError[i - 1] > yError[i])
 				yFrom[i - 1] = -1;
 		}
 		for (let i = newDiameter - 2; i >= 0; i--) {
-			if (xFrom[i + 1] === xFrom[i] && this.xError[i + 1] > this.xError[i])
+			if (xFrom[i + 1] === xFrom[i] && xError[i + 1] > xError[i])
 				xFrom[i + 1] = -1;
-			if (yFrom[i + 1] === yFrom[i] && this.yError[i + 1] > this.yError[i])
+			if (yFrom[i + 1] === yFrom[i] && yError[i + 1] > yError[i])
 				yFrom[i + 1] = -1;
 		}
 	};
@@ -489,12 +496,11 @@ function Viewport(viewWidth, viewHeight) {
 	 *
 	 * @param {Calculator} calculate
 	 */
-	this.renderLines = (calculate) => {
+	this.updateLines = (calculate) => {
 
-		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom} = this;
+		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixels16} = this;
 
 		// which tabstops have the worst error
-
 		let worstXerr = xError[0];
 		let worstXi = 0;
 		let worstYerr = yError[0];
@@ -524,17 +530,16 @@ function Viewport(viewWidth, viewHeight) {
 		 **/
 
 		const frame = this.frame;
-		const pixels16 = this.pixels16;
 
 		if (worstXerr > worstYerr) {
 
 			let i = worstXi;
 			let x = xCoord[i];
 
-			let ji = 0 * diameter + i;
 			let last = calculate(x, yCoord[0]);
 			frame.cntPixels++;
 
+			let ji = 0 * diameter + i;
 			pixels16[ji] = last;
 			ji += diameter;
 
@@ -569,12 +574,12 @@ function Viewport(viewWidth, viewHeight) {
 			let j = worstYj;
 			let y = yCoord[j];
 
-			let ji = j * diameter + 0;
 			let last = calculate(xCoord[0], y);
 			frame.cntPixels++;
 
+			let ji = j * diameter + 0;
 			pixels16[ji++] = last;
-			Viewport.doneCalc++;
+
 			for (let i = 1; i < diameter; i++) {
 				if (xError[i] === 0 || xFrom[i] !== -1) {
 					last = calculate(xCoord[i], y);
@@ -1098,7 +1103,7 @@ function Zoomer(domZoomer, options = {
 
 				const stime = performance.now();
 				while (now < endtime) {
-					viewport.renderLines(Formula.calculate);
+					viewport.updateLines(Formula.calculate);
 
 					now = performance.now();
 				}

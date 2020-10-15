@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-15 11:57:25 Use `ArrayBuffer.copyWithin()` as `memcpy()`.
 2020-10-15 11:52:17 Comments.
 2020-10-14 23:18:53 Redesigned statistics.
 2020-10-14 19:37:21 Moved many (but not all) references to `Config` from `zoomer.js`.
