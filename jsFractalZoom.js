@@ -72,11 +72,18 @@ function Config() {
 	Config.autoPilot = false;
 
 	/** @member {number} - zoom magnification slider Min */
-	Config.zoomSpeedMin = 1.0;
+	Config.zoomManualSpeedMin = 1.0;
 	/** @member {number} - zoom magnification slider Max */
-	Config.zoomSpeedMax = 50.0;
+	Config.zoomManualSpeedMax = 50.0;
 	/** @member {number} - zoom magnification slider Now */
-	Config.zoomSpeedNow = Config.logTolinear(Config.zoomSpeedMin, Config.zoomSpeedMax, 20);
+	Config.zoomManualSpeedNow = 20;
+
+	/** @member {number} - zoom magnification slider Min */
+	Config.zoomAutoSpeedMin = 1.0;
+	/** @member {number} - zoom magnification slider Max */
+	Config.zoomAutoSpeedMax = 4.0;
+	/** @member {number} - zoom magnification slider Now */
+	Config.zoomAutoSpeedNow = 2;
 
 	/** @member {number} - rotate speed slider Min */
 	Config.rotateSpeedMin = -0.4;
@@ -125,7 +132,7 @@ function Config() {
 	/** @member {number} - Palette size before colours start repeating */
 	Config.paletteSize = 0;
 
-	/** @member {number} - current viewport zoomspeed - timer updated */
+	/** @member {number} - current viewport zoomSpeed - timer updated */
 	Config.zoomSpeed = 0;
 	/** @member {number} - After 1sec, get 80% closer to target speed */
 	Config.zoomSpeedCoef = 0.80;
@@ -151,11 +158,12 @@ function Config() {
  * @param {number} now
  * @returns {number}
  */
-Config.linearToLog = function (min, max, now) {
+Config.linearToLog = function (min, max, lin) {
 
-	const v = Math.exp((now - min) / (max - min)); // 1 <= result <= E
+	const v = Math.exp((lin - min) / (max - min)); // 1 <= result <= E
 
 	return min + (max - min) * (v - 1) / (Math.E - 1);
+
 
 };
 
@@ -167,11 +175,11 @@ Config.linearToLog = function (min, max, now) {
  * @param {number} now
  * @returns {number}
  */
-Config.logTolinear = function (min, max, now) {
+Config.logTolinear = function (min, max, log) {
 
-	const v = 1 + (now - min) * (Math.E - 1) / (max - min);
+	const v = (log - min) * (Math.E - 1) / (max - min) + 1;
 
-	return min + Math.log(v) * (max - min);
+	return Math.log(v) * (max - min) + min;
 };
 
 /**
@@ -696,7 +704,7 @@ function GUI(config) {
 
 	// construct sliders
 	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
-		Config.zoomSpeedMin, Config.zoomSpeedMax, Config.zoomSpeedNow);
+		Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, Config.linearToLog(Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, Config.zoomManualSpeedNow));
 	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
 		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
 	this.paletteSpeed = new Aria.Slider(this.domGradientThumb, this.domGradientRail,
@@ -724,10 +732,17 @@ function GUI(config) {
 
 	// sliders
 	this.speed.setCallbackValueChange((newValue) => {
-		// scale exponentially
-		newValue = Config.linearToLog(Config.zoomSpeedMin, Config.zoomSpeedMax, newValue);
-		Config.zoomSpeedNow = newValue;
-		this.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
+		if (Config.autoPilot) {
+			// scale exponentially
+			newValue = Config.logTolinear(Config.zoomAutoSpeedMin, Config.zoomAutoSpeedMax, newValue);
+			Config.zoomAutoSpeedNow = newValue;
+			this.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
+		} else {
+			// scale exponentially
+			newValue = Config.logTolinear(Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, newValue);
+			Config.zoomManualSpeedNow = newValue;
+			this.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
+		}
 	});
 	this.rotateSpeed.setCallbackValueChange((newValue) => {
 		Config.rotateSpeedNow = newValue;
@@ -794,10 +809,18 @@ function GUI(config) {
 	this.autoPilot.setCallbackValueChange((newValue) => {
 		Config.autoPilot = newValue;
 		if (newValue) {
+			this.speed.valueMin = Config.zoomAutoSpeedMin;
+			this.speed.valueMax = Config.zoomAutoSpeedMax;
+			this.speed.valueNow = Config.linearToLog(Config.zoomAutoSpeedMin, Config.zoomAutoSpeedMax, Config.zoomAutoSpeedNow);
 			this.autopilotOn();
 		} else {
+			this.speed.valueMin = Config.zoomManualSpeedMin;
+			this.speed.valueMax = Config.zoomManualSpeedMax;
+			this.speed.valueNow = Config.linearToLog(Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, Config.zoomManualSpeedNow);
 			this.autopilotOff();
 		}
+		this.speed.moveSliderTo(this.speed.valueNow);
+		this.speed.updateLabels();
 	});
 	this.home.setCallbackValueChange((newValue) => {
 		Config.autopilotX = 0;
@@ -831,6 +854,7 @@ function GUI(config) {
 		// seconds since last cycle
 		const now = performance.now();
 		const diffSec = this.directionalInterval / 1000;
+		const currentViewport = this.zoomer.currentViewport;
 
 		if (Config.autoPilot) {
 			if (currentViewport.reachedLimits()) {
@@ -885,8 +909,8 @@ function GUI(config) {
 		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
 			// need screen coordinates to avoid drifting
 			// relative to viewport center
-			const dx = this.mouseI * this.zoomer.currentViewport.radiusX * 2 / this.zoomer.currentViewport.viewWidth - this.zoomer.currentViewport.radiusX;
-			const dy = this.mouseJ * this.zoomer.currentViewport.radiusY * 2 / this.zoomer.currentViewport.viewHeight - this.zoomer.currentViewport.radiusY;
+			const dx = this.mouseI * currentViewport.radiusX * 2 / currentViewport.viewWidth - currentViewport.radiusX;
+			const dy = this.mouseJ * currentViewport.radiusY * 2 / currentViewport.viewHeight - currentViewport.radiusY;
 			// undo rotation
 			const x = dy * Config.rsin + dx * Config.rcos + Config.centerX;
 			const y = dy * Config.rcos - dx * Config.rsin + Config.centerY;
@@ -908,7 +932,8 @@ function GUI(config) {
 		// zoom-in/out gesture
 		if (Config.zoomSpeed) {
 			// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
-			const magnify = Math.pow(Config.zoomSpeedNow, Config.zoomSpeed * diffSec);
+			const speedNow = Config.autoPilot ? Config.zoomAutoSpeedNow : Config.zoomManualSpeedNow;
+			const magnify = Math.pow(speedNow, Config.zoomSpeed * diffSec);
 
 			// zoom, The mouse pointer coordinate should not change
 			Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;

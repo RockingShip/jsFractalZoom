@@ -294,6 +294,16 @@ Aria.Slider = function (domThumb, domRail, valueMin, valueMax, valueNow) {
 };
 
 /**
+ * Update the labels
+ */
+Aria.Slider.prototype.updateLabels = function() {
+	this.domThumb.setAttribute('aria-valuemin', this.valueMin);
+	this.domThumb.setAttribute('aria-valuemax', this.valueMax);
+	this.domThumb.setAttribute('aria-valuenow', this.valueNow);
+	this.moveSliderTo(this.valueNow)
+};
+
+/**
  * Set callback handler for value changes
  *
  * @param {Aria.Slider~callbackValueChange} handler
