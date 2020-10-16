@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-16 21:51:55 Fixed and tuned timing issues.
 2020-10-15 22:06:03 Upgraded workflow of `mainloop`.
 2020-10-15 12:13:59 Reordered states in `mainloop`.
 2020-10-15 11:57:25 Use `ArrayBuffer.copyWithin()` as `memcpy()`.

@@ -79,9 +79,9 @@ function Config() {
 	Config.zoomSpeedNow = Config.logTolinear(Config.zoomSpeedMin, Config.zoomSpeedMax, 20);
 
 	/** @member {number} - rotate speed slider Min */
-	Config.rotateSpeedMin = -0.5;
+	Config.rotateSpeedMin = -0.4;
 	/** @member {number} - rotate speed slider Max */
-	Config.rotateSpeedMax = +0.5;
+	Config.rotateSpeedMax = +0.4;
 	/** @member {number} - rotate speed slider Now */
 	Config.rotateSpeedNow = 0;
 
@@ -507,9 +507,9 @@ function GUI(config) {
 	this.domRotateLeft = "idRotateLeft";
 	this.domRotateRail = "idRotateRail";
 	this.domRotateThumb = "idRotateThumb";
-	this.domPaletteSpeedLeft = "idPaletteSpeedLeft";
-	this.domPaletteSpeedRail = "idPaletteSpeedRail";
-	this.domPaletteSpeedThumb = "idPaletteSpeedThumb";
+	this.domGradientLeft = "idGradientLeft";
+	this.domGradientRail = "idGradientRail";
+	this.domGradientThumb = "idGradientThumb";
 	this.domRandomPaletteButton = "idRandomPaletteButton";
 	this.domDefaultPaletteButton = "idDefaultPaletteButton";
 	this.domDepthLeft = "idDepthLeft";
@@ -541,7 +541,7 @@ function GUI(config) {
 	this.lastNow = 0;
 	this.lastFrameNr = 0;
 	this.lastMainloopNr = 0;
-	this.lastTick = 0;
+	this.directionalInterval = 100; // Interval timer for directional movement corrections
 
 	/*
 	 * Find the elements and replace the string names for DOM references
@@ -586,99 +586,9 @@ function GUI(config) {
 		 * @param {Frame}    previousFrame     - Previous frame
 		 */
 		onBeginFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
-			// seconds since last cycle
-			const now = performance.now();
-			const diffSec = (now - this.lastTick) / 1000;
-			this.lastTick = now;
-
-			if (Config.autoPilot) {
-				if (currentViewport.reachedLimits()) {
-					Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-					window.gui.domAutopilot.style.border = '4px solid orange';
-				} else {
-					this.domStatusPosition.innerHTML = "";
-					if (!this.updateAutopilot(currentViewport, 4, 16))
-						if (!this.updateAutopilot(currentViewport, 60, 16))
-							if (!this.updateAutopilot(currentViewport, currentViewport.diameter >> 1, 16))
-								Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-				}
-
-				this.mouseX = Config.autopilotX;
-				this.mouseY = Config.autopilotY;
-				this.mouseButtons = Config.autopilotButtons;
-			}
-
-			/*
-			 * Update zoom (de-)acceleration. -1 <= zoomSpeed <= +1
-			 */
-			if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
-				// zoom-in only
-				Config.zoomSpeed = +1 - (+1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-			} else if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
-				// zoom-out only
-				Config.zoomSpeed = -1 - (-1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-			} else if (this.mouseButtons === 0) {
-				// buttons released
-				Config.zoomSpeed = Config.zoomSpeed * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-
-				if (Config.zoomSpeed >= -0.001 && Config.zoomSpeed < +0.001)
-					Config.zoomSpeed = 0; // full stop
-			}
-
-			/*
-			 * Update palette cycle offset
-			 */
-			if (Config.paletteSpeedNow)
-				Config.paletteOffsetFloat -= diffSec * Config.paletteSpeedNow;
-
-			/*
-			 * Update viewport angle (before zoom gestures)
-			 */
-			if (Config.rotateSpeedNow) {
-				Config.angle += diffSec * Config.rotateSpeedNow * 360;
-				Config.rsin = Math.sin(Config.angle * Math.PI / 180);
-				Config.rcos = Math.cos(Config.angle * Math.PI / 180);
-				this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
-			}
-
-			// drag gesture
-			if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
-				// need screen coordinates to avoid drifting
-				// relative to viewport center
-				const dx = this.mouseI * currentViewport.radiusX * 2 / currentViewport.viewWidth - currentViewport.radiusX;
-				const dy = this.mouseJ * currentViewport.radiusY * 2 / currentViewport.viewHeight - currentViewport.radiusY;
-				// undo rotation
-				const x = dy * Config.rsin + dx * Config.rcos + Config.centerX;
-				const y = dy * Config.rcos - dx * Config.rsin + Config.centerY;
-
-				if (!this.dragActive) {
-					// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
-					this.dragActiveX = x;
-					this.dragActiveY = y;
-					this.dragActive = true;
-				}
-
-				// update x/y but keep radius
-				Config.centerX = Config.centerX - x + this.dragActiveX;
-				Config.centerY = Config.centerY - y + this.dragActiveY;
-			} else {
-				this.dragActive = false;
-			}
-
-			// zoom-in/out gesture
-			if (Config.zoomSpeed) {
-				// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
-				const magnify = Math.pow(Config.zoomSpeedNow, Config.zoomSpeed * diffSec);
-
-				// zoom, The mouse pointer coordinate should not change
-				Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
-				Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
-				Config.radius = Config.radius / magnify;
-			}
-
 			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
-			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, r: Config.radius, a: Config.angle, qual: this.zoomer.avgQuality});
+			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, r: Config.radius, a: Config.angle, qual: currentFrame.quality});
 		},
 
 		/**
@@ -693,6 +603,8 @@ function GUI(config) {
 		onRenderFrame: (zoomer, previousFrame) => {
 			// inject palette into frame
 			palette.setPaletteBuffer(previousFrame.paletteBuffer, Math.round(Config.paletteOffsetFloat));
+
+			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, r: Config.radius, a: Config.angle, qual: previousFrame.quality});
 		},
 
 		/**
@@ -722,11 +634,8 @@ function GUI(config) {
 					ppf: Math.round(zoomer.avgPixelsPerFrame),
 					lpf: Math.round(zoomer.avgLinesPerFrame),
 					rt: Math.round(zoomer.avgRoundTrip),
-					fps: Math.round(zoomer.avgFrameRate),
-					// qual: zoomer.avgQuality, // Math.round(zoomer.avgQuality * 1000) / 10,
+					fps: Math.round(zoomer.avgFrameRate)
 				});
-
-				// this.domStatusRect.innerHTML = "FPS:" + (zoomer.frameNr - this.lastFrameNr) + " IPS:" + (zoomer.mainloopNr - this.lastMainloopNr);
 
 				this.lastNow = now;
 				this.lastFrameNr = zoomer.frameNr;
@@ -756,6 +665,8 @@ function GUI(config) {
 	 * `desynchronized` dramatically speed enhances `putImageData()` but it might also glitch mouse movement when hovering over the canvas.
 	 * `alpha` might have an effect, however not noticed yet.
 	 */
+
+	/** @member {CanvasRenderingContext2D} */
 	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
 
 	// small viewport for initial image
@@ -788,7 +699,7 @@ function GUI(config) {
 		Config.zoomSpeedMin, Config.zoomSpeedMax, Config.zoomSpeedNow);
 	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
 		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
-	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
+	this.paletteSpeed = new Aria.Slider(this.domGradientThumb, this.domGradientRail,
 		Config.paletteSpeedMin, Config.paletteSpeedMax, Config.paletteSpeedNow);
 	this.depth = new Aria.Slider(this.domDepthThumb, this.domDepthRail,
 		Config.depthMin, Config.depthMax, Config.depthNow);
@@ -824,7 +735,7 @@ function GUI(config) {
 	});
 	this.paletteSpeed.setCallbackValueChange((newValue) => {
 		Config.paletteSpeedNow = newValue;
-		this.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
+		this.domGradientLeft.innerHTML = newValue.toFixed(0);
 	});
 	this.depth.setCallbackValueChange((newValue) => {
 		newValue = Math.round(newValue);
@@ -837,6 +748,8 @@ function GUI(config) {
 		newValue = Math.round(newValue);
 		Config.framerateNow = newValue;
 		this.domFramerateLeft.innerHTML = newValue;
+
+		this.zoomer.frameRate = Config.framerateNow;
 	});
 
 	// listboxes
@@ -913,6 +826,97 @@ function GUI(config) {
 		 */
 		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 	});
+
+	setInterval((e) => {
+		// seconds since last cycle
+		const now = performance.now();
+		const diffSec = this.directionalInterval / 1000;
+
+		if (Config.autoPilot) {
+			if (currentViewport.reachedLimits()) {
+				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+				window.gui.domAutopilot.style.border = '4px solid orange';
+			} else {
+				this.domStatusPosition.innerHTML = "";
+				if (!this.updateAutopilot(currentViewport, 4, 16))
+					if (!this.updateAutopilot(currentViewport, 60, 16))
+						if (!this.updateAutopilot(currentViewport, currentViewport.diameter >> 1, 16))
+							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+			}
+
+			this.mouseX = Config.autopilotX;
+			this.mouseY = Config.autopilotY;
+			this.mouseButtons = Config.autopilotButtons;
+		}
+
+		/*
+		 * Update zoom (de-)acceleration. -1 <= zoomSpeed <= +1
+		 */
+		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
+			// zoom-in only
+			Config.zoomSpeed = +1 - (+1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+		} else if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
+			// zoom-out only
+			Config.zoomSpeed = -1 - (-1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+		} else if (this.mouseButtons === 0) {
+			// buttons released
+			Config.zoomSpeed = Config.zoomSpeed * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+
+			if (Config.zoomSpeed >= -0.001 && Config.zoomSpeed < +0.001)
+				Config.zoomSpeed = 0; // full stop
+		}
+
+		/*
+		 * Update palette cycle offset
+		 */
+		if (Config.paletteSpeedNow)
+			Config.paletteOffsetFloat -= diffSec * Config.paletteSpeedNow;
+
+		/*
+		 * Update viewport angle (before zoom gestures)
+		 */
+		if (Config.rotateSpeedNow) {
+			Config.angle += diffSec * Config.rotateSpeedNow * 360;
+			Config.rsin = Math.sin(Config.angle * Math.PI / 180);
+			Config.rcos = Math.cos(Config.angle * Math.PI / 180);
+		}
+
+		// drag gesture
+		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
+			// need screen coordinates to avoid drifting
+			// relative to viewport center
+			const dx = this.mouseI * this.zoomer.currentViewport.radiusX * 2 / this.zoomer.currentViewport.viewWidth - this.zoomer.currentViewport.radiusX;
+			const dy = this.mouseJ * this.zoomer.currentViewport.radiusY * 2 / this.zoomer.currentViewport.viewHeight - this.zoomer.currentViewport.radiusY;
+			// undo rotation
+			const x = dy * Config.rsin + dx * Config.rcos + Config.centerX;
+			const y = dy * Config.rcos - dx * Config.rsin + Config.centerY;
+
+			if (!this.dragActive) {
+				// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
+				this.dragActiveX = x;
+				this.dragActiveY = y;
+				this.dragActive = true;
+			}
+
+			// update x/y but keep radius
+			Config.centerX = Config.centerX - x + this.dragActiveX;
+			Config.centerY = Config.centerY - y + this.dragActiveY;
+		} else {
+			this.dragActive = false;
+		}
+
+		// zoom-in/out gesture
+		if (Config.zoomSpeed) {
+			// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
+			const magnify = Math.pow(Config.zoomSpeedNow, Config.zoomSpeed * diffSec);
+
+			// zoom, The mouse pointer coordinate should not change
+			Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
+			Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
+			Config.radius = Config.radius / magnify;
+		}
+
+	}, this.directionalInterval);
 }
 
 /**
@@ -1105,6 +1109,17 @@ GUI.prototype.handleMouse = function (event) {
 		document.removeEventListener("contextmenu", this.handleMouse);
 	}
 
+	/*
+	 * @date 2020-10-16 19:36:53
+	 * Pressing mouse buttons is a gesture to wake.
+	 * `setPosition()` wakes from idle state.
+	 * Setting x,y,radius,angle happens withing the `onBeginFrame()` callback.
+	 * Don't wait and wake immediately
+	 */
+	if (event.buttons !== 0)
+		this.zoomer.timeLastWake = performance.now();
+
+
 	event.preventDefault();
 	event.stopPropagation();
 };
@@ -1118,8 +1133,6 @@ GUI.prototype.reload = function () {
 
 	// inject into current viewport
 	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
-
-	this.lastTick = performance.now();
 };
 
 /**

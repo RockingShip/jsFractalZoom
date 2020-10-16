@@ -167,6 +167,9 @@ function Frame(viewWidth, viewHeight) {
 	    @description number of vertical lines */
 	this.cntVLines = 0;
 
+	/** @member {float}
+	    @description Quality */
+	this.quality = 0;
 }
 
 /**
@@ -177,7 +180,7 @@ function Frame(viewWidth, viewHeight) {
  */
 function renderFrame(frame) {
 
-	frame.durationRENDER = performance.now();
+	const stime = performance.now();
 
 	// typed wrappers for Arrays
 	const rgba = new Uint32Array(frame.rgbaBuffer);
@@ -244,7 +247,7 @@ function renderFrame(frame) {
 		}
 	}
 
-	frame.durationRENDER = performance.now() - frame.durationRENDER;
+	frame.durationRENDER = performance.now() - stime;
 }
 
 /**
@@ -470,6 +473,9 @@ function Viewport(viewWidth, viewHeight) {
 			if (yFrom[i + 1] === yFrom[i] && yError[i + 1] > yError[i])
 				yFrom[i + 1] = -1;
 		}
+
+		// update quality
+		frame.quality = frame.cntPixels / (frame.diameter * frame.diameter);
 	};
 
 	/**
@@ -604,6 +610,9 @@ function Viewport(viewWidth, viewHeight) {
 			yError[j] = 0;
 			frame.cntHLines++;
 		}
+
+		// update quality
+		frame.quality = frame.cntPixels / (frame.diameter * frame.diameter);
 	};
 
 	/**
@@ -643,6 +652,9 @@ function Viewport(viewWidth, viewHeight) {
 			}
 		}
 		this.frame.cntPixels = this.diameter * this.diameter;
+
+		// update quality
+		this.frame.quality = 1;
 	};
 }
 
@@ -690,6 +702,23 @@ function Zoomer(domZoomer, options = {
 	 * @member {float} - Frames per second
 	 */
 	updateSlice: 2,
+
+	/**
+	 * When idle, spend this amount time for calculations before rendering.
+	 * This will lower fps, which won't be noticable because nothing is moving.
+	 *
+	 * @member {float} - When idle, spend this amount time for calculations before rendering.
+	 */
+	updateIdleBurst: 500,
+
+	/**
+	 * UPDATE has two modes,wake and idle.
+	 * When wake, the direction vector is moving. Attention is to fast screen updates.
+	 * When idle, filling in detail is key. Attention is to maximize calculations.
+	 *
+	 * @member {float} - Timeout to change wake into idle.
+	 */
+	wakeTimeout: 500,
 
 	/**
 	 * Low-pass coefficient to dampen spikes for averages
@@ -780,8 +809,16 @@ function Zoomer(domZoomer, options = {
 	this.frameRate = options.frameRate ? options.frameRate : 20;
 
 	/** @member {float}
-	    @description UPDATE get sliced in smaler time chucks */
-	this.updateSlice = options.updateSlice ? options.updateSlice : 2;
+	    @description UPDATE get sliced in smaller time chucks */
+	this.updateSlice = options.updateSlice ? options.updateSlice : 5;
+
+	/** @member {float}
+	    @description When idle, spend this amount time for calculations before rendering. */
+	this.updateIdleBurst = options.updateIdleBurst ? options.updateIdleBurst : 500;
+
+	/** @member {float}
+	    @description Timeout to change wake into idle */
+	this.wakeTimeout = options.wakeTimeout ? options.wakeTimeout : 500;
 
 	/** @member {float}
 	    @description Damping coefficient low-pass filter for following fields */
@@ -903,6 +940,10 @@ function Zoomer(domZoomer, options = {
 	    @description Timestamp of last PAINT (for fps calculation) */
 	this.timeLastFrame = 0;
 
+	/** @member {int}
+	    @description Timestamp of last wake (setPosition) */
+	this.timeLastWake = 0;
+
 	/*
 	 * Statistics
 	 */
@@ -1013,23 +1054,23 @@ function Zoomer(domZoomer, options = {
 	 * @param {Viewport} [previousViewport]   - Previous viewport to inherit keyFrame rulers/pixels
 	 */
 	this.setPosition = (centerX, centerY, radius, angle, previousViewport) => {
+		angle = angle ? angle : 0;
+
+		if (this.centerX !== centerX || this.centerY !== centerY || this.radius !== radius) {
+			// waking idle, mark last change.
+			// NOTE: angle is part of `Frame`
+			this.timeLastWake = performance.now();
+		}
+
 		this.centerX = centerX;
 		this.centerY = centerY;
 		this.radius = radius;
-		this.angle = angle ? angle : 0;
+		this.angle = angle;
 
 		// optionally inject keyFrame into current viewport
 		if (previousViewport) {
 			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
 			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
-		}
-
-		// abort current frame and change state
-		if (this.state !== STOP) {
-			const now = performance.now();
-			this.avgStateDuration[this.state] += ((now - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
-			this.state = COPY;
-			this.stateStart[this.state] = now;
 		}
 	};
 
@@ -1074,6 +1115,8 @@ function Zoomer(domZoomer, options = {
 		}
 		this.mainloopNr++;
 
+		let now = performance.now();
+
 		// make local for speed
 		const viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 
@@ -1112,8 +1155,6 @@ function Zoomer(domZoomer, options = {
 				if (this.onResize) this.onResize(this, this.currentViewport.viewWidth, this.currentViewport.viewHeight);
 			}
 
-			let now = performance.now();
-
 			/*
 			 * allocate new frame
 			 */
@@ -1131,7 +1172,6 @@ function Zoomer(domZoomer, options = {
 
 			now = performance.now();
 			frame.durationCOPY = now - frame.timeStart;
-
 			if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, this.previousViewport, previousFrame);
 
 			if (!this.disableWW) {
@@ -1142,7 +1182,7 @@ function Zoomer(domZoomer, options = {
 				this.stateStart[RENDER] = now; // mark activation of worker
 
 				// transfer frame to worker
-				previousFrame.durationRENDER = now;
+				previousFrame.durationRoundTrip = now;
 				this.WWorkers[this.frameNr & 1].postMessage(previousFrame, [previousFrame.rgbaBuffer, previousFrame.pixelBuffer, previousFrame.paletteBuffer]);
 			}
 
@@ -1224,19 +1264,31 @@ function Zoomer(domZoomer, options = {
 			/*
 			 * UPDATE. calculate inaccurate pixels
 			 */
+			const frame = this.currentViewport.frame;
 
-			let nextsync = this.stateStart[COPY] + 1000 / this.frameRate - this.avgStateDuration[COPY] - this.avgStateDuration[PAINT];
-			if (this.disableWW)
-				nextsync -= this.avgStateDuration[PAINT];
+			// when would the next frame syncpoint be
+			let nextsync;
+			if (this.timeLastWake && now - this.timeLastWake >= 1000) {
+				// idle mode
+				nextsync = this.stateStart[COPY] + this.updateIdleBurst;
+			} else {
+				nextsync = this.stateStart[COPY] + 1000 / this.frameRate - this.avgStateDuration[COPY] - this.avgStateDuration[PAINT];
+				if (this.disableWW)
+					nextsync -= this.avgStateDuration[RENDER];
+			}
+
+			// let it run for at least one slice
+			if (nextsync < now + this.updateSlice)
+				nextsync = now + this.updateSlice;
 
 			// time of next frame
 			let etime = nextsync;
-			// throttle to updateRate
+			// throttle to time slice
 			if (etime > now + this.updateSlice)
 				etime = now + this.updateSlice;
 
 			// update inaccurate pixels
-			const stime = performance.now();
+			const stime = now;
 			while (now < etime) {
 				viewport.updateLines(Formula.calculate);
 
@@ -1244,7 +1296,7 @@ function Zoomer(domZoomer, options = {
 			}
 
 			// update stats
-			viewport.frame.durationUPDATE += now - stime; // cumulative
+			frame.durationUPDATE += now - stime; // cumulative
 
 			// end time reached?
 			etime = nextsync;
@@ -1296,7 +1348,7 @@ function Zoomer(domZoomer, options = {
 		dataObj += "const frame = e.data;\n";
 		dataObj += "renderFrame(frame);\n";
 		dataObj += "postMessage(frame, [frame.rgbaBuffer, frame.pixelBuffer, frame.paletteBuffer]);\n";
-		dataObj += "})})\n";
+		dataObj += "})})()\n";
 
 		const blob = new Blob([dataObj]);
 		const blobURL = (URL ? URL : webkitURL).createObjectURL(blob);
