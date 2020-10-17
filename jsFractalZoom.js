@@ -623,7 +623,7 @@ function GUI(config) {
 			if (now - this.lastNow >= 250) {
 
 				// round for displaying
-				for (let i=0; i<zoomer.stateTicks.length; i++) {
+				for (let i = 0; i < zoomer.stateTicks.length; i++) {
 					zoomer.avgStateDuration[i] = Math.round(zoomer.avgStateDuration[i]);
 					zoomer.avgFrameDuration[i] = Math.round(zoomer.avgFrameDuration[i]);
 				}
@@ -670,7 +670,7 @@ function GUI(config) {
 
 	// small viewport for initial image
 	Config.home(); // load default formula and initial position
-	this.viewportInit = new Viewport(64, 64);
+	this.viewportInit = new Viewport(64, 64, 64, 64); // Explicitly square
 	this.viewportInit.fill(Config.centerX, Config.centerY, Config.radius, Config.angle);
 	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
 
@@ -817,13 +817,13 @@ function GUI(config) {
 			this.speed.valueMin = Config.zoomAutoSpeedMin;
 			this.speed.valueMax = Config.zoomAutoSpeedMax;
 			this.speed.valueNow = Config.linearToLog(Config.zoomAutoSpeedMin, Config.zoomAutoSpeedMax, Config.zoomAutoSpeedNow);
-			Config.zoomSpeed = Math.log(magnify)/Math.log(Config.zoomAutoSpeedNow);
+			Config.zoomSpeed = Math.log(magnify) / Math.log(Config.zoomAutoSpeedNow);
 			this.autopilotOn();
 		} else {
 			this.speed.valueMin = Config.zoomManualSpeedMin;
 			this.speed.valueMax = Config.zoomManualSpeedMax;
 			this.speed.valueNow = Config.linearToLog(Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, Config.zoomManualSpeedNow);
-			Config.zoomSpeed = Math.log(magnify)/Math.log(Config.zoomManualSpeedNow);
+			Config.zoomSpeed = Math.log(magnify) / Math.log(Config.zoomManualSpeedNow);
 			this.autopilotOff();
 		}
 
@@ -865,9 +865,10 @@ function GUI(config) {
 				window.gui.domAutopilot.style.border = '4px solid orange';
 			} else {
 				this.domStatusPosition.innerHTML = "";
+
 				if (!this.updateAutopilot(currentViewport, 4, 16))
 					if (!this.updateAutopilot(currentViewport, 60, 16))
-						if (!this.updateAutopilot(currentViewport, currentViewport.diameter >> 1, 16))
+						if (!this.updateAutopilot(currentViewport, Math.min(currentViewport.pixelWidth, currentViewport.pixelHeight) >> 1, 16))
 							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 			}
 
@@ -1187,8 +1188,8 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 
 	// coordinate within pixel data pointed to by mouse
 	// todo: compensate rotation
-	const api = ((Config.autopilotX - Config.centerX) / Config.radius + 1) * viewport.diameter >> 1;
-	const apj = ((Config.autopilotY - Config.centerY) / Config.radius + 1) * viewport.diameter >> 1;
+	const api = ((Config.autopilotX - Config.centerX) / Config.radius + 1) * viewport.pixelWidth >> 1;
+	const apj = ((Config.autopilotY - Config.centerY) / Config.radius + 1) * viewport.pixelHeight >> 1;
 
 	const min = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
 	const max = min * 3;
@@ -1199,8 +1200,8 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 		const i0 = api + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
 		const j0 = apj + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
 		// convert to x/y
-		const x = (i0 / viewport.diameter * 2 - 1) * Config.radius + Config.centerX;
-		const y = (j0 / viewport.diameter * 2 - 1) * Config.radius + Config.centerY;
+		const x = (i0 / viewport.pixelWidth * 2 - 1) * Config.radius + Config.centerX;
+		const y = (j0 / viewport.pixelHeight * 2 - 1) * Config.radius + Config.centerY;
 		// convert to viewport coords (use '>>1' as integer '/2'
 		const i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + viewport.radiusX) * viewport.viewWidth / viewport.radiusX) >> 1;
 		const j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + viewport.radiusY) * viewport.viewHeight / viewport.radiusY) >> 1;
@@ -1211,7 +1212,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 		let c = 0;
 		for (let j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
 			for (let i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
-				if (pixel16[j * viewport.diameter + i] === 65535)
+				if (pixel16[j * viewport.pixelWidth + i] === 65535)
 					c++;
 		if (c >= min && c <= max) {
 			Config.autopilotX = x;
@@ -1240,10 +1241,11 @@ GUI.prototype.autopilotOn = function () {
 	Config.autopilotX = Config.centerX;
 	Config.autopilotY = Config.centerY;
 
-	let lookPixelRadius = viewport.diameter >> 1;
-	const borderPixelRadius = viewport.diameter >> 5;
+	const diameter = Math.min(viewport.pixelWidth, viewport.pixelHeight);
+	let lookPixelRadius = Math.min(16, diameter >> 1);
+	const borderPixelRadius = Math.min(16, diameter >> 5);
 	do {
-		if (!this.updateAutopilot(viewport, lookPixelRadius, 16))
+		if (!this.updateAutopilot(viewport, lookPixelRadius, borderPixelRadius))
 			break;
 		lookPixelRadius >>= 1;
 	} while (lookPixelRadius > 2);

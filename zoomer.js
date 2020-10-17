@@ -88,24 +88,32 @@ function memcpy(dst, dstOffset, src, srcOffset, length) {
 /**
  * Frame, used to transport data between workers
  *
+ * NOTE: pixelWH must me less/equal than viewWH
  * NOTE: data only, do not include functions to minimize transport overhead
  *
  * @class
  * @param {int}   viewWidth   - Screen width (pixels)
  * @param {int}   viewHeight  - Screen height (pixels)
+ * @param {int}   pixelWidth  - Storage width (pixels)
+ * @param {int}   pixelHeight - Storage Height (pixels)
  */
-function Frame(viewWidth, viewHeight) {
+function Frame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 	/** @member {int}
 	    @description Display width (pixels) */
 	this.viewWidth = viewWidth;
 
 	/** @member {int}
-	    @description display diameter (pixels) */
+	    @description display height (pixels) */
 	this.viewHeight = viewHeight;
 
-	/** @member {number} - height */
-	this.diameter = Math.ceil(Math.sqrt(viewWidth * viewWidth + viewHeight * viewHeight));
+	/** @member {int}
+	    @description data width (pixels) */
+	this.pixelWidth = pixelWidth;
+
+	/** @member {int}
+	    @description data height (pixels) */
+	this.pixelHeight = pixelHeight;
 
 	/** @member {float}
 	    @description Rotational angle (degrees) */
@@ -117,7 +125,7 @@ function Frame(viewWidth, viewHeight) {
 
 	/** @member {ArrayBuffer}
 	    @description Pixels (UINT16) */
-	this.pixelBuffer = new ArrayBuffer(this.diameter * this.diameter * 2);
+	this.pixelBuffer = new ArrayBuffer(pixelWidth * pixelHeight * 2);
 
 	/** @member {ArrayBuffer}
 	    @description Worker RGBA palette (UINT8*4) */
@@ -193,16 +201,16 @@ function renderFrame(frame) {
 	 **!
 	 **/
 
-	const {viewWidth, viewHeight, diameter, angle} = frame;
+	const {viewWidth, viewHeight, pixelWidth, pixelHeight, angle} = frame;
 
 	if (angle === 0) {
 
 		// FAST extract viewport
-		let i = (diameter - viewWidth) >> 1;
-		let j = (diameter - viewHeight) >> 1;
+		let i = (pixelWidth - viewWidth) >> 1;
+		let j = (pixelHeight - viewHeight) >> 1;
 
 		// copy pixels
-		let ji = j * diameter + i;
+		let ji = j * pixelWidth + i;
 		let vu = 0;
 
 		if (palette32) {
@@ -210,9 +218,9 @@ function renderFrame(frame) {
 			for (let v = 0; v < viewHeight; v++) {
 				for (let u = 0; u < viewWidth; u++)
 					rgba[vu++] = palette32[pixel16[ji++]];
-				ji += diameter - viewWidth;
+				ji += pixelWidth - viewWidth;
 			}
-		} else if (diameter === viewWidth) {
+		} else if (pixelWidth === viewWidth) {
 			// 1:1
 			memcpy(rgba, vu, pixel16, ji, viewWidth * viewHeight)
 		} else {
@@ -222,7 +230,7 @@ function renderFrame(frame) {
 				vu += viewWidth;
 				ji += viewWidth;
 
-				ji += diameter - viewWidth;
+				ji += pixelWidth - viewWidth;
 			}
 		}
 
@@ -231,8 +239,8 @@ function renderFrame(frame) {
 		// SLOW viewport rotation
 		const rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
 		const rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
-		const xstart = Math.floor((diameter - viewHeight * rsin - viewWidth * rcos) * 32768);
-		const ystart = Math.floor((diameter - viewHeight * rcos + viewWidth * rsin) * 32768);
+		const xstart = Math.floor((pixelWidth - viewHeight * rsin - viewWidth * rcos) * 32768);
+		const ystart = Math.floor((pixelHeight - viewHeight * rcos + viewWidth * rsin) * 32768);
 		const ixstep = Math.floor(rcos * 65536);
 		const iystep = Math.floor(rsin * -65536);
 		const jxstep = Math.floor(rsin * 65536);
@@ -242,7 +250,7 @@ function renderFrame(frame) {
 		let vu = 0;
 		for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += jxstep, y += jystep) {
 			for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ixstep, iy += iystep) {
-				rgba[vu++] = palette32[pixel16[(iy >> 16) * diameter + (ix >> 16)]];
+				rgba[vu++] = palette32[pixel16[(iy >> 16) * pixelWidth + (ix >> 16)]];
 			}
 		}
 	}
@@ -261,16 +269,24 @@ function renderFrame(frame) {
  * @class
  * @param {int}   viewWidth   - Screen width (pixels)
  * @param {int}   viewHeight  - Screen height (pixels)
+ * @param {int}   [pixelWidth]  - Frame width (pixels)
+ * @param {int}   [pixelHeight] - Frame height (pixels)
  */
-function Viewport(viewWidth, viewHeight) {
+function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 	/** @member {number} - width of viewport */
 	this.viewWidth = viewWidth;
+
 	/** @member {number} - height of viewport */
 	this.viewHeight = viewHeight;
 
-	/** @member {number} - diameter of the pixel data */
-	this.diameter = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
+	/** @member {int}
+	    @description data width (pixels) */
+	this.pixelWidth = pixelWidth ? pixelWidth : viewWidth;
+
+	/** @member {int}
+	    @description data height (pixels) */
+	this.pixelHeight = pixelHeight ? pixelHeight : viewHeight;
 
 	/** @member {Frame}
 	    @description Frame being managed */
@@ -307,35 +323,35 @@ function Viewport(viewWidth, viewHeight) {
 
 	/** @member {Float64Array}
 	    @description Logical x coordinate, what it should be */
-	this.xCoord = new Float64Array(this.diameter);
+	this.xCoord = new Float64Array(this.pixelWidth);
 
 	/** @member {Float64Array}
 	    @description Physical x coordinate, the older there larger the drift */
-	this.xNearest = new Float64Array(this.diameter);
+	this.xNearest = new Float64Array(this.pixelWidth);
 
 	/** @member {Float64Array}
 	    @description Cached distance between Logical/Physical */
-	this.xError = new Float64Array(this.diameter);
+	this.xError = new Float64Array(this.pixelWidth);
 
 	/** @member {Int32Array}
 	    @description Inherited index from previous update */
-	this.xFrom = new Int32Array(this.diameter);
+	this.xFrom = new Int32Array(this.pixelWidth);
 
 	/** @member {Float64Array}
 	    @description Logical y coordinate, what it should be */
-	this.yCoord = new Float64Array(this.diameter);
+	this.yCoord = new Float64Array(this.pixelHeight);
 
 	/** @member {Float64Array}
 	    @description Physical y coordinate, the older there larger the drift */
-	this.yNearest = new Float64Array(this.diameter);
+	this.yNearest = new Float64Array(this.pixelHeight);
 
 	/** @member {Float64Array}
 	    @description Cached distance between Logical/Physical */
-	this.yError = new Float64Array(this.diameter);
+	this.yError = new Float64Array(this.pixelHeight);
 
 	/** @member {Int32Array}
 	    @description Inherited index from previous update */
-	this.yFrom = new Int32Array(this.diameter);
+	this.yFrom = new Int32Array(this.pixelHeight);
 
 	/**
 	 *
@@ -411,8 +427,8 @@ function Viewport(viewWidth, viewHeight) {
 		this.centerX = centerX;
 		this.centerY = centerY;
 		this.radius = radius;
-		this.radiusX = radius * this.viewWidth / this.diameter;
-		this.radiusY = radius * this.viewHeight / this.diameter;
+		this.radiusX = radius * this.viewWidth / this.pixelWidth;
+		this.radiusY = radius * this.viewHeight / this.pixelHeight;
 
 		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixelWidth, pixelHeight} = this;
 
@@ -433,49 +449,52 @@ function Viewport(viewWidth, viewHeight) {
 		/*
 		 * copy/inherit pixels TODO: check oldPixelHeight
 		 */
-		const newDiameter = this.diameter;
-		const oldDiameter = previousViewport.diameter;
+		const oldPixelWidth = previousViewport.pixelWidth;
 		const newpixel16 = this.pixel16;
 		const oldpixel16 = previousViewport.pixel16;
 
 		let ji = 0;
 
 		// first line
-		let k = yFrom[0] * oldDiameter;
-		for (let i = 0; i < newDiameter; i++)
+		let k = yFrom[0] * oldPixelWidth;
+		for (let i = 0; i < pixelWidth; i++)
 			newpixel16[ji++] = oldpixel16[k + xFrom[i]];
 
 		// followups
-		for (let j = 1; j < newDiameter; j++) {
+		for (let j = 1; j < pixelHeight; j++) {
 			if (yFrom[j] === yFrom[j - 1]) {
 				// this line is identical to the previous
-				newpixel16.copyWithin(ji, ji - newDiameter, ji + newDiameter);
-				ji += newDiameter;
+				newpixel16.copyWithin(ji, ji - pixelWidth, ji + pixelWidth);
+				ji += pixelWidth;
 
 			} else {
 				// extract line from previous frame
-				let k = yFrom[j] * oldDiameter;
-				for (let i = 0; i < newDiameter; i++)
+				let k = yFrom[j] * oldPixelWidth;
+				for (let i = 0; i < pixelWidth; i++)
 					newpixel16[ji++] = oldpixel16[k + xFrom[i]];
 			}
 		}
 
 		// keep the `From`s with lowest error
-		for (let i = 1; i < newDiameter; i++) {
+		for (let i = 1; i < pixelWidth; i++) {
 			if (xFrom[i - 1] === xFrom[i] && xError[i - 1] > xError[i])
 				xFrom[i - 1] = -1;
-			if (yFrom[i - 1] === yFrom[i] && yError[i - 1] > yError[i])
-				yFrom[i - 1] = -1;
 		}
-		for (let i = newDiameter - 2; i >= 0; i--) {
+		for (let j = 1; j < pixelHeight; j++) {
+			if (yFrom[j - 1] === yFrom[j] && yError[j - 1] > yError[j])
+				yFrom[j - 1] = -1;
+		}
+		for (let i = pixelWidth - 2; i >= 0; i--) {
 			if (xFrom[i + 1] === xFrom[i] && xError[i + 1] > xError[i])
 				xFrom[i + 1] = -1;
-			if (yFrom[i + 1] === yFrom[i] && yError[i + 1] > yError[i])
-				yFrom[i + 1] = -1;
+		}
+		for (let j = pixelHeight - 2; j >= 0; j--) {
+			if (yFrom[j + 1] === yFrom[j] && yError[j + 1] > yError[j])
+				yFrom[j + 1] = -1;
 		}
 
 		// update quality
-		frame.quality = frame.cntPixels / (frame.diameter * frame.diameter);
+		frame.quality = frame.cntPixels / (frame.pixelWidth * frame.pixelHeight);
 	};
 
 	/**
@@ -485,14 +504,19 @@ function Viewport(viewWidth, viewHeight) {
 	 */
 	this.reachedLimits = () => {
 
-		const {xCoord, yCoord, diameter} = this;
+		const {xCoord, yCoord, pixelWidth} = this;
 		/*
 		 * @date 2020-10-12 18:30:14
 		 * NOTE: First duplicate ruler coordinate is sufficient to mark endpoint.
 		 *       This to prevent zooming full screen into a single pixel
 		 */
-		for (let ij = 1; ij < diameter; ij++) {
-			if (xCoord[ij - 1] === xCoord[ij] || yCoord[ij - 1] === yCoord[ij])
+		for (let i = 1; i < pixelWidth; i++) {
+			if (xCoord[i - 1] === xCoord[i])
+				return true;
+
+		}
+		for (let j = 1; j < pixelHeight; j++) {
+			if (yCoord[j - 1] === yCoord[j])
 				return true;
 
 		}
@@ -506,22 +530,21 @@ function Viewport(viewWidth, viewHeight) {
 	 */
 	this.updateLines = (calculate) => {
 
-		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixel16} = this;
+		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixel16, pixelWidth, pixelHeight} = this;
 
 		// which tabstops have the worst error
 		let worstXerr = xError[0];
 		let worstXi = 0;
 		let worstYerr = yError[0];
 		let worstYj = 0;
-		const diameter = this.diameter;
 
-		for (let i = 1; i < diameter; i++) {
+		for (let i = 1; i < pixelWidth; i++) {
 			if (xError[i] > worstXerr) {
 				worstXi = i;
 				worstXerr = xError[i];
 			}
 		}
-		for (let j = 1; j < diameter; j++) {
+		for (let j = 1; j < pixelHeight; j++) {
 			if (yError[j] > worstYerr) {
 				worstYj = j;
 				worstYerr = yError[j];
@@ -547,11 +570,11 @@ function Viewport(viewWidth, viewHeight) {
 			let last = calculate(x, yCoord[0]);
 			frame.cntPixels++;
 
-			let ji = 0 * diameter + i;
+			let ji = 0 * pixelWidth + i;
 			pixel16[ji] = last;
-			ji += diameter;
+			ji += pixelWidth;
 
-			for (let j = 1; j < diameter; j++) {
+			for (let j = 1; j < pixelHeight; j++) {
 				/*
 				 * Logic would say 'yFrom[j] === -1', but haven't been able to figure out why this works better
 				 * ..and 3 other places
@@ -562,15 +585,15 @@ function Viewport(viewWidth, viewHeight) {
 				}
 
 				pixel16[ji] = last;
-				ji += diameter;
+				ji += pixelWidth;
 			}
 
-			for (let u = i + 1; u < diameter; u++) {
+			for (let u = i + 1; u < pixelWidth; u++) {
 				if (xError[u] === 0 || xFrom[u] !== -1)
 					break;
 
-				for (let v = 0; v < diameter; v++) {
-					pixel16[v * diameter + u] = pixel16[v * diameter + i];
+				for (let v = 0; v < pixelHeight; v++) {
+					pixel16[v * pixelWidth + u] = pixel16[v * pixelWidth + i];
 				}
 			}
 
@@ -586,10 +609,10 @@ function Viewport(viewWidth, viewHeight) {
 			let last = calculate(xCoord[0], y);
 			frame.cntPixels++;
 
-			let ji = j * diameter + 0;
+			let ji = j * pixelWidth + 0;
 			pixel16[ji++] = last;
 
-			for (let i = 1; i < diameter; i++) {
+			for (let i = 1; i < pixelWidth; i++) {
 				if (xError[i] === 0 || xFrom[i] !== -1) {
 					last = calculate(xCoord[i], y);
 					frame.cntPixels++;
@@ -597,12 +620,12 @@ function Viewport(viewWidth, viewHeight) {
 				pixel16[ji++] = last;
 			}
 
-			for (let v = j + 1; v < diameter; v++) {
+			for (let v = j + 1; v < pixelHeight; v++) {
 				if (yError[v] === 0 || yFrom[v] !== -1)
 					break;
 
-				for (let u = 0; u < diameter; u++) {
-					pixel16[v * diameter + u] = pixel16[j * diameter + u];
+				for (let u = 0; u < pixelWidth; u++) {
+					pixel16[v * pixelWidth + u] = pixel16[j * pixelWidth + u];
 				}
 			}
 
@@ -612,7 +635,7 @@ function Viewport(viewWidth, viewHeight) {
 		}
 
 		// update quality
-		frame.quality = frame.cntPixels / (frame.diameter * frame.diameter);
+		frame.quality = frame.cntPixels / (frame.pixelWidth * frame.pixelHeight);
 	};
 
 	/**
@@ -624,34 +647,36 @@ function Viewport(viewWidth, viewHeight) {
 	 */
 	this.fill = (centerX, centerY, radius) => {
 
-		// NOTE: attached frame will leak and GC
-		this.frame = new Frame(this.viewWidth, this.viewHeight);
-		this.pixel16 = new Uint16Array(this.frame.pixelBuffer);
+		const {viewWidth, viewHeight, pixelWidth, pixelHeight} = this;
 
 		this.centerX = centerX;
 		this.centerY = centerY;
 		this.radius = radius;
-		this.radiusX = radius * this.viewWidth / this.diameter;
-		this.radiusY = radius * this.viewHeight / this.diameter;
+		this.radiusX = radius * viewWidth / pixelWidth;
+		this.radiusY = radius * viewHeight / pixelHeight;
 
-		const {xCoord, xNearest, yCoord, yNearest, pixel16, pixelWidth, pixelHeight} = this;
+		// NOTE: attached frame will leak and GC
+		this.frame = new Frame(viewWidth, viewHeight, pixelWidth, pixelHeight);
+		this.pixel16 = new Uint16Array(this.frame.pixelBuffer);
+
+		const {xCoord, xNearest, yCoord, yNearest, pixel16} = this;
 
 		for (let i = 0; i < xCoord.length; i++)
-			xNearest[i] = xCoord[i] = ((this.centerX + this.radius) - (this.centerX - this.radius)) * i / (xCoord.length - 1) + (this.centerX - this.radius);
+			xNearest[i] = xCoord[i] = ((centerX + this.radius) - (centerX - this.radius)) * i / (xCoord.length - 1) + (centerX - this.radius);
 		for (let i = 0; i < yCoord.length; i++)
-			yNearest[i] = yCoord[i] = ((this.centerY + this.radius) - (this.centerY - this.radius)) * i / (yCoord.length - 1) + (this.centerY - this.radius);
+			yNearest[i] = yCoord[i] = ((centerY + this.radius) - (centerY - this.radius)) * i / (yCoord.length - 1) + (centerY - this.radius);
 
 		const calculate = Formula.calculate;
 		let ji = 0;
-		for (let j = 0; j < this.diameter; j++) {
-			let y = (this.centerY - this.radius) + this.radius * 2 * j / this.diameter;
-			for (let i = 0; i < this.diameter; i++) {
+		for (let j = 0; j < pixelHeight; j++) {
+			let y = (centerY - this.radius) + this.radius * 2 * j / pixelHeight;
+			for (let i = 0; i < pixelWidth; i++) {
 				// distance to center
-				let x = (this.centerX - this.radius) + this.radius * 2 * i / this.diameter;
+				let x = (centerX - this.radius) + this.radius * 2 * i / pixelWidth;
 				pixel16[ji++] = calculate(x, y);
 			}
 		}
-		this.frame.cntPixels = this.diameter * this.diameter;
+		this.frame.cntPixels = pixelWidth * pixelHeight;
 
 		// update quality
 		this.frame.quality = 1;
@@ -869,12 +894,20 @@ function Zoomer(domZoomer, options = {
 	this.angle = 0;
 
 	/** @member {int}
-	    @description Display width (pixels) */
+	    @description Display/screen width (pixels) */
 	this.viewWidth = domZoomer.clientWidth;
 
 	/** @member {int}
-	    @description display diameter (pixels) */
+	    @description Display/screen height (pixels) */
 	this.viewHeight = domZoomer.clientHeight;
+
+	/** @member {int}
+	    @description Frame buffer width (pixels) */
+	this.pixelWidth = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
+
+	/** @member {int}
+	    @description Frame buffer height (pixels) */
+	this.pixelHeight = this.pixelWidth;
 
 	/*
 	 * Main state settings
@@ -906,11 +939,11 @@ function Zoomer(domZoomer, options = {
 
 	/** @member {Viewport}
 	    @description Viewport #0 for even frames */
-	this.viewport0 = new Viewport(this.viewWidth, this.viewHeight);
+	this.viewport0 = new Viewport(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 
 	/** @member {Viewport}
 	    @description Viewport #1 for odd frames*/
-	this.viewport1 = new Viewport(this.viewWidth, this.viewHeight);
+	this.viewport1 = new Viewport(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 
 	/** @member {Viewport}
 	    @description Active viewport (frame being updated/rendered) */
@@ -992,10 +1025,12 @@ function Zoomer(domZoomer, options = {
 	 *
 	 * @param {int}   viewWidth   - Screen width (pixels)
 	 * @param {int}   viewHeight  - Screen height (pixels)
+	 * @param {int}   pixelWidth  - Storage width (pixels)
+	 * @param {int}   pixelHeight - Storage Heignt (pixels)
 	 * @param {float} angle       - Angle (degrees)
 	 * @return {Frame}
 	 */
-	this.allocFrame = (viewWidth, viewHeight, angle) => {
+	this.allocFrame = (viewWidth, viewHeight, pixelWidth, pixelHeight, angle) => {
 		// find frame with matching dimensions
 		for (; ;) {
 			/** @var {Frame} */
@@ -1003,10 +1038,10 @@ function Zoomer(domZoomer, options = {
 
 			// allocate new if list empty
 			if (!frame)
-				frame = new Frame(viewWidth, viewHeight);
+				frame = new Frame(viewWidth, viewHeight, this.pixelWidth, this.pixelHeight);
 
 			// return if dimensions match
-			if (frame.viewWidth === viewWidth && frame.viewHeight === viewHeight) {
+			if (frame.viewWidth === viewWidth && frame.viewHeight === viewHeight && frame.pixelWidth === pixelWidth && frame.pixelHeight === pixelHeight) {
 				frame.frameNr = this.frameNr;
 				frame.angle = angle;
 
@@ -1040,7 +1075,7 @@ function Zoomer(domZoomer, options = {
 		this.avgPixelsPerFrame += (frame.cntPixels - this.avgPixelsPerFrame) * this.coef;
 		this.avgLinesPerFrame += ((frame.cntHLines + frame.cntVLines) - this.avgLinesPerFrame) * this.coef;
 		this.avgRoundTrip += (frame.durationRoundTrip - this.avgRoundTrip) * this.coef;
-		this.avgQuality += ((frame.cntPixels / (frame.diameter * frame.diameter)) - this.avgQuality) * this.coef;
+		this.avgQuality += ((frame.cntPixels / (frame.pixelWidth * frame.pixelHeight)) - this.avgQuality) * this.coef;
 
 	};
 
@@ -1070,7 +1105,7 @@ function Zoomer(domZoomer, options = {
 
 		// optionally inject keyFrame into current viewport
 		if (previousViewport) {
-			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
 			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
 		}
 	};
@@ -1137,6 +1172,9 @@ function Zoomer(domZoomer, options = {
 				this.viewWidth = domZoomer.clientWidth;
 				this.viewHeight = domZoomer.clientHeight;
 
+				this.pixelWidth = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
+				this.pixelHeight = this.pixelWidth
+
 				// set DOME size property
 				domZoomer.width = this.viewWidth;
 				domZoomer.height = this.viewHeight;
@@ -1144,12 +1182,12 @@ function Zoomer(domZoomer, options = {
 				this.previousViewport = this.currentViewport;
 
 				// create new viewports
-				this.viewport0 = new Viewport(this.viewWidth, this.viewHeight);
-				this.viewport1 = new Viewport(this.viewWidth, this.viewHeight);
+				this.viewport0 = new Viewport(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+				this.viewport1 = new Viewport(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 				this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
 
 				// copy the contents
-				const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+				const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
 				this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, this.previousViewport);
 
 				// TODO: 5 arguments
@@ -1164,7 +1202,7 @@ function Zoomer(domZoomer, options = {
 			this.previousViewport = this.currentViewport;
 			const previousFrame = this.previousViewport.frame;
 
-			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.angle);
+			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
 			frame.timeStart = now;
 
 			// COPY (performance hit)
