@@ -72,14 +72,14 @@ function Config() {
 	Config.autoPilot = false;
 
 	/** @member {number} - zoom magnification slider Min */
-	Config.zoomManualSpeedMin = 1.0;
+	Config.zoomManualSpeedMin = 1.01;
 	/** @member {number} - zoom magnification slider Max */
 	Config.zoomManualSpeedMax = 50.0;
 	/** @member {number} - zoom magnification slider Now */
 	Config.zoomManualSpeedNow = 20;
 
 	/** @member {number} - zoom magnification slider Min */
-	Config.zoomAutoSpeedMin = 1.0;
+	Config.zoomAutoSpeedMin = 1.01;
 	/** @member {number} - zoom magnification slider Max */
 	Config.zoomAutoSpeedMax = 4.0;
 	/** @member {number} - zoom magnification slider Now */
@@ -553,7 +553,7 @@ function GUI(config) {
 		}
 	}
 
-	this.zoomer = new Zoomer(this.domZoomer, {
+	this.zoomer = new Zoomer(this.domZoomer, true, {
 
 		/**
 		 * Disable web-workers.

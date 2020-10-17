@@ -692,6 +692,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
  *
  * @class
  * @param {HTMLCanvasElement}	domZoomer		- Element to detect a resize	 -
+ * @param {boolean}		enableAngle		- Enable rotation
  * @param {Object}		[options]   		- Template values for new frames. These may be changed during runtime.
  * @param {float}		[options.frameRate]	- Frames per second
  * @param {float}		[options.updateSlice]	- UPDATEs get sliced into smaller  chucks to stay responsive and limit overshoot
@@ -703,7 +704,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
  * @param {function}		[options.onEndFrame]	- Called directly after frame complete. Update statistics
  * @param {function}		[options.onPutImageData] - Inject frame into canvas.
  */
-function Zoomer(domZoomer, options = {
+function Zoomer(domZoomer, enableAngle, options = {
 
 	/**
 	 * DOM element to check for resizes
@@ -903,11 +904,11 @@ function Zoomer(domZoomer, options = {
 
 	/** @member {int}
 	    @description Frame buffer width (pixels) */
-	this.pixelWidth = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
+	this.pixelWidth = !enableAngle ? this.viewWidth : Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
 
 	/** @member {int}
 	    @description Frame buffer height (pixels) */
-	this.pixelHeight = this.pixelWidth;
+	this.pixelHeight = !enableAngle ? this.viewHeight : this.pixelWidth;
 
 	/*
 	 * Main state settings
@@ -1082,18 +1083,18 @@ function Zoomer(domZoomer, options = {
 	/**
 	 * Set the center coordinate and radius.
 	 *
-	 * @param {float}    centerX              - Center x of view
-	 * @param {float}    centerY              - Center y or view
-	 * @param {float}    radius               - Radius of view
-	 * @param {float}    [angle]              - Angle of view
-	 * @param {Viewport} [previousViewport]   - Previous viewport to inherit keyFrame rulers/pixels
+	 * @param {float}    centerX       - Center x of view
+	 * @param {float}    centerY       - Center y or view
+	 * @param {float}    radius        - Radius of view
+	 * @param {float}    [angle]       - Angle of view
+	 * @param {Viewport} [keyViewport] - Previous viewport to inherit keyFrame rulers/pixels
 	 */
-	this.setPosition = (centerX, centerY, radius, angle, previousViewport) => {
-		angle = angle ? angle : 0;
+	this.setPosition = (centerX, centerY, radius, angle, keyViewport) => {
+		angle = angle && enableAngle ? angle : 0;
 
 		if (this.centerX !== centerX || this.centerY !== centerY || this.radius !== radius) {
 			// waking idle, mark last change.
-			// NOTE: angle is part of `Frame`
+			// NOTE: angle does not wake, is part of `Frame`
 			if (this.timeLastWake)
 				this.timeLastWake = performance.now();
 		}
@@ -1104,9 +1105,9 @@ function Zoomer(domZoomer, options = {
 		this.angle = angle;
 
 		// optionally inject keyFrame into current viewport
-		if (previousViewport) {
+		if (keyViewport) {
 			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
-			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, previousViewport);
+			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, keyViewport);
 		}
 	};
 
