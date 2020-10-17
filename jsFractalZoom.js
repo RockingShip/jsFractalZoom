@@ -466,12 +466,7 @@ function Palette() {
 		}
 
 		// background colour
-		let i = 65535 * 4;
-		palette8[i++] = this.backgroundRed;
-		palette8[i++] = this.backgroundGreen;
-		palette8[i++] = this.backgroundBlue;
-		palette8[i++] = 255;
-		out32[65535] = palette32[65535];
+		out32[65535] = 0x00000000; // transparant
 	};
 
 	/*
@@ -848,11 +843,6 @@ function GUI(config) {
 		} else {
 			window.palette.mkdefault();
 		}
-		// fast clamp pixel values
-		const viewport = this.zoomer.currentViewport;
-		for (let ji = 0; ji < viewport.viewWidth * viewport.viewHeight; ji++)
-			if (viewport.pixel16[ji] !== 65535)
-				viewport.pixel16[ji] %= Config.paletteSize;
 
 		/*
 		 * @date 2020-10-15 13:02:00

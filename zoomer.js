@@ -1210,7 +1210,6 @@ function Zoomer(domZoomer, options = {
 			 * To reduce overhead, don't schedule the state `PAINT` but append directly
 			 */
 			const frame = this.previousViewport.frame;
-			this.previousViewport.frame = undefined; // unlink frame
 
 			// inform invoker
 			if (this.onRenderFrame) this.onRenderFrame(this, frame);
@@ -1249,6 +1248,7 @@ function Zoomer(domZoomer, options = {
 
 			// return frame to free pool
 			this.frames.push(frame);
+			this.previousViewport.frame = undefined; // unlink frame
 
 			// state change
 			now = performance.now();

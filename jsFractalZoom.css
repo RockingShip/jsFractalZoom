@@ -25,6 +25,7 @@ body {
 	width: auto;
 	right: 0;
 	overflow: hidden; /* layout is pixel precise. don't let whitespace between tags FIU */
+	background-color: #000;
 }
 
 .pane {
