@@ -725,7 +725,7 @@ function Zoomer(domZoomer, options = {
 	 *
 	 * @member {float} - Low-pass filter coefficient to dampen spikes
 	 */
-	coef: 0.05,
+	coef: 0.10,
 
 	/**
 	 * Disable web-workers.
@@ -822,7 +822,7 @@ function Zoomer(domZoomer, options = {
 
 	/** @member {float}
 	    @description Damping coefficient low-pass filter for following fields */
-	this.coef = options.coef ? options.coef : 0.05;
+	this.coef = options.coef ? options.coef : 0.10;
 
 	/** @member {float}
 	    @description Disable Web Workers and perform COPY from main event queue */
@@ -1059,7 +1059,8 @@ function Zoomer(domZoomer, options = {
 		if (this.centerX !== centerX || this.centerY !== centerY || this.radius !== radius) {
 			// waking idle, mark last change.
 			// NOTE: angle is part of `Frame`
-			this.timeLastWake = performance.now();
+			if (this.timeLastWake)
+				this.timeLastWake = performance.now();
 		}
 
 		this.centerX = centerX;

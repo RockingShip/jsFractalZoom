@@ -515,9 +515,9 @@ function GUI(config) {
 	this.domRotateLeft = "idRotateLeft";
 	this.domRotateRail = "idRotateRail";
 	this.domRotateThumb = "idRotateThumb";
-	this.domGradientLeft = "idGradientLeft";
-	this.domGradientRail = "idGradientRail";
-	this.domGradientThumb = "idGradientThumb";
+	this.domPaletteSpeedLeft = "idPaletteSpeedLeft";
+	this.domPaletteSpeedRail = "idPaletteSpeedRail";
+	this.domPaletteSpeedThumb = "idPaletteSpeedThumb";
 	this.domRandomPaletteButton = "idRandomPaletteButton";
 	this.domDefaultPaletteButton = "idDefaultPaletteButton";
 	this.domDepthLeft = "idDepthLeft";
@@ -547,8 +547,6 @@ function GUI(config) {
 
 	// per second differences
 	this.lastNow = 0;
-	this.lastFrameNr = 0;
-	this.lastMainloopNr = 0;
 	this.directionalInterval = 100; // Interval timer for directional movement corrections
 
 	/*
@@ -596,7 +594,7 @@ function GUI(config) {
 		onBeginFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
 			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
-			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, r: Config.radius, a: Config.angle, qual: currentFrame.quality});
+			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, quality: currentFrame.quality});
 		},
 
 		/**
@@ -612,7 +610,7 @@ function GUI(config) {
 			// inject palette into frame
 			palette.setPaletteBuffer(previousFrame.paletteBuffer, Math.round(Config.paletteOffsetFloat));
 
-			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, r: Config.radius, a: Config.angle, qual: previousFrame.quality});
+			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, quality: previousFrame.quality});
 		},
 
 		/**
@@ -646,8 +644,6 @@ function GUI(config) {
 				});
 
 				this.lastNow = now;
-				this.lastFrameNr = zoomer.frameNr;
-				this.lastMainloopNr = zoomer.mainloopNr;
 			}
 		},
 
@@ -707,7 +703,7 @@ function GUI(config) {
 		Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, Config.linearToLog(Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, Config.zoomManualSpeedNow));
 	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
 		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
-	this.paletteSpeed = new Aria.Slider(this.domGradientThumb, this.domGradientRail,
+	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
 		Config.paletteSpeedMin, Config.paletteSpeedMax, Config.paletteSpeedNow);
 	this.depth = new Aria.Slider(this.domDepthThumb, this.domDepthRail,
 		Config.depthMin, Config.depthMax, Config.depthNow);
@@ -745,12 +741,16 @@ function GUI(config) {
 		}
 	});
 	this.rotateSpeed.setCallbackValueChange((newValue) => {
+		if (newValue > -0.01 && newValue < +0.01)
+			newValue = 0; // snap to center
 		Config.rotateSpeedNow = newValue;
-		this.domRotateLeft.innerHTML = newValue.toFixed(1);
+		this.domRotateLeft.innerHTML = newValue.toFixed(2);
 	});
 	this.paletteSpeed.setCallbackValueChange((newValue) => {
+		if (newValue > -1 && newValue < +1)
+			newValue = 0; // snap to center
 		Config.paletteSpeedNow = newValue;
-		this.domGradientLeft.innerHTML = newValue.toFixed(0);
+		this.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
 	});
 	this.depth.setCallbackValueChange((newValue) => {
 		newValue = Math.round(newValue);
@@ -807,18 +807,31 @@ function GUI(config) {
 			this.zoomer.stop(); // power off
 	});
 	this.autoPilot.setCallbackValueChange((newValue) => {
+		/*
+		 * When switching auto/manual mode and view is still moving, the change in speed is visually noticable.
+		 * Adapt the speed such that the magnification is continuous
+		 *
+		 * `magnify = Math.pow(Config.zoomSpeedNow, Config.zoomSpeed * diffSec)`
+		 */
+		const magnify = Math.pow(Config.autoPilot ? Config.zoomAutoSpeedNow : Config.zoomManualSpeedNow, Config.zoomSpeed)
+
 		Config.autoPilot = newValue;
+
+		// switch slider values
 		if (newValue) {
 			this.speed.valueMin = Config.zoomAutoSpeedMin;
 			this.speed.valueMax = Config.zoomAutoSpeedMax;
 			this.speed.valueNow = Config.linearToLog(Config.zoomAutoSpeedMin, Config.zoomAutoSpeedMax, Config.zoomAutoSpeedNow);
+			Config.zoomSpeed = Math.log(magnify)/Math.log(Config.zoomAutoSpeedNow);
 			this.autopilotOn();
 		} else {
 			this.speed.valueMin = Config.zoomManualSpeedMin;
 			this.speed.valueMax = Config.zoomManualSpeedMax;
 			this.speed.valueNow = Config.linearToLog(Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, Config.zoomManualSpeedNow);
+			Config.zoomSpeed = Math.log(magnify)/Math.log(Config.zoomManualSpeedNow);
 			this.autopilotOff();
 		}
+
 		this.speed.moveSliderTo(this.speed.valueNow);
 		this.speed.updateLabels();
 	});
@@ -940,6 +953,11 @@ function GUI(config) {
 			Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
 			Config.radius = Config.radius / magnify;
 		}
+
+		// if anything is changing/moving, disable idling
+		// NOTE: expect for zoomspeed which is handled by the mouseHandler
+		if (Config.autoPilot || Config.rotateSpeedNow || Config.paletteSpeedNow)
+			this.zoomer.timeLastWake = 0;
 
 	}, this.directionalInterval);
 }
@@ -1141,9 +1159,10 @@ GUI.prototype.handleMouse = function (event) {
 	 * Setting x,y,radius,angle happens withing the `onBeginFrame()` callback.
 	 * Don't wait and wake immediately
 	 */
-	if (event.buttons !== 0)
-		this.zoomer.timeLastWake = performance.now();
-
+	if (!event.buttons && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
+		this.zoomer.timeLastWake = performance.now(); // safe to idle
+	else
+		this.zoomer.timeLastWake = 0; // something is moving, don't idle
 
 	event.preventDefault();
 	event.stopPropagation();
@@ -1155,6 +1174,10 @@ GUI.prototype.handleMouse = function (event) {
 GUI.prototype.reload = function () {
 	// set all pixels of thumbnail with latest set `calculate`
 	this.viewportInit.fill(Config.centerX, Config.centerY, Config.radius, Config.angle);
+
+	// if nothing moving, enable idling
+	if (!Config.zoomSpeed && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
+		this.zoomer.timeLastWake = performance.now(); // safe to idle
 
 	// inject into current viewport
 	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
