@@ -208,8 +208,8 @@ Config.home = function () {
  * @class
  */
 function Palette() {
-	/** @member {ArrayBuffer} - palette data */
-	this.paletteBuffer = new ArrayBuffer(65536 * 4);
+	/** @member {Uint32Array} - palette data */
+	this.palette = new Uint32Array(65536);
 
 	/** @member {number} - background red */
 	this.backgroundRed = 0;
@@ -217,11 +217,6 @@ function Palette() {
 	this.backgroundGreen = 0;
 	/** @member {number} - background blue */
 	this.backgroundBlue = 0;
-
-	/** @var {Uint32Array} - RGBA view of palette */
-	const palette32 = new Uint32Array(this.paletteBuffer);
-	/** @var {Uint8Array} - R,G,B view of palette */
-	const palette8 = new Uint8Array(this.paletteBuffer);
 
 	/**
 	 * Create a random number in range 0 <= return < n
@@ -249,10 +244,7 @@ function Palette() {
 
 			for (let j = 0; j < segmentsize; j++) {
 
-				palette8[k++] = Math.floor(r);
-				palette8[k++] = Math.floor(g);
-				palette8[k++] = Math.floor(b);
-				palette8[k++] = 255;
+				this.palette[k++] = Math.floor(r) << 0 | Math.floor(g) << 8 | Math.floor(b) << 16 | 255 << 24;
 
 				r += rs;
 				g += gs;
@@ -445,14 +437,14 @@ function Palette() {
 	};
 
 	/**
-	 * Set paletteBuffer
+	 * Set palette
 	 *
-	 * @param {ArrayBuffer} paletteBuffer
-	 * @param {number} offset
+	 * @param {Uint32Array} out32  - frame.palette
+	 * @param {int}         offset - Starting positionfor colour rotation
 	 */
-	this.setPaletteBuffer = function (paletteBuffer, offset) {
+	this.setPalette = function (out32, offset) {
+		const depth = Config.depthNow;
 		const paletteSize = Config.paletteSize;
-		const out32 = new Uint32Array(paletteBuffer);
 
 		// palette offset may not be negative
 		if (offset < 0)
@@ -461,12 +453,14 @@ function Palette() {
 			offset = offset % paletteSize;
 
 		// apply colour cycling
-		for (let i = 0; i < Config.depthNow; i++) {
-			out32[i] = palette32[(offset + i) % paletteSize];
+		for (let i = 0; i < depth; i++) {
+			out32[i] = this.palette[offset++];
+			if (offset >= paletteSize)
+				offset -= paletteSize;
 		}
 
 		// background colour
-		out32[65535] = 0x00000000; // transparant
+		out32[65535] = 0x00000000; // transparent
 	};
 
 	/*
@@ -629,7 +623,8 @@ function GUI(config) {
 		 */
 		onRenderFrame: (zoomer, frame) => {
 			// inject palette into frame
-			palette.setPaletteBuffer(frame.paletteBuffer, Math.round(Config.paletteOffsetFloat));
+			if (frame.palette)
+				palette.setPalette(frame.palette, Math.round(Config.paletteOffsetFloat));
 
 			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, quality: frame.quality});
 		},
@@ -677,8 +672,7 @@ function GUI(config) {
 		 */
 		onPutImageData: (zoomer, frame) => {
 
-			const rgba = new Uint8ClampedArray(frame.rgbaBuffer);
-			const imagedata = new ImageData(rgba, frame.viewWidth, frame.viewHeight);
+			const imagedata = new ImageData(new Uint8ClampedArray(frame.rgba.buffer), frame.viewWidth, frame.viewHeight);
 
 			// draw frame onto canvas
 			this.ctx.putImageData(imagedata, 0, 0);
@@ -1213,7 +1207,7 @@ GUI.prototype.reload = function () {
 GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixelRadius) {
 
 	const config = window.config;
-	const pixel16 = viewport.pixel16;
+	const pixels = viewport.pixels;
 
 	// use '>>1' as integer '/2'
 
@@ -1243,7 +1237,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 		let c = 0;
 		for (let j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
 			for (let i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
-				if (pixel16[j * viewport.pixelWidth + i] === 65535)
+				if (pixels[j * viewport.pixelWidth + i] === 65535)
 					c++;
 		if (c >= min && c <= max) {
 			Config.autopilotX = x;
