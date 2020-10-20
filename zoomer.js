@@ -19,7 +19,7 @@
 "use strict";
 
 /**
- * memcpy over 2 arrays.
+ * zoomerMemcpy over 2 arrays.
  *
  * @param {ArrayBuffer} dst       - Destination array
  * @param {int}         dstOffset - Starting offset in destination
@@ -27,7 +27,7 @@
  * @param {int}         srcOffset - Starting offset in source
  * @param {int}         length    - Number of elements to be copyied
  */
-function memcpy(dst, dstOffset, src, srcOffset, length) {
+function zoomerMemcpy(dst, dstOffset, src, srcOffset, length) {
 	src = src.subarray(srcOffset, srcOffset + length);
 	dst.set(src, dstOffset);
 }
@@ -186,7 +186,7 @@ function Frame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
  *
  * @param {Frame} frame
  */
-function renderFrame(frame) {
+function zoomerRenderFrame(frame) {
 
 	const stime = performance.now();
 
@@ -222,11 +222,11 @@ function renderFrame(frame) {
 			}
 		} else if (pixelWidth === viewWidth) {
 			// 1:1
-			memcpy(rgba, vu, pixel16, ji, viewWidth * viewHeight)
+			zoomerMemcpy(rgba, vu, pixel16, ji, viewWidth * viewHeight)
 		} else {
 			// cropped
 			for (let v = 0; v < viewHeight; v++) {
-				memcpy(rgba, vu, pixel16, ji, viewWidth);
+				zoomerMemcpy(rgba, vu, pixel16, ji, viewWidth);
 				vu += viewWidth;
 				ji += viewWidth;
 
@@ -256,7 +256,7 @@ function renderFrame(frame) {
 	}
 
 	frame.durationRENDER = performance.now() - stime;
-}
+};
 
 /**
  * Viewport to the fractal world.
@@ -528,7 +528,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	 *
 	 * @param {Calculator} calculate
 	 */
-	this.updateLines = (calculate) => {
+	this.updateLines = (zoomer) => {
 
 		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixel16, pixelWidth, pixelHeight} = this;
 
@@ -567,24 +567,21 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			let i = worstXi;
 			let x = xCoord[i];
 
-			let last = calculate(x, yCoord[0]);
+			let result = zoomer.onUpdatePixel(zoomer, frame, x, yCoord[0]);
 			frame.cntPixels++;
 
 			let ji = 0 * pixelWidth + i;
-			pixel16[ji] = last;
+			pixel16[ji] = result;
 			ji += pixelWidth;
 
 			for (let j = 1; j < pixelHeight; j++) {
-				/*
-				 * Logic would say 'yFrom[j] === -1', but haven't been able to figure out why this works better
-				 * ..and 3 other places
-				 */
+				// only calculate cross points of exact lines, fill the others
 				if (yError[j] === 0 || yFrom[j] !== -1) {
-					last = calculate(x, yCoord[j]);
+					result = zoomer.onUpdatePixel(zoomer, frame, x, yCoord[j]);
 					frame.cntPixels++;
 				}
 
-				pixel16[ji] = last;
+				pixel16[ji] = result;
 				ji += pixelWidth;
 			}
 
@@ -606,18 +603,19 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			let j = worstYj;
 			let y = yCoord[j];
 
-			let last = calculate(xCoord[0], y);
+			let result = zoomer.onUpdatePixel(zoomer, frame, xCoord[0], y);
 			frame.cntPixels++;
 
 			let ji = j * pixelWidth + 0;
-			pixel16[ji++] = last;
+			pixel16[ji++] = result;
 
 			for (let i = 1; i < pixelWidth; i++) {
+				// only calculate cross points of exact lines, fill the others
 				if (xError[i] === 0 || xFrom[i] !== -1) {
-					last = calculate(xCoord[i], y);
+					result = zoomer.onUpdatePixel(zoomer, frame, xCoord[i], y);
 					frame.cntPixels++;
 				}
-				pixel16[ji++] = last;
+				pixel16[ji++] = result;
 			}
 
 			for (let v = j + 1; v < pixelHeight; v++) {
@@ -641,11 +639,14 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	/**
 	 * brute-force fill of all pixels. Intended for small/initial viewports
 	 *
-	 * @param {float}    centerX              - Center x of view
-	 * @param {float}    centerY              - Center y or view
-	 * @param {float}    radius               - Radius of view
+	 * @param {float}    centerX       - Center x of view
+	 * @param {float}    centerY       - Center y or view
+	 * @param {float}    radius        - Radius of view
+	 * @param {float}    angle         - Angle (degrees) [not tested]
+	 * @param {Zoomer}   zoomer        - Caller context
+	 * @param {function} onUpdatePixel - Called to calculate pixel values.
 	 */
-	this.fill = (centerX, centerY, radius) => {
+	this.fill = (centerX, centerY, radius, angle, zoomer, onUpdatePixel) => {
 
 		const {viewWidth, viewHeight, pixelWidth, pixelHeight} = this;
 
@@ -655,8 +656,8 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		this.radiusX = radius * viewWidth / pixelWidth;
 		this.radiusY = radius * viewHeight / pixelHeight;
 
-		// NOTE: attached frame will leak and GC
-		this.frame = new Frame(viewWidth, viewHeight, pixelWidth, pixelHeight);
+		// NOTE: current attached frame will leak and GC
+		this.frame = zoomer.allocFrame(viewWidth, viewHeight, pixelWidth, pixelHeight, angle);
 		this.pixel16 = new Uint16Array(this.frame.pixelBuffer);
 
 		const {xCoord, xNearest, yCoord, yNearest, pixel16} = this;
@@ -666,14 +667,13 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		for (let i = 0; i < yCoord.length; i++)
 			yNearest[i] = yCoord[i] = ((centerY + this.radius) - (centerY - this.radius)) * i / (yCoord.length - 1) + (centerY - this.radius);
 
-		const calculate = Formula.calculate;
 		let ji = 0;
 		for (let j = 0; j < pixelHeight; j++) {
 			let y = (centerY - this.radius) + this.radius * 2 * j / pixelHeight;
 			for (let i = 0; i < pixelWidth; i++) {
 				// distance to center
 				let x = (centerX - this.radius) + this.radius * 2 * i / pixelWidth;
-				pixel16[ji++] = calculate(x, y);
+				pixel16[ji++] = zoomer.onUpdatePixel(zoomer, this.frame, x, y);
 			}
 		}
 		this.frame.cntPixels = pixelWidth * pixelHeight;
@@ -699,19 +699,14 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
  * @param {float}		[options.coef]		- Low-pass filter coefficient to dampen spikes
  * @param {boolean}		[options.disableWW]	- Disable Web Workers
  * @param {function}		[options.onResize]	- Called when canvas resize detected.
+ * @param {function}		[options.onInitFrame]	- Additional allocation of a new frame.
  * @param {function}		[options.onBeginFrame]	- Called before start frame. Set x,y,radius,angle.
+ * @param {function}		[options.onUpdatePixel]	- Called to calculate pixel values.
  * @param {function}		[options.onRenderFrame]	- Called directly before rendering. Set palette.
  * @param {function}		[options.onEndFrame]	- Called directly after frame complete. Update statistics
  * @param {function}		[options.onPutImageData] - Inject frame into canvas.
  */
 function Zoomer(domZoomer, enableAngle, options = {
-
-	/**
-	 * DOM element to check for resizes
-	 *
-	 * @member {Element} - DOM element to check for resizes
-	 */
-	domZoomer: null,
 
 	/**
 	 * Frames per second.
@@ -771,6 +766,19 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {int}    pixelHeight - Storage Heignt (pixels)
 	 */
 	onResize: (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
+		// console.log("WxH", viewWidth, viewHeight);
+	},
+
+	/**
+	 * Additional allocation of a new frame.
+	 * Setup optional palette and add custom settings.
+	 * NOTE: each frame has it's own palette.
+	 *
+	 * @param {Zoomer}   zoomer - This
+	 * @param {Frame}    frame  - Frame being initialized.
+	 */
+	onInitFrame: (zoomer, frame) => {
+		// frame.palette = new Uint32Array(65536);
 	},
 
 	/**
@@ -784,6 +792,19 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {Frame}    previousFrame     - Previous frame
 	 */
 	onBeginFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
+		// zoomer.setPosition(centerX, centerY, radius, angle);
+	},
+
+	/**
+	 * This is done for every pixel. optimize well!
+	 *
+	 * @param {Zoomer}   zoomer  - This
+	 * @param {Frame}    frame   - This
+	 * @param {float}    x       - X value
+	 * @param {float}    y       - Y value
+	 */
+	onUpdatePixel: (zoomer, frame, x, y) => {
+		// return calculate(x, y);
 	},
 
 	/**
@@ -792,20 +813,23 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * Called just before submitting the frame to a web-worker.
 	 * Previous frame is complete, current frame is under construction.
 	 *
-	 * @param {Zoomer}   zoomer        - This
-	 * @param {Frame}    previousFrame - Previous frame
+	 * @param {Zoomer} zoomer - This
+	 * @param {Frame}  frame  - Previous frame
 	 */
-	onRenderFrame: (zoomer, previousFrame) => {
+	onRenderFrame: (zoomer, frame) => {
+		// if (frame.palette)
+		// 	frame.palette.set(yourUint32TypedPalette); // update palette
 	},
 
 	/**
 	 * Frame construction complete. Update statistics.
 	 * Frame might be in transit to the web-worker and is not available as parameter.
 	 *
-	 * @param {Zoomer}   zoomer       - This
-	 * @param {Frame}    previousFrame - Previous frame
+	 * @param {Zoomer} zoomer - This
+	 * @param {Frame}  frame  - Previous frame
 	 */
-	onEndFrame: (zoomer, previousFrame) => {
+	onEndFrame: (zoomer, frame) => {
+		// console.log('fps', zoomer.avgFrameRate);
 	},
 
 	/**
@@ -859,8 +883,16 @@ function Zoomer(domZoomer, enableAngle, options = {
 	this.onResize = options.onResize ? options.onResize : undefined;
 
 	/** @member {function}
+	    @description Additional allocation of a new frame */
+	this.onInitFrame = options.onInitFrame ? options.onInitFrame : undefined;
+
+	/** @member {function}
 	    @description Creation of frame. set x,y,radius,angle */
 	this.onBeginFrame = options.onBeginFrame ? options.onBeginFrame : undefined;
+
+	/** @member {function}
+	    @description Calculate pixels */
+	this.onUpdatePixel = options.onUpdatePixel ? options.onUpdatePixel : undefined;
 
 	/** @member {function}
 	    @description Rendering of frame. set palette. */
@@ -1039,7 +1071,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 			// allocate new if list empty
 			if (!frame)
-				frame = new Frame(viewWidth, viewHeight, this.pixelWidth, this.pixelHeight);
+				frame = new Frame(viewWidth, viewHeight, pixelWidth, pixelHeight);
 
 			// return if dimensions match
 			if (frame.viewWidth === viewWidth && frame.viewHeight === viewHeight && frame.pixelWidth === pixelWidth && frame.pixelHeight === pixelHeight) {
@@ -1057,6 +1089,9 @@ function Zoomer(domZoomer, enableAngle, options = {
 				frame.cntPixels = 0;
 				frame.cntHLines = 0;
 				frame.cntVLines = 0;
+
+				// additional allocation
+				if (this.onInitFrame) this.onInitFrame(this, frame);
 
 				return frame;
 			}
@@ -1207,8 +1242,9 @@ function Zoomer(domZoomer, enableAngle, options = {
 			frame.timeStart = now;
 
 			// COPY (performance hit)
+			this.currentFrame = frame;
 			this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
-			this.currentViewport.setPosition(frame, this.centerX, this.centerY, this.radius, this.previousViewport);
+			this.currentViewport.setPosition(this.currentFrame, this.centerX, this.centerY, this.radius, this.previousViewport);
 
 			now = performance.now();
 			frame.durationCOPY = now - frame.timeStart;
@@ -1254,7 +1290,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 			if (this.onRenderFrame) this.onRenderFrame(this, frame);
 
 			// render frame
-			renderFrame(frame);
+			zoomerRenderFrame(frame);
 
 			// change state
 			now = performance.now();
@@ -1330,7 +1366,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 			// update inaccurate pixels
 			const stime = now;
 			while (now < etime) {
-				viewport.updateLines(Formula.calculate);
+				viewport.updateLines(this);
 
 				now = performance.now();
 			}
@@ -1374,19 +1410,29 @@ function Zoomer(domZoomer, enableAngle, options = {
 		}
 	};
 
+	/**
+	 * Global constructor
+	 */
+	{
+		/*
+		 * Message queue listener for time-slicing.
+		 */
+		addEventListener("message", this.handleMessage);
+	}
+
 	/*
 	 * create 2 workers
 	 */
 
 	if (!this.disableWW) {
 		let dataObj = "( function () { \n";
-		dataObj += memcpy;
+		dataObj += zoomerMemcpy;
 		dataObj += "\n";
-		dataObj += renderFrame;
+		dataObj += zoomerRenderFrame;
 		dataObj += "\n";
 		dataObj += "addEventListener(\"message\", (e) => { \n";
 		dataObj += "const frame = e.data;\n";
-		dataObj += "renderFrame(frame);\n";
+		dataObj += "zoomerRenderFrame(frame);\n";
 		dataObj += "postMessage(frame, [frame.rgbaBuffer, frame.pixelBuffer, frame.paletteBuffer]);\n";
 		dataObj += "})})()\n";
 

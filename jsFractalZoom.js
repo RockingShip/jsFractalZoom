@@ -577,6 +577,20 @@ function GUI(config) {
 		},
 
 		/**
+		 * Additional allocation of a new frame.
+		 * Setup optional palette and add custom settings
+		 * NOTE: each frame has it's own palette.
+		 *
+		 * @param {Zoomer}   zoomer - This
+		 * @param {Frame}    frame  - Frame being initialized.
+		 */
+		onInitFrame: (zoomer, frame) => {
+			// create a palette buffer for palette mode
+			if (palette)
+				frame.palette = new Uint32Array(65536);
+		},
+
+		/**
 		 * Start of a new frame.
 		 * Process timed updates (piloting), set x,y,radius,angle.
 		 *
@@ -593,19 +607,31 @@ function GUI(config) {
 		},
 
 		/**
+		 * This is done for every pixel. optimize well!
+		 *
+		 * @param {Zoomer}   zoomer  - This
+		 * @param {Frame}    frame   - This
+		 * @param {float}    x       - X value
+		 * @param {float}    y       - Y value
+		 */
+		onUpdatePixel: (zoomer, frame, x, y) => {
+			return Formula.calculate(x, y);
+		},
+
+		/**
 		 * Start extracting (rotated) RGBA values from (paletted) pixels.
 		 * Extract rotated viewport from pixels and store them in specified imnagedata.
 		 * Called just before submitting the frame to a web-worker.
 		 * Previous frame is complete, current frame is under construction.
 		 *
-		 * @param {Zoomer}   zoomer        - This
-		 * @param {Frame}    previousFrame - Previous frame
+		 * @param {Zoomer} zoomer - This
+		 * @param {Frame}  frame  - Previous frame
 		 */
-		onRenderFrame: (zoomer, previousFrame) => {
+		onRenderFrame: (zoomer, frame) => {
 			// inject palette into frame
-			palette.setPaletteBuffer(previousFrame.paletteBuffer, Math.round(Config.paletteOffsetFloat));
+			palette.setPaletteBuffer(frame.paletteBuffer, Math.round(Config.paletteOffsetFloat));
 
-			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, quality: previousFrame.quality});
+			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, quality: frame.quality});
 		},
 
 		/**
@@ -668,11 +694,14 @@ function GUI(config) {
 	/** @member {CanvasRenderingContext2D} */
 	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
 
-	// small viewport for initial image
-	Config.home(); // load default formula and initial position
-	this.viewportInit = new Viewport(64, 64, 64, 64); // Explicitly square
-	this.viewportInit.fill(Config.centerX, Config.centerY, Config.radius, Config.angle);
-	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+	// Create a small key frame (mandatory)
+	const keyViewport = new Viewport(64, 64, 64, 64); // Explicitly square
+
+	// Calculate all the pixels, or choose any other content (optional)
+	keyViewport.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
+
+	// set initial position and inject key frame (mandatory)
+	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyViewport)
 
 	// create formula engine
 	this.calculator = new Formula();
@@ -691,7 +720,6 @@ function GUI(config) {
 	this.domZoomer.addEventListener("contextmenu", this.handleMouse);
 	document.addEventListener("keydown", this.handleKeyDown);
 	document.addEventListener("keyup", this.handleKeyUp);
-	window.addEventListener("message", this.zoomer.handleMessage);
 
 	// construct sliders
 	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
@@ -1163,15 +1191,18 @@ GUI.prototype.handleMouse = function (event) {
  * (re)load initial frame
  */
 GUI.prototype.reload = function () {
+	// Create a small key frame (mandatory)
+	const keyViewport = new Viewport(64, 64, 64, 64); // Explicitly square
+
 	// set all pixels of thumbnail with latest set `calculate`
-	this.viewportInit.fill(Config.centerX, Config.centerY, Config.radius, Config.angle);
+	keyViewport.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
 
 	// if nothing moving, enable idling
 	if (!Config.zoomSpeed && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
 		this.zoomer.timeLastWake = performance.now(); // safe to idle
 
 	// inject into current viewport
-	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.viewportInit);
+	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.keyViewport);
 };
 
 /**
