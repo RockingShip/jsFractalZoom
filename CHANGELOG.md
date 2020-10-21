@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-21 16:48:04 Added lightweight `viewer`.
 2020-10-21 14:36:02 Reformat. No code change.
 2020-10-21 02:58:09 Added adapting maxiter.
 2020-10-21 02:51:31 Additional colour palette.

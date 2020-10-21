@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<!--
+	Fractal zoomer written in javascript
+	https://github.com/xyzzy/jsFractalZoom
+
+	Copyright 2018 https://github.com/xyzzy
+
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Affero General Public License as published
+	by the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Affero General Public License for more details.
+
+	You should have received a copy of the GNU Affero General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<html lang="en">
+<head>
+	<title>Lightweight zoomer viewer</title>
+	<meta charset="UTF-8">
+	<style>
+		body {
+			font-family: Verdana, Geneva, sans-serif;
+			position: absolute;
+			border: none;
+			margin: 0;
+			padding: 0;
+			top: 0;
+			height: auto;
+			bottom: 0;
+			left: 0;
+			width: auto;
+			right: 0;
+			background-color: #000;
+		}
+
+		#idZoomer {
+			padding: 0;
+			margin: auto;
+			border: none;
+			position: absolute;
+			width: 100%;
+			height: 100%;
+		}
+
+		#top {
+			position: absolute;
+			padding: 4px;
+			background: rgba(255, 255, 255, .5);
+			height: 5em;
+			top: 1em;
+			left: 1em;
+			right: 1em;
+			bottom: auto;
+		}
+
+		#top h1 {
+			margin: 0;
+			padding: 0;
+			text-align: center;
+		}
+
+		#top a {
+			text-decoration: none;
+			color: #000;
+			display: block;
+			text-align: center;
+		}
+
+		#idZoomer.focus {
+			/*border-color: #888;*/
+			outline: 2px dotted #000;
+		}
+
+	</style>
+	<script type="text/javascript" src="zoomer.js"></script>
+</head>
+<body>
+<canvas id="idZoomer">
+</canvas>
+<div id="top">
+	<h1>Lightweight zoomer viewer</h1>
+	<span id="idWxH"></span><span id="idPosition"></span><br>
+	<span id="idStatus"></span>
+</div>
+
+<script type="text/javascript">
+	"use strict";
+
+	window.addEventListener('load', function () {
+
+		/*
+		 * Configuration
+		 */
+		const enablePalette = true;
+		const enableAngle = true;
+
+		/**
+		 * Get canvas to draw on (mandatory)
+		 * @type {HTMLElement} */
+		const domZoomer = document.getElementById("idZoomer");
+		const domWxH = document.getElementById("idWxH");
+		const domPosition = document.getElementById("idPosition");
+		const domStatus = document.getElementById("idStatus");
+
+		/**
+		 * Get context 2D (mandatory), "desynchronized" is faster but may glitch hovering mouse (optional)
+		 * @type {CanvasRenderingContext2D} */
+		const ctx = domZoomer.getContext("2d", {desynchronized: true});
+
+		/*
+		 * Create a simple palette
+		 */
+		function fillPalette(palette) {
+			let rcycle, gcycle, bcycle;
+			do {
+				rcycle = Math.random() * 128 + 8;
+				gcycle = Math.random() * 128 + 8;
+				bcycle = Math.random() * 128 + 8;
+			} while (rcycle * gcycle * bcycle >= 65535);
+
+			for (let i = 0; i < 65536; i++) {
+				palette[i] =
+					Math.round(128.0 + 127 * Math.sin(Math.PI * i / rcycle)) << 0 | /* Red */
+					Math.round(128.0 + 127 * Math.sin(Math.PI * i / gcycle)) << 8 | /* Green */
+					Math.round(128.0 + 127 * Math.sin(Math.PI * i / bcycle)) << 16 | /* Blue */
+					255 << 24; /* Alpha */
+			}
+
+			// set transparent. Don't forget to set the canvas background. (optional)
+			palette[65535] = 0x0000000; // Alpha=0 (transparent)
+		}
+
+		const palette = enablePalette ? new Uint32Array(65536) : null;
+		if (palette)
+			fillPalette(palette);
+
+		/*
+		 * reset new round
+		 */
+		let initialX = 0, initialY = 0, initialRadius = 0, initialAngle = 0, maxIter = 0;
+
+		function newRound() {
+			// reset maxIter
+			maxIter = 300;
+
+			// renew palette
+			if (palette)
+				fillPalette(palette);
+
+			// choose a starting position
+			const initialXY = [
+				[-0.758975545838238, -0.07651587003506170],
+				[-0.801699341050079, +0.18222715262330338],
+				[-1.481805455198185, -0.02319530092262309],
+				[-0.670209187899523, +0.45806097530197576],
+				[-0.779180935476971, -0.13452268920699428],
+				[-0.731615963901403, -0.17827461774706865],
+				[-1.481797680822577, -0.02320579132175040],
+				[-1.481751729188188, -0.02313986395713792],
+				[-1.481805455198185, -0.02319530092262292],
+				[-1.985398584251205, +0.000021991667689871508],
+				[-1.985398500441993, +0.000022070367446934466],
+				[-1.985398500451124, +0.000022070461508581870],
+				[-0.563061028253071, +0.6431651290134239],
+				[-1.169227570673171, -0.2944274970152214],
+				[-0.563061028253071, +0.6431651290134239],
+				[-0.923805354837750, -0.2917629932645836],
+				[-0.883161689795792, +0.2345812238688531]];
+
+			const xy = initialXY[Math.round(Math.random() * initialXY.length)];
+
+			// set begin situation. Don't reset angle
+			initialX = xy[0];
+			initialY = xy[1];
+			initialRadius = 1.75;
+
+			// switch(Math.random() % 7) {
+		}
+		newRound();
+
+		// per second differences
+		let lastNow = 0;
+		let directionalInterval = 100; // Interval timer for directional movement corrections
+
+		const zoomer = new Zoomer(domZoomer, enableAngle, {
+
+			/**
+			 * Disable web-workers.
+			 * Offload frame rendering to web-workers
+			 *
+			 * @member {boolean} - Frames per second
+			 */
+			disableWW: false,
+
+			/**
+			 * Size change detected for `domZoomer`
+			 *
+			 * @param {Zoomer} zoomer      - This
+			 * @param {int}    viewWidth   - Screen width (pixels)
+			 * @param {int}    viewHeight  - Screen height (pixels)
+			 * @param {int}    pixelWidth  - Storage width (pixels)
+			 * @param {int}    pixelHeight - Storage Heignt (pixels)
+			 */
+			onResize: (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
+				domWxH.innerHTML = "[" + viewWidth + "x" + viewHeight + "]";
+			},
+
+			/**
+			 * Additional allocation of a new frame.
+			 * Setup optional palette and add custom settings
+			 * NOTE: each frame has it's own palette.
+			 *
+			 * @param {Zoomer}   zoomer - This
+			 * @param {Frame}    frame  - Frame being initialized.
+			 */
+			onInitFrame: (zoomer, frame) => {
+				// create a palette buffer for palette mode
+				if (palette)
+					frame.palette = new Uint32Array(65536);
+			},
+
+			/**
+			 * Start of a new frame.
+			 * Process timed updates (piloting), set x,y,radius,angle.
+			 *
+			 * @param {Zoomer}   zoomer            - This
+			 * @param {Viewport} currentViewport   - Current viewport
+			 * @param {Frame}    currentFrame      - Current frame
+			 * @param {Viewport} previousViewport  - Previous viewport to extract rulers/pixels
+			 * @param {Frame}    previousFrame     - Previous frame
+			 */
+			onBeginFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
+				if (zoomer.currentViewport.reachedLimits()) {
+					newRound();
+					zoomer.centerX = initialX;
+					zoomer.centerY = initialY;
+					zoomer.radius = initialRadius;
+				}
+
+				zoomer.setPosition(zoomer.centerX, zoomer.centerY, zoomer.radius * 0.99, zoomer.angle);
+
+				domPosition.innerHTML = JSON.stringify({x: zoomer.centerX, y: zoomer.centerY, radius: zoomer.radius, angle: Math.round(zoomer.angle * 10) / 10, maxiter: Math.round(maxIter), quality: previousFrame.quality});
+			},
+
+			/**
+			 * This is done for every pixel. optimize well!
+			 *
+			 * @param {Zoomer}   zoomer  - This
+			 * @param {Frame}    frame   - This
+			 * @param {float}    x       - X value
+			 * @param {float}    y       - Y value
+			 */
+			onUpdatePixel: (zoomer, frame, x, y) => {
+				const pre = x;
+				const pim = y;
+				let zre = x;
+				let zim = y;
+				let iter = 0;
+
+				do {
+					const rp = zre * zre;
+					const ip = zim * zim;
+
+					zim = 2 * zre * zim + pim;
+					zre = rp - ip + pre;
+					if (rp + ip >= 4) {
+
+						if (maxIter < iter + 100)
+							maxIter += Math.round((iter + 100 - maxIter) * 0.01); // increase maxIter with low-pass filter
+
+						if (frame.palette)
+							return iter;
+						else
+							return iter & 0xff | iter << 8 & 0xff00 | iter << 16 & 0xff0000 | 255 << 24;
+					}
+				} while (++iter < maxIter);
+
+				// transparent background
+				if (frame.palette)
+					return 65535;
+				else
+					return 0x00000000; // alpha = 0
+			},
+
+			/**
+			 * Start extracting (rotated) RGBA values from (paletted) pixels.
+			 * Extract rotated viewport from pixels and store them in specified imnagedata.
+			 * Called just before submitting the frame to a web-worker.
+			 * Previous frame is complete, current frame is under construction.
+			 *
+			 * @param {Zoomer} zoomer - This
+			 * @param {Frame}  frame  - Previous frame
+			 */
+			onRenderFrame: (zoomer, frame) => {
+				// update palette
+				if (frame.palette)
+					frame.palette.set(palette);
+			},
+
+			/**
+			 * Frame construction complete. Update statistics.
+			 *
+			 * @param {Zoomer}   zoomer       - This
+			 * @param {Frame}    previousFrame - Current frame
+			 */
+			onEndFrame: (zoomer, previousFrame) => {
+
+				const now = performance.now();
+
+				if (now - lastNow >= 250) {
+
+					// round for displaying
+					for (let i = 0; i < zoomer.stateTicks.length; i++) {
+						zoomer.avgStateDuration[i] = Math.round(zoomer.avgStateDuration[i]);
+						zoomer.avgFrameDuration[i] = Math.round(zoomer.avgFrameDuration[i]);
+					}
+
+					domStatus.innerHTML = JSON.stringify({
+						ticks: zoomer.stateTicks,
+						state: zoomer.avgStateDuration,
+						frame: zoomer.avgFrameDuration,
+						ppf: Math.round(zoomer.avgPixelsPerFrame),
+						lpf: Math.round(zoomer.avgLinesPerFrame),
+						rt: Math.round(zoomer.avgRoundTrip),
+						fps: Math.round(zoomer.avgFrameRate)
+					});
+
+					lastNow = now;
+				}
+			},
+
+			/**
+			 * Inject frame into canvas.
+			 * This is a callback to keep all canvas resource handling/passing out of Zoomer context.
+			 *
+			 * @param {Zoomer}   zoomer - This
+			 * @param {Frame}    frame  - Frame to inject
+			 */
+			onPutImageData: (zoomer, frame) => {
+
+				const imagedata = new ImageData(new Uint8ClampedArray(frame.rgba.buffer), frame.viewWidth, frame.viewHeight);
+
+				// draw frame onto canvas
+				ctx.putImageData(imagedata, 0, 0);
+			}
+		});
+
+		/*
+		 * Prepare for launch
+		 */
+
+		// Create a small key frame (mandatory)
+		const keyViewport = new Viewport(64, 64, 64, 64); // Explicitly square
+
+		// Calculate all the pixels, or choose any other content (optional)
+		keyViewport.fill(initialX, initialY, initialRadius, initialAngle, zoomer, zoomer.onUpdatePixel);
+
+		// set initial position and inject key frame (mandatory)
+		zoomer.setPosition(initialX, initialY, initialRadius, initialAngle, keyViewport)
+
+		/*
+		 * If you need to debug (display) the contents of a frame
+		 * NOTE: zoomer.currentViewport is being calculated, zoomer.previousViewport is being displayed
+		 */
+		if (true) {
+			/*
+			 * Manually put key frame in canvas
+			 */
+
+			let frame = keyViewport.frame;
+			// update palette
+			zoomer.onRenderFrame(zoomer, frame);
+			// extract pixels to rgba
+			zoomerRenderFrame(frame);
+			// display frame
+			zoomer.onPutImageData(zoomer, frame);
+
+			/*
+			 * Manually put prepared frame in canvas
+			 */
+
+			frame = zoomer.currentFrame;
+			// update palette
+			zoomer.onRenderFrame(zoomer, frame);
+			// extract pixels to rgba
+			zoomerRenderFrame(frame);
+			// display frame
+			zoomer.onPutImageData(zoomer, frame);
+		}
+
+		// start engine
+		zoomer.start();
+
+		// Timed navigation (optional)
+		setInterval((e) => {
+			// rotate slightly
+			zoomer.setPosition(zoomer.centerX, zoomer.centerY, zoomer.radius, zoomer.angle + 0.1);
+		}, 100); // 10x per second
+
+
+	});
+
+</script>
+</body>
+</html>
