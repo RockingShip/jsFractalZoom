@@ -100,13 +100,6 @@ function Config() {
 	Config.paletteSpeedNow = 0;
 
 	/** @member {number} - calculation depth slider Min */
-	Config.depthMin = 30;
-	/** @member {number} - calculation depth slider Max */
-	Config.depthMax = 4000;
-	/** @member {number} - calculation depth slider Now - MULTIPLE OF 4 */
-	Config.depthNow = 1200;
-
-	/** @member {number} - calculation depth slider Min */
 	Config.framerateMin = 1;
 	/** @member {number} - calculation depth slider Max */
 	Config.framerateMax = 60;
@@ -125,6 +118,8 @@ function Config() {
 	Config.rsin = 0;
 	/** @member {number} - cos(angle) */
 	Config.rcos = 1;
+	/** @member {number} - max Iteration for calculations */
+	Config.maxIter = 0;
 
 
 	/** @member {number} - current palette offset - timer updated */
@@ -394,7 +389,6 @@ function Palette() {
 			rcycle = Math.random() * 128 + 8;
 			gcycle = Math.random() * 128 + 8;
 			bcycle = Math.random() * 128 + 8;
-			console.log(rcycle, gcycle, bcycle);
 		} while (rcycle * gcycle * bcycle >= 65535);
 
 		for (let i = 0; i < 65536; i++) {
@@ -426,33 +420,33 @@ function Palette() {
 			segmentsize = 85;
 
 		switch (random(7)) {
-			case 0:
-				segmentsize = Math.floor(segmentsize / 2) * 2;
-				nsegments = Math.floor(256 / segmentsize);
-				this.randomize_segments1(whitemode, nsegments, segmentsize);
-				break;
-			case 1:
-				segmentsize = Math.floor(segmentsize / 3) * 3;
-				nsegments = Math.floor(256 / segmentsize);
-				this.randomize_segments2(whitemode, nsegments, segmentsize);
-				break;
-			case 2:
-				segmentsize = Math.floor(segmentsize / 6) * 6;
-				nsegments = Math.floor(256 / segmentsize);
-				this.randomize_segments3(whitemode, nsegments, segmentsize);
-				break;
-			case 3:
-				this.randomize_segments1(whitemode, Config.depthNow, 1);
-				break;
-			case 4:
-				this.randomize_segments2(whitemode, Config.depthNow, 1);
-				break;
-			case 5:
-				this.randomize_segments3(whitemode, Config.depthNow, 1);
-				break;
-			case 6:
-				this.randomize_segments4(whitemode);
-				break;
+		case 0:
+			segmentsize = Math.floor(segmentsize / 2) * 2;
+			nsegments = Math.floor(256 / segmentsize);
+			this.randomize_segments1(whitemode, nsegments, segmentsize);
+			break;
+		case 1:
+			segmentsize = Math.floor(segmentsize / 3) * 3;
+			nsegments = Math.floor(256 / segmentsize);
+			this.randomize_segments2(whitemode, nsegments, segmentsize);
+			break;
+		case 2:
+			segmentsize = Math.floor(segmentsize / 6) * 6;
+			nsegments = Math.floor(256 / segmentsize);
+			this.randomize_segments3(whitemode, nsegments, segmentsize);
+			break;
+		case 3:
+			this.randomize_segments1(whitemode, Config.maxIter, 1);
+			break;
+		case 4:
+			this.randomize_segments2(whitemode, Config.maxIter, 1);
+			break;
+		case 5:
+			this.randomize_segments3(whitemode, Config.maxIter, 1);
+			break;
+		case 6:
+			this.randomize_segments4(whitemode);
+			break;
 		}
 	};
 
@@ -467,8 +461,7 @@ function Palette() {
 	 * @param {Uint32Array} out32  - frame.palette
 	 * @param {int}         offset - Starting positionfor colour rotation
 	 */
-	this.setPalette = function (out32, offset) {
-		const depth = Config.depthNow;
+	this.setPalette = function (out32, offset, maxIter) {
 		const paletteSize = Config.paletteSize;
 
 		// palette offset may not be negative
@@ -478,7 +471,7 @@ function Palette() {
 			offset = offset % paletteSize;
 
 		// apply colour cycling
-		for (let i = 0; i < depth; i++) {
+		for (let i = 0; i < maxIter; i++) {
 			out32[i] = this.palette[offset++];
 			if (offset >= paletteSize)
 				offset -= paletteSize;
@@ -534,9 +527,6 @@ function GUI(config) {
 	this.domPaletteSpeedThumb = "idPaletteSpeedThumb";
 	this.domRandomPaletteButton = "idRandomPaletteButton";
 	this.domDefaultPaletteButton = "idDefaultPaletteButton";
-	this.domDepthLeft = "idDepthLeft";
-	this.domDepthRail = "idDepthRail";
-	this.domDepthThumb = "idDepthThumb";
 	this.domFramerateLeft = "idFramerateLeft";
 	this.domFramerateRail = "idFramerateRail";
 	this.domFramerateThumb = "idFramerateThumb";
@@ -622,7 +612,8 @@ function GUI(config) {
 		onBeginFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
 			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
-			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, quality: currentFrame.quality});
+			// maxIter for embedded calc(), maxDepth for formula.js
+			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, maxIter: Config.maxIter, quality: previousFrame.quality});
 		},
 
 		/**
@@ -634,12 +625,17 @@ function GUI(config) {
 		 * @param {float}    y       - Y value
 		 */
 		onUpdatePixel: (zoomer, frame, x, y) => {
+			// Formula.calculate() handles adaptive maxIter
+
+			// if (Config.maxIter < iter + 100 && iter !== 65535)
+			// 	Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
+
 			return Formula.calculate(x, y);
 		},
 
 		/**
 		 * Start extracting (rotated) RGBA values from (paletted) pixels.
-		 * Extract rotated viewport from pixels and store them in specified imnagedata.
+		 * Extract rotated viewport from pixels and store them in specified imagedata.
 		 * Called just before submitting the frame to a web-worker.
 		 * Previous frame is complete, current frame is under construction.
 		 *
@@ -649,9 +645,7 @@ function GUI(config) {
 		onRenderFrame: (zoomer, frame) => {
 			// inject palette into frame
 			if (frame.palette)
-				palette.setPalette(frame.palette, Math.round(Config.paletteOffsetFloat));
-
-			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, quality: frame.quality});
+				palette.setPalette(frame.palette, Math.round(Config.paletteOffsetFloat), Config.maxIter);
 		},
 
 		/**
@@ -722,9 +716,6 @@ function GUI(config) {
 	// set initial position and inject key frame (mandatory)
 	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyViewport)
 
-	// create formula engine
-	this.calculator = new Formula();
-
 	// replace event handlers with a bound instance
 	this.handleMouse = this.handleMouse.bind(this);
 	this.handleFocus = this.handleFocus.bind(this);
@@ -747,8 +738,6 @@ function GUI(config) {
 		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
 	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
 		Config.paletteSpeedMin, Config.paletteSpeedMax, Config.paletteSpeedNow);
-	this.depth = new Aria.Slider(this.domDepthThumb, this.domDepthRail,
-		Config.depthMin, Config.depthMax, Config.depthNow);
 	this.Framerate = new Aria.Slider(this.domFramerateThumb, this.domFramerateRail,
 		Config.framerateMin, Config.framerateMax, Config.framerateNow);
 
@@ -793,13 +782,6 @@ function GUI(config) {
 			newValue = 0; // snap to center
 		Config.paletteSpeedNow = newValue;
 		this.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
-	});
-	this.depth.setCallbackValueChange((newValue) => {
-		newValue = Math.round(newValue);
-		// needs to be a multiple of 4
-		newValue = (newValue + 3) & ~3;
-		Config.depthNow = newValue;
-		this.domDepthLeft.innerHTML = newValue;
 	});
 	this.Framerate.setCallbackValueChange((newValue) => {
 		newValue = Math.round(newValue);
@@ -1210,6 +1192,9 @@ GUI.prototype.handleMouse = function (event) {
  * (re)load initial frame
  */
 GUI.prototype.reload = function () {
+	// reset maxiter
+	Config.maxIter = 300;
+
 	// Create a small key frame (mandatory)
 	const keyViewport = new Viewport(64, 64, 64, 64); // Explicitly square
 
@@ -1221,7 +1206,7 @@ GUI.prototype.reload = function () {
 		this.zoomer.timeLastWake = performance.now(); // safe to idle
 
 	// inject into current viewport
-	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, this.keyViewport);
+	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyViewport);
 };
 
 /**
