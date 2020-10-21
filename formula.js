@@ -17,25 +17,26 @@
 	You should have received a copy of the GNU Affero General Public License
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 /*
 	This code is directly inspired by XaoS which has GNU version 2 license.
  */
 
-function Formula () {
+function Formula() {
 
 	Formula.initial = [
-		{x: -0.75, y: 0.0, r: 2.5, a:0},
-		{x: 0.0, y: 0.0, r: 2.5, a:0},
-		{x: 0.0, y: 0.0, r: 2.5, a:0},
-		{x: 0.0, y: 0.0, r: 2.5, a:0},
-		{x: 0.0, y: 0.0, r: 2.5, a:0},
-		{x: 0.0, y: 0.0, r: 2.5, a:0},
-		{x: 0.0, y: 0.0, r: 2.5, a:0},
-		{x: 0.0, y: 0.0, r: 3.5, a:0},
-		{x: 0.0, y: 0.0, r: 3.5, a:0},
-		{x: 0.0, y: 0.0, r: 3.0, a:0},
-		{x: 1.5, y: 0.0, r: 6.0, a:0},
-		{x: 1.5, y: 0.0, r: 4.0, a:0}
+		{x: -0.75, y: 0.0, r: 2.5, a: 0},
+		{x: 0.0, y: 0.0, r: 2.5, a: 0},
+		{x: 0.0, y: 0.0, r: 2.5, a: 0},
+		{x: 0.0, y: 0.0, r: 2.5, a: 0},
+		{x: 0.0, y: 0.0, r: 2.5, a: 0},
+		{x: 0.0, y: 0.0, r: 2.5, a: 0},
+		{x: 0.0, y: 0.0, r: 2.5, a: 0},
+		{x: 0.0, y: 0.0, r: 3.5, a: 0},
+		{x: 0.0, y: 0.0, r: 3.5, a: 0},
+		{x: 0.0, y: 0.0, r: 3.0, a: 0},
+		{x: 1.5, y: 0.0, r: 6.0, a: 0},
+		{x: 1.5, y: 0.0, r: 4.0, a: 0}
 	];
 
 	Formula.formula = 0;
@@ -498,29 +499,29 @@ function Formula () {
 		var zpi = 0;
 
 		do {
-			var zpr3 = pre+zre;
-			var zpi3 = pim+zim;
+			var zpr3 = pre + zre;
+			var zpi3 = pim + zim;
 
-			var rp = pre*pre;
-			var ip = pim*pim;
-			var pre3 = (rp-3*ip)*pre+zpr;
-			var pim3 = (3*rp-ip)*pim+zpi;
-			var zpr2 = pre3+zre;
-			var zpi2 = pim3+zim;
+			var rp = pre * pre;
+			var ip = pim * pim;
+			var pre3 = (rp - 3 * ip) * pre + zpr;
+			var pim3 = (3 * rp - ip) * pim + zpi;
+			var zpr2 = pre3 + zre;
+			var zpi2 = pim3 + zim;
 
-			var rp = pre3*pre3;
-			var ip = pim3*pim3;
-			var pre2 = (rp-3*ip)*pre3+zpr3;
-			var pim2 = (3*rp-ip)*pim3+zpi3;
-			var zpr1 = pre2+zre;
-			var zpi1 = pim2+zim;
+			var rp = pre3 * pre3;
+			var ip = pim3 * pim3;
+			var pre2 = (rp - 3 * ip) * pre3 + zpr3;
+			var pim2 = (3 * rp - ip) * pim3 + zpi3;
+			var zpr1 = pre2 + zre;
+			var zpi1 = pim2 + zim;
 
-			var rp = pre2*pre2;
-			var ip = pim2*pim2;
-			var pre1 = (rp-3*ip)*pre2+zpr2;
-			var pim1 = (3*rp-ip)*pim2+zpi2;
-			var zpr = pre1+zre;
-			var zpi = pim1+zim;
+			var rp = pre2 * pre2;
+			var ip = pim2 * pim2;
+			var pre1 = (rp - 3 * ip) * pre2 + zpr2;
+			var pim1 = (3 * rp - ip) * pim2 + zpi2;
+			var zpr = pre1 + zre;
+			var zpi = pim1 + zim;
 
 			var rp = pre1 * pre1;
 			var ip = pim1 * pim1;
@@ -535,11 +536,11 @@ function Formula () {
 
 		if (zpr3 * zpr3 + zpi3 * zpi3 >= 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
-		if (zpr2*zpr2 + zpi2*zpi2 >= 4)
+		if (zpr2 * zpr2 + zpi2 * zpi2 >= 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre2, zim2, pre, pim, iter + 1) : iter + 1;
-		if (zpr1*zpr1 + zpi1*zpi1 >= 4)
+		if (zpr1 * zpr1 + zpi1 * zpi1 >= 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre1, zim1, pre, pim, iter + 2) : iter + 2;
-		if (zpr*zpr + zpi*zpi < 4)
+		if (zpr * zpr + zpi * zpi < 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter + 3) : iter + 3;
 
 		return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
@@ -669,18 +670,18 @@ function Formula () {
 		var ip = zim * zim;
 		do {
 			// ( (z*z+(p-1)) / (z*2+(p-2)) ) ^2
-			var t1re = rp-ip+pre-1;
-			var t1im = zre*zim*2+pim;
+			var t1re = rp - ip + pre - 1;
+			var t1im = zre * zim * 2 + pim;
 
-			var t2re = zre*2+pre-2;
-			var t2im = zim*2+pim;
+			var t2re = zre * 2 + pre - 2;
+			var t2im = zim * 2 + pim;
 
-			var t = t2re*t2re+t2im*t2im;
-			var t3re = (t1re*t2re+t1im*t2im)/t;
-			var t3im = (t1im*t2re-t1re*t2im)/t;
+			var t = t2re * t2re + t2im * t2im;
+			var t3re = (t1re * t2re + t1im * t2im) / t;
+			var t3im = (t1im * t2re - t1re * t2im) / t;
 
-			var zre = t3re*t3re-t3im*t3im;
-			var zim = t3re*t3im*2;
+			var zre = t3re * t3re - t3im * t3im;
+			var zim = t3re * t3im * 2;
 
 			var rp = zre * zre;
 			var ip = zim * zim;
@@ -713,21 +714,21 @@ function Formula () {
 			// ( (z*z*z +z*(p-1)*3 +(p-1)*(p-2) ) / (z*z*3 +z*(p-2)*3 +(p-1)*(p-2)+1) ) ^2
 			// ( (z*z*z +z*c1 +c2 ) / (z*z*3 +z*c3 +c4) ) ^2
 
-			var t1re = (ip*-3+rp)*zre + (zre*c1re-zim*c1im) + c2re;
-			var t1im = (rp* 3-ip)*zim + (zre*c1im+zim*c1re) + c2im;
+			var t1re = (ip * -3 + rp) * zre + (zre * c1re - zim * c1im) + c2re;
+			var t1im = (rp * 3 - ip) * zim + (zre * c1im + zim * c1re) + c2im;
 
-			var t2re = (rp-ip    )*3  + (zre*c3re-zim*c3im) + c4re;
-			var t2im = (zre*zim*2)*3  + (zre*c3im+zim*c3re) + c4im;
+			var t2re = (rp - ip) * 3 + (zre * c3re - zim * c3im) + c4re;
+			var t2im = (zre * zim * 2) * 3 + (zre * c3im + zim * c3re) + c4im;
 
-			var t = t2re*t2re+t2im*t2im;
-			var t3re = (t1re*t2re+t1im*t2im)/t;
-			var t3im = (t1im*t2re-t1re*t2im)/t;
+			var t = t2re * t2re + t2im * t2im;
+			var t3re = (t1re * t2re + t1im * t2im) / t;
+			var t3im = (t1im * t2re - t1re * t2im) / t;
 
-			zre = t3re*t3re-t3im*t3im;
-			zim = t3re*t3im*2;
+			zre = t3re * t3re - t3im * t3im;
+			zim = t3re * t3im * 2;
 
-			var rp = zre*zre;
-			var ip = zim*zim;
+			var rp = zre * zre;
+			var ip = zim * zim;
 
 		} while (rp + ip < 100 * 100 && rp + ip > zre * 2 - 0.99 && ++iter <= maxIter);
 

@@ -344,36 +344,36 @@ function Palette() {
 					const q = v * (256 - ((s * f) >> 8)) >> 8;
 					const t = v * (256 * 256 - (s * (256 - f))) >> 16;
 					switch (Math.floor(hue / 256)) {
-						case 0:
-							R[i] = v;
-							G[i] = t;
-							B[i] = p;
-							break;
-						case 1:
-							R[i] = q;
-							G[i] = v;
-							B[i] = p;
-							break;
-						case 2:
-							R[i] = p;
-							G[i] = v;
-							B[i] = t;
-							break;
-						case 3:
-							R[i] = p;
-							G[i] = q;
-							B[i] = v;
-							break;
-						case 4:
-							R[i] = t;
-							G[i] = p;
-							B[i] = v;
-							break;
-						case 5:
-							R[i] = v;
-							G[i] = p;
-							B[i] = q;
-							break;
+					case 0:
+						R[i] = v;
+						G[i] = t;
+						B[i] = p;
+						break;
+					case 1:
+						R[i] = q;
+						G[i] = v;
+						B[i] = p;
+						break;
+					case 2:
+						R[i] = p;
+						G[i] = v;
+						B[i] = t;
+						break;
+					case 3:
+						R[i] = p;
+						G[i] = q;
+						B[i] = v;
+						break;
+					case 4:
+						R[i] = t;
+						G[i] = p;
+						B[i] = v;
+						break;
+					case 5:
+						R[i] = v;
+						G[i] = p;
+						B[i] = q;
+						break;
 					}
 				}
 
@@ -382,7 +382,7 @@ function Palette() {
 		this.mksmooth(nsegments, segmentsize, R, G, B);
 	};
 
-	this.randomize_segments4 = function() {
+	this.randomize_segments4 = function () {
 
 		let rcycle, gcycle, bcycle;
 		do {
@@ -992,68 +992,68 @@ GUI.prototype.handleKeyDown = function (event) {
 
 	// Grab the keydown and click events
 	switch (key) {
-		case 0x41: // A
-		case 0x61: // a
-			this.autoPilot.buttonDown();
-			this.domAutoPilotButton.focus();
-			break;
-		case 0x44: // D
-		case 0x64: // d
-			this.paletteGroup.radioButtons[1].buttonDown();
-			this.domDefaultPaletteButton.focus();
-			break;
-		case 0x46: // F
-		case 0x66: // f
-			if (!this.formula.toggleListbox(event))
-				this.domZoomer.focus();
-			break;
-		case 0x49: // I
-		case 0x69: // i
-			if (!this.incolour.toggleListbox(event))
-				this.domZoomer.focus();
-			break;
-		case 0x4f: // O
-		case 0x6f: // o
-			if (!this.outcolour.toggleListbox(event))
-				this.domZoomer.focus();
-			break;
-		case 0x50: // P
-		case 0x70: // p
-			if (!this.plane.toggleListbox(event))
-				this.domZoomer.focus();
-			break;
-		case 0x51: // Q
-		case 0x71: // q
-			this.power.buttonDown();
-			this.domPowerButton.focus();
-			break;
-		case 0x52: // R
-		case 0x72: // r
-			this.paletteGroup.radioButtons[0].buttonDown();
-			this.domRandomPaletteButton.focus();
-			break;
-		case Aria.KeyCode.HOME:
-			this.home.buttonDown();
-			this.domHomeButton.focus();
-			break;
-		case Aria.KeyCode.UP:
-			this.speed.moveSliderTo(this.speed.valueNow + 1);
-			this.domZoomSpeedThumb.focus();
-			break;
-		case Aria.KeyCode.DOWN:
-			this.speed.moveSliderTo(this.speed.valueNow - 1);
-			this.domZoomSpeedThumb.focus();
-			break;
-		case Aria.KeyCode.PAGE_UP:
-			this.rotateSpeed.moveSliderTo(this.rotateSpeed.valueNow + 1);
-			this.domRotateThumb.focus();
-			break;
-		case Aria.KeyCode.PAGE_DOWN:
-			this.rotateSpeed.moveSliderTo(this.rotateSpeed.valueNow - 1);
-			this.domRotateThumb.focus();
-			break;
-		default:
-			return;
+	case 0x41: // A
+	case 0x61: // a
+		this.autoPilot.buttonDown();
+		this.domAutoPilotButton.focus();
+		break;
+	case 0x44: // D
+	case 0x64: // d
+		this.paletteGroup.radioButtons[1].buttonDown();
+		this.domDefaultPaletteButton.focus();
+		break;
+	case 0x46: // F
+	case 0x66: // f
+		if (!this.formula.toggleListbox(event))
+			this.domZoomer.focus();
+		break;
+	case 0x49: // I
+	case 0x69: // i
+		if (!this.incolour.toggleListbox(event))
+			this.domZoomer.focus();
+		break;
+	case 0x4f: // O
+	case 0x6f: // o
+		if (!this.outcolour.toggleListbox(event))
+			this.domZoomer.focus();
+		break;
+	case 0x50: // P
+	case 0x70: // p
+		if (!this.plane.toggleListbox(event))
+			this.domZoomer.focus();
+		break;
+	case 0x51: // Q
+	case 0x71: // q
+		this.power.buttonDown();
+		this.domPowerButton.focus();
+		break;
+	case 0x52: // R
+	case 0x72: // r
+		this.paletteGroup.radioButtons[0].buttonDown();
+		this.domRandomPaletteButton.focus();
+		break;
+	case Aria.KeyCode.HOME:
+		this.home.buttonDown();
+		this.domHomeButton.focus();
+		break;
+	case Aria.KeyCode.UP:
+		this.speed.moveSliderTo(this.speed.valueNow + 1);
+		this.domZoomSpeedThumb.focus();
+		break;
+	case Aria.KeyCode.DOWN:
+		this.speed.moveSliderTo(this.speed.valueNow - 1);
+		this.domZoomSpeedThumb.focus();
+		break;
+	case Aria.KeyCode.PAGE_UP:
+		this.rotateSpeed.moveSliderTo(this.rotateSpeed.valueNow + 1);
+		this.domRotateThumb.focus();
+		break;
+	case Aria.KeyCode.PAGE_DOWN:
+		this.rotateSpeed.moveSliderTo(this.rotateSpeed.valueNow - 1);
+		this.domRotateThumb.focus();
+		break;
+	default:
+		return;
 	}
 
 	event.preventDefault();
@@ -1071,42 +1071,42 @@ GUI.prototype.handleKeyUp = function (event) {
 
 	// Grab the keydown and click events
 	switch (key) {
-		case 0x41: // A
-		case 0x61: // a
-			this.autoPilot.buttonUp();
-			this.domZoomer.focus();
-			break;
-		case 0x44: // D
-		case 0x64: // d
-			this.paletteGroup.radioButtons[1].buttonUp();
-			this.domZoomer.focus();
-			break;
-		case 0x51: // Q
-		case 0x71: // q
-			this.power.buttonUp();
-			this.domZoomer.focus();
-			break;
-		case 0x52: // R
-		case 0x62: // r
-			this.paletteGroup.radioButtons[0].buttonUp();
-			this.domZoomer.focus();
-			break;
-		case Aria.KeyCode.HOME:
-			this.home.buttonUp();
-			this.domZoomer.focus();
-			break;
-		case Aria.KeyCode.UP:
-			this.domZoomer.focus();
-			break;
-		case Aria.KeyCode.DOWN:
-			this.domZoomer.focus();
-			break;
-		case Aria.KeyCode.PAGE_DOWN:
-			this.domZoomer.focus();
-			break;
-		case Aria.KeyCode.PAGE_UP:
-			this.domZoomer.focus();
-			break;
+	case 0x41: // A
+	case 0x61: // a
+		this.autoPilot.buttonUp();
+		this.domZoomer.focus();
+		break;
+	case 0x44: // D
+	case 0x64: // d
+		this.paletteGroup.radioButtons[1].buttonUp();
+		this.domZoomer.focus();
+		break;
+	case 0x51: // Q
+	case 0x71: // q
+		this.power.buttonUp();
+		this.domZoomer.focus();
+		break;
+	case 0x52: // R
+	case 0x62: // r
+		this.paletteGroup.radioButtons[0].buttonUp();
+		this.domZoomer.focus();
+		break;
+	case Aria.KeyCode.HOME:
+		this.home.buttonUp();
+		this.domZoomer.focus();
+		break;
+	case Aria.KeyCode.UP:
+		this.domZoomer.focus();
+		break;
+	case Aria.KeyCode.DOWN:
+		this.domZoomer.focus();
+		break;
+	case Aria.KeyCode.PAGE_DOWN:
+		this.domZoomer.focus();
+		break;
+	case Aria.KeyCode.PAGE_UP:
+		this.domZoomer.focus();
+		break;
 	}
 
 	event.preventDefault();

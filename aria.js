@@ -74,7 +74,7 @@ Aria.Button = function (domButton) {
 	/**
 	 * Called when button state/value changes
 	 * @callback Aria.Button~callbackValueChange
- 	 * @param {boolean} newValue
+	 * @param {boolean} newValue
 	 */
 	this.callbackValueChange = function (newValue) {
 	};
@@ -95,7 +95,7 @@ Aria.Button = function (domButton) {
  *
  * @param {Aria.Button~callbackValueChange} handler
  */
-Aria.Button.prototype.setCallbackValueChange = function(handler) {
+Aria.Button.prototype.setCallbackValueChange = function (handler) {
 	this.callbackValueChange = handler;
 
 	var currentState = this.domButton.getAttribute('aria-pressed');
@@ -105,7 +105,7 @@ Aria.Button.prototype.setCallbackValueChange = function(handler) {
 /**
  * Button down gesture
  */
-Aria.Button.prototype.buttonDown = function() {
+Aria.Button.prototype.buttonDown = function () {
 	// catch keyboard repeats
 	if (this.down)
 		return;
@@ -134,7 +134,7 @@ Aria.Button.prototype.buttonDown = function() {
 /**
  *  Button up gesture
  */
-Aria.Button.prototype.buttonUp = function() {
+Aria.Button.prototype.buttonUp = function () {
 	this.down = false;
 
 	// remove CSS decoration
@@ -165,7 +165,7 @@ Aria.Button.prototype.handleBlur = function (event) {
  *
  * @param {KeyboardEvent} event
  */
-Aria.Button.prototype.handleKeyDown = function(event) {
+Aria.Button.prototype.handleKeyDown = function (event) {
 	var key = event.which || event.keyCode;
 
 	if (key === Aria.KeyCode.RETURN || key === Aria.KeyCode.SPACE) {
@@ -183,7 +183,7 @@ Aria.Button.prototype.handleKeyDown = function(event) {
  *
  * @param {KeyboardEvent} event
  */
-Aria.Button.prototype.handleKeyUp = function(event) {
+Aria.Button.prototype.handleKeyUp = function (event) {
 	var key = event.which || event.keyCode;
 
 	if (key === Aria.KeyCode.RETURN || key === Aria.KeyCode.SPACE) {
@@ -201,7 +201,7 @@ Aria.Button.prototype.handleKeyUp = function(event) {
  *
  * @param {MouseEvent} event
  */
-Aria.Button.prototype.handleMouseDown = function(event) {
+Aria.Button.prototype.handleMouseDown = function (event) {
 	this.buttonDown();
 
 	event.preventDefault();
@@ -216,7 +216,7 @@ Aria.Button.prototype.handleMouseDown = function(event) {
  *
  * @param {MouseEvent} event
  */
-Aria.Button.prototype.handleMouseUp = function(event) {
+Aria.Button.prototype.handleMouseUp = function (event) {
 	this.buttonUp();
 
 	event.preventDefault();
@@ -296,7 +296,7 @@ Aria.Slider = function (domThumb, domRail, valueMin, valueMax, valueNow) {
 /**
  * Update the labels
  */
-Aria.Slider.prototype.updateLabels = function() {
+Aria.Slider.prototype.updateLabels = function () {
 	this.domThumb.setAttribute('aria-valuemin', this.valueMin);
 	this.domThumb.setAttribute('aria-valuemax', this.valueMax);
 	this.domThumb.setAttribute('aria-valuenow', this.valueNow);
@@ -308,7 +308,7 @@ Aria.Slider.prototype.updateLabels = function() {
  *
  * @param {Aria.Slider~callbackValueChange} handler
  */
-Aria.Slider.prototype.setCallbackValueChange = function(handler) {
+Aria.Slider.prototype.setCallbackValueChange = function (handler) {
 	this.callbackValueChange = handler;
 	handler(this.valueNow);
 };
@@ -331,7 +331,7 @@ Aria.Slider.prototype.moveSliderTo = function (value) {
 
 	this.domThumb.setAttribute('aria-valuenow', this.valueNow);
 
-	var pos = ((this.valueNow - this.valueMin) * this.domRail.clientWidth) / (this.valueMax - this.valueMin) - (this.domThumb.clientWidth / 2) ;
+	var pos = ((this.valueNow - this.valueMin) * this.domRail.clientWidth) / (this.valueMax - this.valueMin) - (this.domThumb.clientWidth / 2);
 	this.domThumb.style.left = Math.round(pos) + 'px';
 
 	// trigger callback
@@ -367,34 +367,34 @@ Aria.Slider.prototype.handleKeyDown = function (event) {
 	var key = event.which || event.keyCode;
 
 	switch (key) {
-		case Aria.KeyCode.LEFT:
-		case Aria.KeyCode.DOWN:
-			this.moveSliderTo(this.valueNow - 1);
-			break;
+	case Aria.KeyCode.LEFT:
+	case Aria.KeyCode.DOWN:
+		this.moveSliderTo(this.valueNow - 1);
+		break;
 
-		case Aria.KeyCode.RIGHT:
-		case Aria.KeyCode.UP:
-			this.moveSliderTo(this.valueNow + 1);
-			break;
+	case Aria.KeyCode.RIGHT:
+	case Aria.KeyCode.UP:
+		this.moveSliderTo(this.valueNow + 1);
+		break;
 
-		case Aria.KeyCode.PAGE_DOWN:
-			this.moveSliderTo(this.valueNow - 10);
-			break;
+	case Aria.KeyCode.PAGE_DOWN:
+		this.moveSliderTo(this.valueNow - 10);
+		break;
 
-		case Aria.KeyCode.PAGE_UP:
-			this.moveSliderTo(this.valueNow + 10);
-			break;
+	case Aria.KeyCode.PAGE_UP:
+		this.moveSliderTo(this.valueNow + 10);
+		break;
 
-		case Aria.KeyCode.HOME:
-			this.moveSliderTo(this.valueMin);
-			break;
+	case Aria.KeyCode.HOME:
+		this.moveSliderTo(this.valueMin);
+		break;
 
-		case Aria.KeyCode.END:
-			this.moveSliderTo(this.valueMax);
-			break;
+	case Aria.KeyCode.END:
+		this.moveSliderTo(this.valueMax);
+		break;
 
-		default:
-			return;
+	default:
+		return;
 	}
 
 	event.preventDefault();
@@ -411,17 +411,17 @@ Aria.Slider.prototype.handleKeyUp = function (event) {
 	var key = event.which || event.keyCode;
 
 	switch (key) {
-		case Aria.KeyCode.LEFT:
-		case Aria.KeyCode.DOWN:
-		case Aria.KeyCode.RIGHT:
-		case Aria.KeyCode.UP:
-		case Aria.KeyCode.PAGE_DOWN:
-		case Aria.KeyCode.PAGE_UP:
-		case Aria.KeyCode.HOME:
-		case Aria.KeyCode.END:
-			break;
-		default:
-			return;
+	case Aria.KeyCode.LEFT:
+	case Aria.KeyCode.DOWN:
+	case Aria.KeyCode.RIGHT:
+	case Aria.KeyCode.UP:
+	case Aria.KeyCode.PAGE_DOWN:
+	case Aria.KeyCode.PAGE_UP:
+	case Aria.KeyCode.HOME:
+	case Aria.KeyCode.END:
+		break;
+	default:
+		return;
 	}
 
 	event.preventDefault();
@@ -603,13 +603,13 @@ Aria.ListboxButton.prototype.checkShow = function (event) {
 	var key = event.which || event.keyCode;
 
 	switch (key) {
-		case Aria.KeyCode.RETURN:
-		case Aria.KeyCode.UP:
-		case Aria.KeyCode.DOWN:
-			this.showListbox();
-			break;
-		default:
-			return;
+	case Aria.KeyCode.RETURN:
+	case Aria.KeyCode.UP:
+	case Aria.KeyCode.DOWN:
+		this.showListbox();
+		break;
+	default:
+		return;
 	}
 
 	event.preventDefault();
@@ -625,12 +625,12 @@ Aria.ListboxButton.prototype.checkHide = function (event) {
 	var key = event.which || event.keyCode;
 
 	switch (key) {
-		case Aria.KeyCode.RETURN:
-		case Aria.KeyCode.ESC:
-			this.hideListbox();
-			break;
-		default:
-			return;
+	case Aria.KeyCode.RETURN:
+	case Aria.KeyCode.ESC:
+		this.hideListbox();
+		break;
+	default:
+		return;
 	}
 
 	event.preventDefault();
@@ -839,39 +839,39 @@ Aria.Listbox.prototype.handleKeyDown = function (event) {
 		return;
 
 	switch (key) {
-		case Aria.KeyCode.PAGE_UP:
-		case Aria.KeyCode.PAGE_DOWN:
-			break;
-		case Aria.KeyCode.UP:
-		case Aria.KeyCode.DOWN:
-			if (key === Aria.KeyCode.UP) {
-				nextItem = nextItem.previousElementSibling;
-			} else {
-				nextItem = nextItem.nextElementSibling;
-			}
+	case Aria.KeyCode.PAGE_UP:
+	case Aria.KeyCode.PAGE_DOWN:
+		break;
+	case Aria.KeyCode.UP:
+	case Aria.KeyCode.DOWN:
+		if (key === Aria.KeyCode.UP) {
+			nextItem = nextItem.previousElementSibling;
+		} else {
+			nextItem = nextItem.nextElementSibling;
+		}
 
-			if (nextItem)
-				this.focusItem(nextItem);
+		if (nextItem)
+			this.focusItem(nextItem);
+		break;
+	case Aria.KeyCode.HOME:
+		this.focusFirstItem();
+		break;
+	case Aria.KeyCode.END:
+		this.focusLastItem();
+		break;
+	case Aria.KeyCode.SPACE:
+		break;
+	case Aria.KeyCode.BACKSPACE:
+	case Aria.KeyCode.DELETE:
+	case Aria.KeyCode.RETURN:
+		break;
+	default:
+		var itemToFocus = this.findItemToFocus(key);
+		if (itemToFocus) {
+			this.focusItem(itemToFocus);
 			break;
-		case Aria.KeyCode.HOME:
-			this.focusFirstItem();
-			break;
-		case Aria.KeyCode.END:
-			this.focusLastItem();
-			break;
-		case Aria.KeyCode.SPACE:
-			break;
-		case Aria.KeyCode.BACKSPACE:
-		case Aria.KeyCode.DELETE:
-		case Aria.KeyCode.RETURN:
-			break;
-		default:
-			var itemToFocus = this.findItemToFocus(key);
-			if (itemToFocus) {
-				this.focusItem(itemToFocus);
-				break;
-			}
-			return;
+		}
+		return;
 	}
 
 	event.preventDefault();
@@ -887,25 +887,25 @@ Aria.Listbox.prototype.handleKeyUp = function (event) {
 	var key = event.which || event.keyCode;
 
 	switch (key) {
-		case Aria.KeyCode.PAGE_UP:
-		case Aria.KeyCode.PAGE_DOWN:
-		case Aria.KeyCode.UP:
-		case Aria.KeyCode.DOWN:
-		case Aria.KeyCode.HOME:
-		case Aria.KeyCode.END:
-		case Aria.KeyCode.SPACE:
-		case Aria.KeyCode.BACKSPACE:
-		case Aria.KeyCode.DELETE:
-		case Aria.KeyCode.RETURN:
-			// catch these keys so they do not change focus to other controls and closes the listbox
+	case Aria.KeyCode.PAGE_UP:
+	case Aria.KeyCode.PAGE_DOWN:
+	case Aria.KeyCode.UP:
+	case Aria.KeyCode.DOWN:
+	case Aria.KeyCode.HOME:
+	case Aria.KeyCode.END:
+	case Aria.KeyCode.SPACE:
+	case Aria.KeyCode.BACKSPACE:
+	case Aria.KeyCode.DELETE:
+	case Aria.KeyCode.RETURN:
+		// catch these keys so they do not change focus to other controls and closes the listbox
+		break;
+	default:
+		var itemToFocus = this.findItemToFocus(key);
+		if (itemToFocus) {
+			this.focusItem(itemToFocus);
 			break;
-		default:
-			var itemToFocus = this.findItemToFocus(key);
-			if (itemToFocus) {
-				this.focusItem(itemToFocus);
-				break;
-			}
-			return;
+		}
+		return;
 	}
 
 	event.preventDefault();
@@ -963,7 +963,7 @@ Aria.RadioButton = function (domButton, radioGroup) {
 /**
  * Button down gesture
  */
-Aria.RadioButton.prototype.buttonDown = function() {
+Aria.RadioButton.prototype.buttonDown = function () {
 	// catch keyboard repeats
 	if (this.down)
 		return;
@@ -976,7 +976,7 @@ Aria.RadioButton.prototype.buttonDown = function() {
 /**
  *  Button up gesture
  */
-Aria.RadioButton.prototype.buttonUp = function() {
+Aria.RadioButton.prototype.buttonUp = function () {
 	this.down = false;
 	this.domButton.classList.remove('active');
 };
@@ -1005,28 +1005,28 @@ Aria.RadioButton.prototype.handleBlur = function (event) {
  *
  * @param {KeyboardEvent} event
  */
-Aria.RadioButton.prototype.handleKeyDown = function(event) {
+Aria.RadioButton.prototype.handleKeyDown = function (event) {
 	var key = event.which || event.keyCode;
 
 	switch (key) {
-		case Aria.KeyCode.SPACE:
-		case Aria.KeyCode.RETURN:
-			this.buttonDown();
-			break;
-		case Aria.KeyCode.UP:
-			this.radioGroup.setCheckedToPreviousItem(this);
-			break;
-		case Aria.KeyCode.DOWN:
-			this.radioGroup.setCheckedToNextItem(this);
-			break;
-		case Aria.KeyCode.LEFT:
-			this.radioGroup.setCheckedToPreviousItem(this);
-			break;
-		case Aria.KeyCode.RIGHT:
-			this.radioGroup.setCheckedToNextItem(this);
-			break;
-		default:
-			return;
+	case Aria.KeyCode.SPACE:
+	case Aria.KeyCode.RETURN:
+		this.buttonDown();
+		break;
+	case Aria.KeyCode.UP:
+		this.radioGroup.setCheckedToPreviousItem(this);
+		break;
+	case Aria.KeyCode.DOWN:
+		this.radioGroup.setCheckedToNextItem(this);
+		break;
+	case Aria.KeyCode.LEFT:
+		this.radioGroup.setCheckedToPreviousItem(this);
+		break;
+	case Aria.KeyCode.RIGHT:
+		this.radioGroup.setCheckedToNextItem(this);
+		break;
+	default:
+		return;
 	}
 
 	event.stopPropagation();
@@ -1038,21 +1038,21 @@ Aria.RadioButton.prototype.handleKeyDown = function(event) {
  *
  * @param {KeyboardEvent} event
  */
-Aria.RadioButton.prototype.handleKeyUp = function(event) {
+Aria.RadioButton.prototype.handleKeyUp = function (event) {
 	var key = event.which || event.keyCode;
 
 	switch (key) {
-		case Aria.KeyCode.SPACE:
-		case Aria.KeyCode.RETURN:
-			this.buttonUp();
-			break;
-		case Aria.KeyCode.UP:
-		case Aria.KeyCode.DOWN:
-		case Aria.KeyCode.LEFT:
-		case Aria.KeyCode.RIGHT:
-			break;
-		default:
-			return;
+	case Aria.KeyCode.SPACE:
+	case Aria.KeyCode.RETURN:
+		this.buttonUp();
+		break;
+	case Aria.KeyCode.UP:
+	case Aria.KeyCode.DOWN:
+	case Aria.KeyCode.LEFT:
+	case Aria.KeyCode.RIGHT:
+		break;
+	default:
+		return;
 	}
 
 	event.stopPropagation();
@@ -1064,7 +1064,7 @@ Aria.RadioButton.prototype.handleKeyUp = function(event) {
  *
  * @param {MouseEvent} event
  */
-Aria.RadioButton.prototype.handleMouseDown = function(event) {
+Aria.RadioButton.prototype.handleMouseDown = function (event) {
 	this.buttonDown();
 
 	event.preventDefault();
@@ -1079,7 +1079,7 @@ Aria.RadioButton.prototype.handleMouseDown = function(event) {
  *
  * @param {MouseEvent} event
  */
-Aria.RadioButton.prototype.handleMouseUp = function(event) {
+Aria.RadioButton.prototype.handleMouseUp = function (event) {
 	this.buttonUp();
 
 	event.preventDefault();
@@ -1166,7 +1166,7 @@ Aria.RadioGroup.prototype.setCallbackFocusChange = function (focusChangeHandler)
  *
  * @param {Aria.RadioButton} currentItem
  */
-Aria.RadioGroup.prototype.setChecked  = function (currentItem) {
+Aria.RadioGroup.prototype.setChecked = function (currentItem) {
 	for (var i = 0; i < this.radioButtons.length; i++) {
 		var rb = this.radioButtons[i];
 		if (rb !== currentItem) {
