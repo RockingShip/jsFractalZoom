@@ -56,12 +56,14 @@
 			left: 1em;
 			right: 1em;
 			bottom: auto;
+			overflow: hidden;
 		}
 
 		#top h1 {
 			margin: 0;
 			padding: 0;
 			text-align: center;
+			font-size: 1.5em;
 		}
 
 		#top a {
@@ -172,7 +174,7 @@
 				[-0.923805354837750, -0.2917629932645836],
 				[-0.883161689795792, +0.2345812238688531]];
 
-			const xy = initialXY[Math.round(Math.random() * initialXY.length)];
+			const xy = initialXY[Math.round(Math.random() * 1e6) % initialXY.length];
 
 			// set begin situation. Don't reset angle
 			initialX = xy[0];
@@ -207,7 +209,37 @@
 			 * @param {int}    pixelHeight - Storage Heignt (pixels)
 			 */
 			onResize: (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
+
+				// set status line
 				domWxH.innerHTML = "[" + viewWidth + "x" + viewHeight + "]";
+
+				// `top` box is 5em high, and takes 10% of screen height
+				// zoomer is 100% wide, 100% high and a 1em border
+				let numLines = 5;
+				let lineHeight;
+
+				if (viewWidth > viewHeight) {
+					// landscape, topbox is 1/10th total available height and contains 5 lines
+					lineHeight = viewHeight / 10 / numLines;
+
+					// shrink font if current size would exceed 15:1 aspect ratio
+					if (lineHeight > viewWidth / 15 / numLines)
+						lineHeight = viewWidth / 15 / numLines;
+				} else {
+					// portrait
+					// set lineHeight that it spans full width
+					lineHeight = viewWidth / 15 / numLines;
+
+					// shrink if exceeds 1/10th available height
+					if (lineHeight > viewHeight / 10 / numLines)
+						lineHeight = viewHeight / 10 / numLines;
+				}
+
+				// assume fontSize = lineheight / 1.2
+				let fontSize = lineHeight / 1.2;
+
+				// set fontsize (em)
+				document.body.style.fontSize = fontSize + "px";
 			},
 
 			/**
