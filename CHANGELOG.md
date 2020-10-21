@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-21 02:51:31 Additional colour palette.
 2020-10-20 22:45:42 Better use of types arrays.
 2020-10-20 22:38:12 Added `onInitFrame()` and `onUpdatePixel()`.
 2020-10-17 21:21:01 Added `enableAngle`.

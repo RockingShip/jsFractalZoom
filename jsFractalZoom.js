@@ -387,6 +387,28 @@ function Palette() {
 		this.mksmooth(nsegments, segmentsize, R, G, B);
 	};
 
+	this.randomize_segments4 = function() {
+
+		let rcycle, gcycle, bcycle;
+		do {
+			rcycle = Math.random() * 128 + 8;
+			gcycle = Math.random() * 128 + 8;
+			bcycle = Math.random() * 128 + 8;
+			console.log(rcycle, gcycle, bcycle);
+		} while (rcycle * gcycle * bcycle >= 65535);
+
+		for (let i = 0; i < 65536; i++) {
+			this.palette[i] =
+				Math.round(128.0 + 127 * Math.sin(Math.PI * i / rcycle)) << 0 | /* Red */
+				Math.round(128.0 + 127 * Math.sin(Math.PI * i / gcycle)) << 8 | /* Green */
+				Math.round(128.0 + 127 * Math.sin(Math.PI * i / bcycle)) << 16 | /* Blue */
+				255 << 24; /* Alpha */
+		}
+
+		// set transparent. Don't forget to set the canvas background. (optional)
+		this.palette[65535] = 0x0000000; // Alpha=0 (transparent)
+	}
+
 	this.mkrandom = function () {
 		// 85 = 255 / 3
 		let segmentsize, nsegments;
@@ -403,7 +425,7 @@ function Palette() {
 		if (segmentsize > 85)
 			segmentsize = 85;
 
-		switch (random(6)) {
+		switch (random(7)) {
 			case 0:
 				segmentsize = Math.floor(segmentsize / 2) * 2;
 				nsegments = Math.floor(256 / segmentsize);
@@ -427,6 +449,9 @@ function Palette() {
 				break;
 			case 5:
 				this.randomize_segments3(whitemode, Config.depthNow, 1);
+				break;
+			case 6:
+				this.randomize_segments4(whitemode);
 				break;
 		}
 	};
