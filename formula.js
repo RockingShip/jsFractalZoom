@@ -207,8 +207,11 @@ function Formula() {
 
 			iter *= 4;
 
-			if (iter <= maxIter && Config.maxIter < iter + 100)
-				Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
+			if (iter >= maxIter)
+				return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+			else if (Config.maxIter < iter + Config.maxIterBump)
+				Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
+
 
 			if (rp3 + ip3 >= 4)
 				return Formula.outcolour ? Formula.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
@@ -287,8 +290,10 @@ function Formula() {
 
 		iter *= 4;
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
+		if (iter >= maxIter)
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
 
 		if (rp3 + ip3 >= 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
@@ -349,8 +354,10 @@ function Formula() {
 
 		iter *= 4;
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
+		if (iter >= maxIter)
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
 
 		if (rp3 + ip3 >= 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
@@ -415,8 +422,10 @@ function Formula() {
 
 		iter *= 4;
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
+		if (iter >= maxIter)
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
 
 		if (rp3 + ip3 >= 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
@@ -477,8 +486,10 @@ function Formula() {
 
 		iter *= 4;
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
+		if (iter >= maxIter)
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
 
 		if (rp3 + ip3 >= 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
@@ -531,8 +542,10 @@ function Formula() {
 
 		iter *= 4;
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
+		if (iter >= maxIter)
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
 
 		if (zpr3 * zpr3 + zpi3 * zpi3 >= 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
@@ -570,13 +583,12 @@ function Formula() {
 			n = zre1 * zre1 + zim1 * zim1;
 		}
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
-
-		if (iter <= maxIter)
-			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
-		else
+		if (iter >= maxIter)
 			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
+
+		return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 	};
 
 	Formula.barnsley1_calc = function (zre, zim, pre, pim) {
@@ -592,13 +604,12 @@ function Formula() {
 			ip = zim * zim;
 		}
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
-
-		if (iter <= maxIter)
-			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
-		else
+		if (iter >= maxIter)
 			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
+
+		return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 	};
 
 	Formula.barnsley2_calc = function (zre, zim, pre, pim) {
@@ -622,13 +633,12 @@ function Formula() {
 			}
 		}
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
-
-		if (iter <= maxIter)
-			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
-		else
+		if (iter >= maxIter)
 			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
+
+		return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 	};
 
 	Formula.phoenix_calc = function (zre, zim, pre, pim) {
@@ -648,8 +658,8 @@ function Formula() {
 
 		iter *= 4;
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
+		if (iter <= maxIter && Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
 
 		if (rp3 + ip3 >= 4)
 			return Formula.outcolour ? Formula.calc_outcolour(zre3, zim3, pre, pim, iter) : iter;
@@ -688,13 +698,12 @@ function Formula() {
 			var t = rp + ip;
 		} while (t < 100 * 100 && t > zre * 2 - 0.99 && ++iter <= maxIter);
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
-
-		if (iter <= maxIter)
-			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
-		else
+		if (iter >= maxIter)
 			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
+
+		return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;
 	};
 
 	Formula.magnet2_calc = function (zre, zim, pre, pim) {
@@ -732,8 +741,10 @@ function Formula() {
 
 		} while (rp + ip < 100 * 100 && rp + ip > zre * 2 - 0.99 && ++iter <= maxIter);
 
-		if (iter <= maxIter && Config.maxIter < iter + 100)
-			Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
+		if (iter >= maxIter)
+			return Formula.incolour ? Formula.calc_incolour(zre, zim, pre, pim) : 65535;
+		else if (Config.maxIter < iter + Config.maxIterBump)
+			Config.maxIter += Math.round((iter + Config.maxIterBump - Config.maxIter) * Config.maxIterCoef); // increase maxIter with low-pass filter
 
 		if (iter <= maxIter)
 			return Formula.outcolour ? Formula.calc_outcolour(zre, zim, pre, pim, iter) : iter;

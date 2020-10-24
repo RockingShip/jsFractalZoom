@@ -120,6 +120,10 @@ function Config() {
 	Config.rcos = 1;
 	/** @member {number} - max Iteration for calculations */
 	Config.maxIter = 0;
+	/** @member {number} - Auto adapting low-pass coefficient */
+	Config.maxIterCoef = 0.01;
+	/** @member {number} - Auto adapting AllocateAhead */
+	Config.maxIterBump = 100;
 
 
 	/** @member {number} - current palette offset - timer updated */
@@ -639,8 +643,12 @@ function GUI(config) {
 		 * @param {float}    y       - Y value
 		 */
 		onUpdatePixel: (zoomer, frame, x, y) => {
-			// Formula.calculate() handles adaptive maxIter
-
+			/*
+			 * @date 2020-10-24 23:21:24
+			 * `Formula.calculate()` doesn't return `iter` when in/out colour active.
+			 * It therefor handles adaptive maxIter just before coulouring.
+			 * Disable the next code:
+			 */
 			// if (Config.maxIter < iter + 100 && iter !== 65535)
 			// 	Config.maxIter += Math.round((iter + 100 - Config.maxIter) * 0.01); // increase maxIter with low-pass filter
 
