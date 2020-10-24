@@ -389,18 +389,29 @@ function Palette() {
 			rcycle = Math.random() * 128 + 8;
 			gcycle = Math.random() * 128 + 8;
 			bcycle = Math.random() * 128 + 8;
-		} while (rcycle * gcycle * bcycle >= 65535);
+			Config.paletteSize = rcycle * gcycle * bcycle;
+		} while (Config.paletteSize >= 65535);
 
-		for (let i = 0; i < 65536; i++) {
+		for (let i = 0; i < Config.paletteSize; i++) {
 			this.palette[i] =
 				Math.round(128.0 + 127 * Math.sin(Math.PI * i / rcycle)) << 0 | /* Red */
 				Math.round(128.0 + 127 * Math.sin(Math.PI * i / gcycle)) << 8 | /* Green */
 				Math.round(128.0 + 127 * Math.sin(Math.PI * i / bcycle)) << 16 | /* Blue */
 				255 << 24; /* Alpha */
 		}
+	}
 
-		// set transparent. Don't forget to set the canvas background. (optional)
-		this.palette[65535] = 0x0000000; // Alpha=0 (transparent)
+	this.randomize_segments5 = function (whitemode) {
+
+		Config.paletteSize = 1000;
+		for (let i = 0; i < 1000; i++) {
+			const g = whitemode ? 255 - Math.round(i * 255 / 1000) : Math.round(i * 255 / 1000);
+			this.palette[i] =
+				g << 0 | /* Red */
+				g << 8 | /* Green */
+				g << 16 | /* Blue */
+				255 << 24; /* Alpha */
+		}
 	}
 
 	this.mkrandom = function () {
@@ -419,7 +430,7 @@ function Palette() {
 		if (segmentsize > 85)
 			segmentsize = 85;
 
-		switch (random(7)) {
+		switch (random(8)) {
 		case 0:
 			segmentsize = Math.floor(segmentsize / 2) * 2;
 			nsegments = Math.floor(256 / segmentsize);
@@ -445,7 +456,10 @@ function Palette() {
 			this.randomize_segments3(whitemode, Config.maxIter, 1);
 			break;
 		case 6:
-			this.randomize_segments4(whitemode);
+			this.randomize_segments4();
+			break;
+		case 7:
+			this.randomize_segments5(whitemode);
 			break;
 		}
 	};
