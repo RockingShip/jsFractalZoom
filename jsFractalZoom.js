@@ -143,6 +143,8 @@ function Config() {
 	Config.autopilotY = 0;
 	/** @member {float} - Dampen sharp autopilot direction changed */
 	Config.autopilotCoef = 0.3;
+	/** @member {number} - HighestIter/LowestIter contrast threshold */
+	Config.autopilotContrast = 5;
 	/** @member {number} - movement gesture - autopilot updated*/
 	Config.autopilotButtons = 0;
 }
@@ -1290,6 +1292,27 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 	// coordinate within pixel data pointed to by mouse
 	let {i: apI, j: apJ} = viewport.coordDXYtoPixelIJ(Config.autopilotX - viewport.centerX, Config.autopilotY - viewport.centerY);
 
+	/*
+	 * @date 2020-10-24 23:59:53
+	 * Old code only focused to in/out set horizons.
+	 * Add moving to areas of high contrast.
+	 */
+
+	/** @var {Frame}
+	    @description Bounding box center location */
+	let bestI= 0;
+
+	/** @var {Frame}
+	    @description Bounding box center location */
+	let bestJ = 0;
+
+	/** @var {Frame}
+	    @description Bounding box contains the highest `iter` */
+	let bestIterHigh = 0; // highest iter found within bounding box
+
+	/** @var {Frame}
+	    @description Overall lowest iter found. Start with corner pixel */
+	let iterLow = 1 + Math.min(pixels[0], pixels[pixelWidth - 1], pixels[(pixelHeight - 1) * pixelWidth], pixels[pixelHeight * pixelWidth - 1]);
 
 	// outside center rectangle, adjust autopilot heading
 	for (let k = 0; k < 450; k++) {
@@ -1302,15 +1325,29 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 			continue;
 
 		let cnt = 0;
-		for (let j = testJ - borderPixelRadius; j <= testJ + borderPixelRadius; j++)
-			for (let i = testI - borderPixelRadius; i <= testI + borderPixelRadius; i++)
-				if (pixels[j * pixelWidth + i] === 65535)
+		for (let j = testJ - borderPixelRadius; j <= testJ + borderPixelRadius; j++) {
+			for (let i = testI - borderPixelRadius; i <= testI + borderPixelRadius; i++) {
+				const iter = pixels[j * pixelWidth + i]
+				if (iter === 65535) {
 					cnt++;
+				} else if (iterLow > iter) {
+					iterLow = iter;
+				} else if (bestIterHigh < iter) {
+					bestI = testI;
+					bestJ = testJ;
+					bestIterHigh = iter;
+				}
+			}
+		}
 
+		// go for horizon first
 		if (cnt >= minCnt && cnt <= maxCnt) {
 			let {dx, dy} = viewport.pixelIJtoCoordDXY(testI, testJ);
+
+			// dampen sharp autopilot direction changes
 			Config.autopilotX += (Config.centerX + dx - Config.autopilotX) * Config.autopilotCoef;
 			Config.autopilotY += (Config.centerY + dy - Config.autopilotY) * Config.autopilotCoef;
+
 			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
 			// get screen location
@@ -1324,6 +1361,29 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 			window.gui.domAutopilot.style.border = '4px solid green';
 			return true;
 		}
+	}
+
+	// go for high contrast
+	// Something "hangs ". This needs extra working on.
+	if (0 && bestIterHigh > iterLow * Config.autopilotContrast) {
+		let {dx, dy} = viewport.pixelIJtoCoordDXY(bestI, bestJ);
+
+		// dampen sharp autopilot direction changes
+		Config.autopilotX += (Config.centerX + dx - Config.autopilotX) * Config.autopilotCoef;
+		Config.autopilotY += (Config.centerY + dy - Config.autopilotY) * Config.autopilotCoef;
+
+		Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
+
+		// get screen location
+		let {u, v} = viewport.pixelIJtoScreenUV(bestI, bestJ, Config.angle);
+
+		// and position autopilot mark
+		window.gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
+		window.gui.domAutopilot.style.left = (u - borderPixelRadius) + "px";
+		window.gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
+		window.gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
+		window.gui.domAutopilot.style.border = '4px solid green';
+		return true;
 	}
 
 	Config.autopilotButtons = 0;
