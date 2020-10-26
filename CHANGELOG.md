@@ -6,7 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-`Zoomer`, Isolate and extract core logic so it can be used within other projects
+## [0.9.0] 2020-10-26 22:32:53
+
+`Zoomer`, Isolate and extract core logic so it can be used within other projects.
+
+- Auto-adjusting `maxIter`.
+- Extra palette themes.
+- Different zoom speed for autopilot and manual.
+- Faster and more responsive.
+- Throttles when overloaded.
+- Redesigned statistics.
 
 ```
 2020-10-26 21:22:55 Throttling worker overloading by skipping frames and lowering FPS.
@@ -19,7 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 2020-10-21 16:48:04 Self adapting fontsize `viewer`.
 2020-10-21 16:48:04 Added lightweight `viewer`.
 2020-10-21 14:36:02 Reformat. No code change.
-2020-10-21 02:58:09 Added adapting maxiter.
+2020-10-21 02:58:09 Added adapting maxIter.
 2020-10-21 02:51:31 Additional colour palette.
 2020-10-20 22:45:42 Better use of types arrays.
 2020-10-20 22:38:12 Added `onInitFrame()` and `onUpdatePixel()`.
@@ -27,7 +36,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 2020-10-17 20:11:24 Split diameter into pixelWidth/pixelHeight.
 2020-10-17 13:36:41 Fixed palette corruption.
 2020-10-17 08:07:20 Fixed zoomspeed with auto/manual switch.
-2020-10-16 23:42:00 Different zoom speed for atuo and manual.
+2020-10-16 23:42:00 Different zoom speed for auto and manual.
 2020-10-16 21:51:55 Fixed and tuned timing issues.
 2020-10-15 22:06:03 Upgraded workflow of `mainloop`.
 2020-10-15 12:13:59 Reordered states in `mainloop`.
@@ -50,7 +59,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 2020-10-12 09:27:04 Isolate resource handling.
 2020-10-12 08:25:33 Renaming and refactoring.
 2020-10-12 07:38:22 Canvas size fix. Initial random palette.
-2020-10-12 07:37:14 Forking branch `zoomer`. Isolate and extract core logic so it can be used within other projects
 ```
 
 ## [0.8.0] 2018-03-06
@@ -132,7 +140,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial creation
 
-[Unreleased]: https://github.com/xyzzy/jsFractalZoom/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/xyzzy/jsFractalZoom/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.5.0...v0.6.0

@@ -51,11 +51,6 @@ body {
 	right: 0;
 }
 
-#idStatusTitle {
-	font-size: small;
-	vertical-align: super;
-}
-
 #idAutopilot {
 	position: absolute;
 }
