@@ -316,10 +316,21 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	    @description Distance between center and viewport corner */
 	this.radius = 0;
 
-	/** @member {number} - distance between center and horizontal viewport edge (derived from this.radius) */
-	this.radiusX = 0;
-	/** @member {number} - distance between center and vertical viewport edge  (derived from this.radius) */
-	this.radiusY = 0;
+	/** @member {float}
+	    @description radius of horiontal view edges */
+	this.radiusViewHor = 0;
+
+	/** @member {float}
+	    @description radius of vertical view edges */
+	this.radiusViewVer = 0;
+
+	/** @member {float}
+	    @description radius of horiontal pixel edges */
+	this.radiusPixelHor = 0;
+
+	/** @member {float}
+	    @description radius of vertical pixel edges */
+	this.radiusPixelVer = 0;
 
 	/*
 	 * Rulers
@@ -421,27 +432,65 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	 * @param {float}    centerX		- Center x of view
 	 * @param {float}    centerY		- Center y or view
 	 * @param {float}    radius		- Radius of view
-	 * @param {Viewport} previousViewport	- Previous frame to inherit pixels from
+	 * @param {Viewport} [previousViewport]	- Previous frame to inherit pixels from
 	 */
 	this.setPosition = (frame, centerX, centerY, radius, previousViewport) => {
 
+		// deep link into frame
 		this.frame = frame;
 		this.pixels = frame.pixels;
+
+		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, viewWidth, viewHeight, pixelWidth, pixelHeight, pixels} = this;
 
 		this.centerX = centerX;
 		this.centerY = centerY;
 		this.radius = radius;
-		this.radiusX = radius * this.viewWidth / this.pixelWidth;
-		this.radiusY = radius * this.viewHeight / this.pixelHeight;
 
-		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixelWidth, pixelHeight} = this;
+		// Determine the radius of the borders
+		// NOTE: this determines the aspect ration
+		if (this.viewWidth > this.viewHeight) {
+			// landscape
+			this.radiusViewVer = radius;
+			this.radiusViewHor = radius * viewWidth / viewHeight;
+			this.radiusPixelVer = radius * pixelHeight / viewHeight;
+			this.radiusPixelHor = radius * pixelWidth / viewHeight;
+		} else {
+			// portrait
+			this.radiusViewHor = radius;
+			this.radiusViewVer = radius * viewHeight / viewWidth;
+			this.radiusPixelHor = radius * pixelWidth / viewWidth;
+			this.radiusPixelVer = radius * pixelHeight / viewWidth;
+		}
+
+		const pixelMinX = centerX - this.radiusPixelHor;
+		const pixelMaxX = centerX + this.radiusPixelHor;
+		const pixelMinY = centerY - this.radiusPixelVer;
+		const pixelMaxY = centerY + this.radiusPixelVer;
+
+		if (!previousViewport) {
+			// simple linear fill of rulers
+			for (let i = 0; i < xCoord.length; i++) {
+				xNearest[i] = xCoord[i] = i * (pixelMaxX - pixelMinX) / xCoord.length + pixelMinX;
+				xError[i] = 0;
+				xFrom[i] = -1;
+			}
+			for (let j = 0; j < yCoord.length; j++) {
+				yNearest[i] = yCoord[i] = i * (pixelMaxY - pixelMinY) / yCoord.length + pixelMinY;
+				yError[j] = 0;
+				yFrom[j] = -1;
+			}
+
+			return;
+		}
+
+		const {xNearest: oldXnearest, xError: oldXerror, yNearest: oldYnearest, yNearest: oldYerror, pixelWidth: oldPixelWidth, pixelHeight: oldPixelHeight, pixels: oldPixels} = previousViewport;
 
 		// setup new rulers
-		const exactX = this.makeRuler(centerX - radius, centerX + radius, xCoord, xNearest, xError, xFrom, previousViewport.xNearest, previousViewport.xError);
-		const exactY = this.makeRuler(centerY - radius, centerY + radius, yCoord, yNearest, yError, yFrom, previousViewport.yNearest, previousViewport.yError);
+		const exactX = this.makeRuler(centerX - this.radiusPixelHor, centerX + this.radiusPixelHor, xCoord, xNearest, xError, xFrom, previousViewport.xNearest, previousViewport.xError);
+		const exactY = this.makeRuler(centerY - this.radiusPixelVer, centerY + this.radiusPixelVer, yCoord, yNearest, yError, yFrom, previousViewport.yNearest, previousViewport.yError);
 
 		frame.cntPixels += exactX * exactY;
-		frame.cntHLines += exactX; // todo: might need to swap
+		frame.cntHLines += exactX; // todo: might need to swap XY
 		frame.cntVLines += exactY;
 
 		/**
@@ -453,16 +502,12 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		/*
 		 * copy/inherit pixels TODO: check oldPixelHeight
 		 */
-		const oldPixelWidth = previousViewport.pixelWidth;
-		const newPixels = this.pixels;
-		const oldPixels = previousViewport.pixels;
-
 		let ji = 0;
 
 		// first line
 		let k = yFrom[0] * oldPixelWidth;
 		for (let i = 0; i < pixelWidth; i++)
-			newPixels[ji++] = oldPixels[k + xFrom[i]];
+			pixels[ji++] = oldPixels[k + xFrom[i]];
 
 		// followups
 		for (let j = 1; j < pixelHeight; j++) {
@@ -471,15 +516,15 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 				const k = ji - pixelWidth;
 
 				// for (let i = 0; i < pixelWidth; i++)
-				//         newPixels[ji++] = newPixels[k++];
-				newPixels.copyWithin(ji, k, k + pixelWidth);
+				//         pixels[ji++] = pixels[k++];
+				pixels.copyWithin(ji, k, k + pixelWidth);
 				ji += pixelWidth;
 
 			} else {
 				// extract line from previous frame
 				let k = yFrom[j] * oldPixelWidth;
 				for (let i = 0; i < pixelWidth; i++)
-					newPixels[ji++] = oldPixels[k + xFrom[i]];
+					pixels[ji++] = oldPixels[k + xFrom[i]];
 			}
 		}
 
@@ -663,8 +708,15 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		this.centerX = centerX;
 		this.centerY = centerY;
 		this.radius = radius;
-		this.radiusX = radius * viewWidth / pixelWidth;
-		this.radiusY = radius * viewHeight / pixelHeight;
+
+		// Determine the radius of the viewport
+		if (this.viewWidth > this.viewHeight) {
+			this.radiusHor = radius * this.viewWidth / this.viewHeight;
+			this.radiusVer = radius;
+		} else {
+			this.radiusHor = radius;
+			this.radiusVer = radius * this.viewHeight / this.viewWidth;
+		}
 
 		// NOTE: current attached frame will leak and GC
 		this.frame = zoomer.allocFrame(viewWidth, viewHeight, pixelWidth, pixelHeight, angle);
@@ -690,6 +742,203 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 		// update quality
 		this.frame.quality = 1;
+	};
+
+	/*
+	 * Conversion routines:
+	 * R = rotate
+	 * U = un-rotate
+	 *
+	 *  Pixel -U-> Screen -R-> Coord -U-> Screen -R-> Pixel
+	 *  Pixel ---------------> Coord ---------------> Pixel
+	 */
+
+	/**
+	 * Convert pixel I/J (int) to screen U/V (int) coordinate
+	 *
+	 * @param {int} pixelI
+	 * @param {int} pixelJ
+	 * @param {float} [angle]
+	 * @return {Object} - {u,v}
+	 */
+	this.pixelIJtoScreenUV = (pixelI, pixelJ, angle) => {
+
+		if (!angle) {
+			// fast convert
+			const u = pixelI - ((this.pixelWidth  - this.viewWidth ) >> 1);
+			const v = pixelJ - ((this.pixelHeight - this.viewHeight) >> 1);
+
+			return {u: u, v: v};
+		} else {
+			// move to center
+			let i = pixelI - (this.pixelWidth / 2);
+			let j = pixelJ - (this.pixelHeight / 2);
+
+			// sin/cos for angle
+			const rsin = Math.sin(angle * Math.PI / 180);
+			const rcos = Math.cos(angle * Math.PI / 180);
+
+			// undo rotation
+			const _i = i;
+			i = _i * rcos - j * rsin;
+			j = _i * rsin + j * rcos;
+
+			// scale and shift to screen
+			const u = i + (this.viewWidth / 2);
+			const v = j + (this.viewHeight / 2);
+
+			return {u: Math.round(u), v: Math.round(v)};
+		}
+	};
+
+	/**
+	 * Convert pixel I/J (int) to center relative coordinate dX/dY (float)  coordinate
+	 *
+	 * @param {int} pixelI
+	 * @param {int} pixelJ
+	 * @return {Object} - {dx,dy}
+	 */
+	this.pixelIJtoCoordDXY = (pixelI, pixelJ) => {
+
+		// move to center
+		let i = pixelI - (this.pixelWidth >> 1);
+		let j = pixelJ - (this.pixelHeight >> 1);
+
+		// scale and shift to coord
+		const dx = i * this.radiusViewHor / (this.viewWidth >> 1);
+		const dy = j * this.radiusViewVer / (this.viewHeight >> 1);
+
+		return {dx: dx, dy: dy};
+	};
+
+	/**
+	 * Convert screen U/V (int) to center relative coordinate dX/dY (float)  coordinate
+	 *
+	 * @param {int} screenU
+	 * @param {int} screenV
+	 * @param {float} [angle]
+	 * @return {Object} - {x,y}
+	 */
+	this.screenUVtoCoordDXY = (screenU, screenV, angle) => {
+
+		// move to center
+		let u = screenU - (this.viewWidth  >> 1);
+		let v = screenV - (this.viewHeight >> 1);
+
+		if (angle) {
+			// sin/cos for angle
+			const rsin = Math.sin(angle * Math.PI / 180);
+			const rcos = Math.cos(angle * Math.PI / 180);
+
+			// apply rotation
+			const _u = u;
+			u = v * rsin + _u * rcos;
+			v = v * rcos - _u * rsin;
+		}
+
+		// scale and shift to coord
+		const dx = u * this.radiusViewHor / (this.viewWidth  >> 1);
+		const dy = v * this.radiusViewVer / (this.viewHeight >> 1);
+
+		return {dx: dx, dy: dy};
+	};
+
+	/**
+	 * Convert center relative coordinate dX/dY (float) to screen U/V (int) coordinate
+	 *
+	 * @param {float} coordDX
+	 * @param {float} coordDY
+	 * @param {float} [angle]
+	 * @return {Object} - {u,v}
+	 */
+	this.coordDXYtoScreenUV = (coordDX, coordDY, angle) => {
+
+		// move to center
+		let dx = coordDX;
+		let dy = coordDY;
+
+		if (angle) {
+			// sin/cos for angle
+			const rsin = Math.sin(angle * Math.PI / 180);
+			const rcos = Math.cos(angle * Math.PI / 180);
+
+			/*
+			 * @date 2020-10-23 02:46:46
+			 * The next two instructions are intended to be performed in parallel.
+			 * It ensures that the `x` in the bottom instruction is the original and not the outcome of the top.
+			 */
+			// undo rotation
+			const _dx = dx;
+			dx = _dx * rcos - dy * rsin;
+			dy = _dx * rsin + dy * rcos;
+		}
+
+		// scale and shift to screen
+		const u = dx * (this.viewWidth  >> 1) / this.radiusViewHor + (this.viewWidth  >> 1);
+		const v = dy * (this.viewHeight >> 1) / this.radiusViewVer + (this.viewHeight >> 1);
+
+		return {u: Math.round(u), v: Math.round(v)};
+	};
+
+	/**
+	 * Convert center relative coordinate dX/dY (float) to pixel I/J (int) coordinate
+	 *
+	 * @param {float} coordDX
+	 * @param {float} coordDY
+	 * @return {Object} - {i,j}
+	 */
+	this.coordDXYtoPixelIJ = (coordDX, coordDY) => {
+
+		// move to center
+		let dx = coordDX;
+		let dy = coordDY;
+
+		// scale and shift to pixel
+		const i = dx * (this.viewWidth >> 1) / this.radiusViewHor + (this.pixelWidth >> 1);
+		const j = dy * (this.viewHeight >> 1) / this.radiusViewVer + (this.pixelHeight >> 1);
+
+		return {i: Math.round(i), j: Math.round(j)};
+	};
+
+	/**
+	 * Convert screen U/V (int) to pixel I/J (int) coordinate
+	 *
+	 * @param {int} screenU
+	 * @param {int} screenV
+	 * @param {float} [angle]
+	 * @return {Object} - {i,j}
+	 */
+	this.screenUVtoPixelIJ = (screenU, screenV, angle) => {
+
+		if (!angle) {
+			// fast convert
+			const i = screenU + ((this.pixelWidth - this.viewWidth) >> 1);
+			const j = screenV + ((this.pixelHeight - this.viewHeight) >> 1);
+
+			return {i: i, j: j};
+		} else {
+			// move to center
+			let u = screenU - (this.viewWidth >> 1);
+			let v = screenV - (this.viewHeight >> 1);
+
+			if (angle) {
+				// sin/cos for angle
+				const rsin = Math.sin(angle * Math.PI / 180);
+				const rcos = Math.cos(angle * Math.PI / 180);
+
+				// apply rotation
+				const _u = u;
+				u = v * rsin + _u * rcos;
+				v = v * rcos - _u * rsin;
+
+			}
+
+			// scale and shift to pixel
+			const i = u + (this.pixelWidth >> 1);
+			const j = v + (this.pixelHeight >> 1);
+
+			return {i: Math.round(i), j: Math.round(j)};
+		}
 	};
 }
 

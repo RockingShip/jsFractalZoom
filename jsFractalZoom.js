@@ -114,10 +114,6 @@ function Config() {
 	Config.radius = 0;
 	/** @member {number} - current viewport angle (degrees) - timer updated */
 	Config.angle = 0;
-	/** @member {number} - sin(angle) */
-	Config.rsin = 0;
-	/** @member {number} - cos(angle) */
-	Config.rcos = 1;
 	/** @member {number} - max Iteration for calculations */
 	Config.maxIter = 0;
 	/** @member {number} - Auto adapting low-pass coefficient */
@@ -141,10 +137,12 @@ function Config() {
 	Config.outcolour = "";
 	Config.plane = "";
 
-	/** @member {number} - center X coordinate - autopilot updated */
+	/** @member {float} - center X coordinate - autopilot updated */
 	Config.autopilotX = 0;
-	/** @member {number} - center Y coordinate - autopilot updated*/
+	/** @member {float} - center Y coordinate - autopilot updated */
 	Config.autopilotY = 0;
+	/** @member {float} - Dampen sharp autopilot direction changed */
+	Config.autopilotCoef = 0.3;
 	/** @member {number} - movement gesture - autopilot updated*/
 	Config.autopilotButtons = 0;
 }
@@ -192,9 +190,6 @@ Config.home = function () {
 		Config.centerY = initial.y;
 		Config.radius = initial.r;
 		Config.angle = initial.a;
-		Config.rsin = Math.sin(Config.angle * Math.PI / 180);
-		Config.rcos = Math.cos(Config.angle * Math.PI / 180);
-
 	}
 };
 
@@ -552,20 +547,20 @@ function GUI(config) {
 	this.domAutopilot = "idAutopilot";
 
 	/** @member {number} - viewport mouse X coordinate */
-	this.mouseI = 0;
+	this.mouseU = 0;
 	this.mouseX = 0;
 	/** @member {number} - viewport mouse Y coordinate */
-	this.mouseJ = 0;
+	this.mouseV = 0;
 	this.mouseY = 0;
 	/** @member {number} - viewport mouse button state. OR-ed set of Aria.ButtonCode */
 	this.mouseButtons = 0;
 
 	/** @member {boolean} - fractal coordinate of pointer when button first pressed */
 	this.dragActive = false;
-	/** @member {boolean} - fractal X coordinate of pointer */
-	this.dragActiveX = 0;
-	/** @member {boolean} - fractal Y coordinate of pointer */
-	this.dragActiveY = 0;
+	/** @member {float} - fractal X coordinate of pointer */
+	this.dragCenterX = 0;
+	/** @member {float} - fractal Y coordinate of pointer */
+	this.dragCenterY = 0;
 
 	// per second differences
 	this.lastNow = 0;
@@ -954,32 +949,25 @@ function GUI(config) {
 		/*
 		 * Update viewport angle (before zoom gestures)
 		 */
-		if (Config.rotateSpeedNow) {
+		if (Config.rotateSpeedNow)
 			Config.angle += diffSec * Config.rotateSpeedNow * 360;
-			Config.rsin = Math.sin(Config.angle * Math.PI / 180);
-			Config.rcos = Math.cos(Config.angle * Math.PI / 180);
-		}
 
 		// drag gesture
 		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
 			// need screen coordinates to avoid drifting
-			// relative to viewport center
-			const dx = this.mouseI * currentViewport.radiusX * 2 / currentViewport.viewWidth - currentViewport.radiusX;
-			const dy = this.mouseJ * currentViewport.radiusY * 2 / currentViewport.viewHeight - currentViewport.radiusY;
-			// undo rotation
-			const x = dy * Config.rsin + dx * Config.rcos + Config.centerX;
-			const y = dy * Config.rcos - dx * Config.rsin + Config.centerY;
+			const dispViewport = this.zoomer.previousViewport;
+			const {dx, dy} = dispViewport.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
 
 			if (!this.dragActive) {
 				// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
-				this.dragActiveX = x;
-				this.dragActiveY = y;
+				this.dragCenterX = dispViewport.centerX + dx;
+				this.dragCenterY = dispViewport.centerY + dy;
 				this.dragActive = true;
 			}
 
 			// update x/y but keep radius
-			Config.centerX = Config.centerX - x + this.dragActiveX;
-			Config.centerY = Config.centerY - y + this.dragActiveY;
+			Config.centerX = this.dragCenterX - dx;
+			Config.centerY = this.dragCenterY - dy;
 		} else {
 			this.dragActive = false;
 		}
@@ -998,7 +986,7 @@ function GUI(config) {
 
 		// if anything is changing/moving, disable idling
 		// NOTE: expect for zoomspeed which is handled by the mouseHandler
-		if (Config.autoPilot || Config.rotateSpeedNow || Config.paletteSpeedNow)
+		if (Config.autoPilot || this.mouseButtons || Config.rotateSpeedNow || Config.paletteSpeedNow)
 			this.zoomer.timeLastWake = 0;
 
 	}, this.directionalInterval);
@@ -1173,17 +1161,58 @@ GUI.prototype.handleMouse = function (event) {
 		document.addEventListener("contextmenu", this.handleMouse);
 	}
 
-	this.mouseI = event.pageX - rect.left;
-	this.mouseJ = event.pageY - rect.top;
+	this.mouseU = event.pageX - rect.left;
+	this.mouseV = event.pageY - rect.top;
 
+	/*
+	 * @date 2020-10-26 12:42:18
+	 * Use the viewport angle as that is what you see when clicking. `Config.angle` lags behind.
+	 */
 	const viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
+	let {dx, dy} = viewport.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
 
-	// relative to viewport center
-	const dx = this.mouseI * viewport.radiusX * 2 / viewport.viewWidth - viewport.radiusX;
-	const dy = this.mouseJ * viewport.radiusY * 2 / viewport.viewHeight - viewport.radiusY;
-	// undo rotation
-	this.mouseX = dy * Config.rsin + dx * Config.rcos + Config.centerX;
-	this.mouseY = dy * Config.rcos - dx * Config.rsin + Config.centerY;
+	this.mouseX = Config.centerX + dx;
+	this.mouseY = Config.centerY + dy;
+
+	/*
+	 * Encountered a Hydra bug.
+	 * Keeping test cases here in case its head pops up again
+	 */
+	if (0) {
+
+		let u1 = this.mouseU;
+		let v1 = this.mouseV;
+
+		const {i: i2, j: j2} = viewport.screenUVtoPixelIJ(u1, v1, Config.angle);
+
+		// visually verify pixel is correct
+		frame.palette[65534] = 0xff0000ff;
+		frame.pixels[j2*frame.pixelWidth+i2] = 65534;
+
+		const {u: u3, v: v3} = viewport.pixelIJtoScreenUV(i2, j2, Config.angle);
+		console.log('a', u3-u1, v3-v1);
+
+		let {dx: x4, dy: y4} = viewport.screenUVtoCoordDXY(u3, v3, Config.angle);
+		x4 += Config.centerX;
+		y4 += Config.centerY;
+
+		let {i: i5, j: j5} = viewport.coordDXYtoPixelIJ(x4-Config.centerX, y4-Config.centerY);
+		console.log('b', i5-i2, j5-j2);
+
+		// visually verify pixel is correct
+		frame.palette[65533] = 0xff00ff00;
+		frame.pixels[j5*frame.pixelWidth+i5] = 65533;
+
+		let {dx: x6, dy: y6} = viewport.pixelIJtoCoordDXY(i5, j5);
+		x6 += Config.centerX;
+		y6 += Config.centerY;
+		console.log('c', x6 - x4, y6 - y4);
+
+		let {u : u7, v : v7} = viewport.coordDXYtoScreenUV(x6-Config.centerX,  y6-Config.centerY, Config.angle);
+		console.log('d', u7-u3, v7-v3);
+		console.log('e', u7-u1, v7-v1);
+
+	}
 
 	this.mouseButtons = event.buttons;
 
@@ -1224,7 +1253,7 @@ GUI.prototype.reload = function () {
 	keyViewport.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
 
 	// if nothing moving, enable idling
-	if (!Config.zoomSpeed && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
+	if (!Config.zoomSpeed && !this.mouseButtons && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
 		this.zoomer.timeLastWake = performance.now(); // safe to idle
 
 	// inject into current viewport
@@ -1238,48 +1267,58 @@ GUI.prototype.reload = function () {
  */
 GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixelRadius) {
 
-	const config = window.config;
-	const pixels = viewport.pixels;
+	const {pixelWidth, pixelHeight, viewWidth, viewHeight, pixels} = viewport;
 
 	// use '>>1' as integer '/2'
 
-	// coordinate within pixel data pointed to by mouse
-	// todo: compensate rotation
-	const api = ((Config.autopilotX - Config.centerX) / Config.radius + 1) * viewport.pixelWidth >> 1;
-	const apj = ((Config.autopilotY - Config.centerY) / Config.radius + 1) * viewport.pixelHeight >> 1;
+	// Get viewport bounding box
+	let minI = (pixelWidth - viewWidth) >> 1;
+	let maxI = pixelWidth - minI;
+	let minJ = (pixelHeight - viewHeight) >> 1;
+	let maxJ = pixelHeight - minJ;
 
-	const min = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
-	const max = min * 3;
+	// subtract border
+	minI += borderPixelRadius;
+	maxI -= borderPixelRadius;
+	minJ += borderPixelRadius;
+	maxJ -= borderPixelRadius;
+
+	// `cnt`
+	const minCnt = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
+	const maxCnt = minCnt * 3;
+
+	// coordinate within pixel data pointed to by mouse
+	let {i: apI, j: apJ} = viewport.coordDXYtoPixelIJ(Config.autopilotX - viewport.centerX, Config.autopilotY - viewport.centerY);
 
 
 	// outside center rectangle, adjust autopilot heading
 	for (let k = 0; k < 450; k++) {
-		const i0 = api + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
-		const j0 = apj + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
-		// convert to x/y
-		const x = (i0 / viewport.pixelWidth * 2 - 1) * Config.radius + Config.centerX;
-		const y = (j0 / viewport.pixelHeight * 2 - 1) * Config.radius + Config.centerY;
-		// convert to viewport coords (use '>>1' as integer '/2'
-		const i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + viewport.radiusX) * viewport.viewWidth / viewport.radiusX) >> 1;
-		const j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + viewport.radiusY) * viewport.viewHeight / viewport.radiusY) >> 1;
+		// head to a nearby location
+		const testI = apI + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+		const testJ = apJ + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+
 		// must be visable
-		if (i < borderPixelRadius || j < borderPixelRadius || i >= viewport.viewWidth - borderPixelRadius || j >= viewport.viewHeight - borderPixelRadius)
+		if (testI < minI || testJ < minJ || testI >= maxI || testJ >= maxJ)
 			continue;
 
-		let c = 0;
-		for (let j = j0 - borderPixelRadius; j <= j0 + borderPixelRadius; j++)
-			for (let i = i0 - borderPixelRadius; i <= i0 + borderPixelRadius; i++)
-				if (pixels[j * viewport.pixelWidth + i] === 65535)
-					c++;
-		if (c >= min && c <= max) {
-			Config.autopilotX = x;
-			Config.autopilotY = y;
+		let cnt = 0;
+		for (let j = testJ - borderPixelRadius; j <= testJ + borderPixelRadius; j++)
+			for (let i = testI - borderPixelRadius; i <= testI + borderPixelRadius; i++)
+				if (pixels[j * pixelWidth + i] === 65535)
+					cnt++;
+
+		if (cnt >= minCnt && cnt <= maxCnt) {
+			let {dx, dy} = viewport.pixelIJtoCoordDXY(testI, testJ);
+			Config.autopilotX += (Config.centerX + dx - Config.autopilotX) * Config.autopilotCoef;
+			Config.autopilotY += (Config.centerY + dy - Config.autopilotY) * Config.autopilotCoef;
 			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
-			const i = (((x - Config.centerX) * Config.rcos - (y - Config.centerY) * Config.rsin + viewport.radiusX) * viewport.viewWidth / viewport.radiusX) >> 1;
-			const j = (((x - Config.centerX) * Config.rsin + (y - Config.centerY) * Config.rcos + viewport.radiusY) * viewport.viewHeight / viewport.radiusY) >> 1;
-			window.gui.domAutopilot.style.top = (j - borderPixelRadius) + "px";
-			window.gui.domAutopilot.style.left = (i - borderPixelRadius) + "px";
+			// get screen location
+			let {u, v} = viewport.pixelIJtoScreenUV(testI, testJ, Config.angle);
+
+			// and position autopilot mark
+			window.gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
+			window.gui.domAutopilot.style.left = (u - borderPixelRadius) + "px";
 			window.gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
 			window.gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
 			window.gui.domAutopilot.style.border = '4px solid green';

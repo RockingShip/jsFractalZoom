@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-26 16:58:01 Isolated `pixelIJ`, `screenUV` and `coordXY`.
 2020-10-24 23:23:19 Improved adaptive `maxIter`.
 2020-10-24 22:54:07 Added `Palette.randomize_segments5()`.
 2020-10-21 16:48:04 Self adapting fontsize `viewer`.
