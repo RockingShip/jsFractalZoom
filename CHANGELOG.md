@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+```
+2020-10-26 23:28:27 Correct site URL.
+```
+
 ## [0.9.0] 2020-10-26 22:32:53
 
 `Zoomer`, Isolate and extract core logic so it can be used within other projects.

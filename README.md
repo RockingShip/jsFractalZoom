@@ -7,7 +7,7 @@ It was inspired by [XaoS](http://xaos.sourceforge.net/black/index.php).
 The code was originally created in May 2011 and is currently being resurrected.
 The engine creates GIF images using an ultra fast GIF encoder which has been made available separately [jsGifEncoder](https://github.com/xyzzy/jsGifEncoder). 
  
-`jsFractalZoom` is hosted on https://www.rockingship.net/jsFractalZoom
+`jsFractalZoom` is hosted on https://www.rockingship.org/jsFractalZoom
 
 ## Demos
 
