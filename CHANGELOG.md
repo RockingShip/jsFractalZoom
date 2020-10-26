@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-26 21:22:55 Throttling worker overloading by skipping frames and lowering FPS.
 2020-10-26 18:48:49 Lost+Found.
 2020-10-26 18:23:53 Lower DOM dimensions to minimize rounding errors.
 2020-10-26 17:34:34 Autopilot now sensitive to contrast.

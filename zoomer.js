@@ -131,6 +131,10 @@ function Frame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	    @description Worker RGBA palette */
 	this.palette = null;
 
+	/** @member {float}
+	    @description Expire time. To protect against queue overloading. Use Date.now() because that is synced between workers. */
+	this.timeExpire = 0;
+
 	/*
 	 * Statistics
 	 */
@@ -152,7 +156,7 @@ function Frame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	this.durationUPDATE = 0;
 
 	/** @member {int}
-	    @description Time spent on `RENDER`. */
+	    @description Time spent on `RENDER`. NOTE: If zero, frame not rendered.  */
 	this.durationRENDER = 0;
 
 	/** @member {int}
@@ -187,6 +191,14 @@ function Frame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
  * @param {Frame} frame
  */
 function zoomerRenderFrame(frame) {
+
+	/*
+	 * Test for overloading
+	 */
+	if (Date.now() >= frame.timeExpire) {
+		frame.durationRENDER = 0; // not rendered
+		return;
+	}
 
 	const stime = performance.now();
 
@@ -1277,6 +1289,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 	    @description Timestamp of last wake (setPosition) */
 	this.timeLastWake = 0;
 
+	/** @member {int}
+	    @description Timestamp of last dropped frame */
+	this.timeLastDrop = 0;
+
 	/*
 	 * Statistics
 	 */
@@ -1316,6 +1332,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 	/** @member {float}
 	    @description Total number of milli seconds UPDATE was prolonged. calculate() takes too long, increase msBeforeIdle. */
 	this.timeOvershoot = 0;
+
+	/** @member {int}
+	    @description Number of dropped frames */
+	this.cntDropped = 0;
 
 	/**
 	 * Allocate a new frame, reuse if same size otherwise let it garbage collect
@@ -1505,6 +1525,9 @@ function Zoomer(domZoomer, enableAngle, options = {
 			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
 			frame.timeStart = now;
 
+			// set expiration time. Use `Date.now()` as that syncs with the workers
+			previousFrame.timeExpire = Date.now() + 2 * (1000/this.frameRate);
+
 			// COPY (performance hit)
 			this.currentFrame = frame;
 			this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
@@ -1562,8 +1585,22 @@ function Zoomer(domZoomer, enableAngle, options = {
 			// change state
 			now = performance.now();
 			this.avgStateDuration[this.state] += ((now - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
-			this.state = PAINT;
+			this.state = frame.durationRENDER ? PAINT : COPY; // don't paint when throttled
 			this.stateStart[this.state] = now;
+
+			if (this.state !== PAINT) {
+				// throttled
+				this.cntDropped++;
+				if (now - this.timeLastDrop > 2000) {
+					// after 2 second adaptation, if dropped lower FPS by 5%
+					this.frameRate -= this.frameRate * 0.05;
+					this.timeLastDrop = now;
+				}
+
+				// return and call again.
+				postMessage("mainloop", "*");
+				return true;
+			}
 
 			/*
 			 * perform PAINT
@@ -1726,24 +1763,34 @@ function Zoomer(domZoomer, enableAngle, options = {
 				let now = performance.now();
 				frame.durationRoundTrip = now - frame.durationRoundTrip;
 
-				// update RENDER statistics (as-if state change)
-				this.avgStateDuration[RENDER] += (frame.durationRENDER - this.avgStateDuration[RENDER]) * this.coef;
-				this.stateStart[PAINT] = now;
+				if (frame.durationRENDER === 0) {
+					// throttled/dropped
+					this.cntDropped++;
+					if (now - this.timeLastDrop > 2000) {
+						// after 2 second adaptation, if dropped lower FPS by 5%
+						this.frameRate -= this.frameRate * 0.05;
+						this.timeLastDrop = now;
+					}
+				} else {
+					// update RENDER statistics (as-if state change)
+					this.avgStateDuration[RENDER] += (frame.durationRENDER - this.avgStateDuration[RENDER]) * this.coef;
+					this.stateStart[PAINT] = now;
 
-				/*
-				 * perform PAINT
-				 */
+					/*
+					 * perform PAINT
+					 */
 
-				const stime = now;
+					const stime = now;
 
-				if (this.onPutImageData) this.onPutImageData(this, frame);
+					if (this.onPutImageData) this.onPutImageData(this, frame);
 
-				now = performance.now();
+					now = performance.now();
 
-				// update statistics
-				frame.timeEnd = now;
-				frame.durationPAINT = now - stime;
-				this.updateStatistics(frame);
+					// update statistics
+					frame.timeEnd = now;
+					frame.durationPAINT = now - stime;
+					this.updateStatistics(frame);
+				}
 
 				// update actual framerate
 				if (this.timeLastFrame)

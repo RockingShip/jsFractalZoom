@@ -700,10 +700,12 @@ function GUI(config) {
 					ticks: zoomer.stateTicks,
 					state: zoomer.avgStateDuration,
 					frame: zoomer.avgFrameDuration,
-					ppf: Math.round(zoomer.avgPixelsPerFrame),
-					lpf: Math.round(zoomer.avgLinesPerFrame),
-					rt: Math.round(zoomer.avgRoundTrip),
-					fps: Math.round(zoomer.avgFrameRate)
+					PPF: Math.round(zoomer.avgPixelsPerFrame),
+					LPF: Math.round(zoomer.avgLinesPerFrame),
+					RT: Math.round(zoomer.avgRoundTrip),
+					reqFPS: Math.round(zoomer.frameRate * 10) / 10,
+					actFPS: Math.round(zoomer.avgFrameRate * 10) / 10,
+					drop: zoomer.cntDropped
 				});
 
 				this.lastNow = now;
