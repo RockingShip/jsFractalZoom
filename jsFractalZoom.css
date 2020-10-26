@@ -18,19 +18,29 @@ body {
 	border: none;
 	margin: 0;
 	padding: 0;
+	width: 100%;
+	height: 100%;
 	top: 0;
-	height: auto;
+	right: 0;
 	bottom: 0;
 	left: 0;
-	width: auto;
-	right: 0;
 	overflow: hidden; /* layout is pixel precise. don't let whitespace between tags FIU */
 	background-color: #000;
 }
 
+#idZoomer {
+	position: absolute;
+	margin : 0 auto auto 0;
+	padding: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+}
+
+
 .pane {
 	position: absolute;
-	border: none;
 	margin: 0;
 	padding: 0;
 	top: 0;
@@ -39,15 +49,6 @@ body {
 	left: 0;
 	width: auto;
 	right: 0;
-}
-
-#idZoomer {
-	padding: 0;
-	margin : auto;
-	border: none;
-	position: absolute;
-	width: 100%;
-	height: 100%;
 }
 
 #idStatusTitle {

@@ -1073,11 +1073,12 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * Previous frame is complete, current frame is under construction.
 	 *
 	 * @param {Zoomer} zoomer - This
-	 * @param {Frame}  frame  - Previous frame
+	 * @param {Frame}  frame  - Frame about to render
 	 */
 	onRenderFrame: (zoomer, frame) => {
+		// update palette
 		// if (frame.palette)
-		// 	frame.palette.set(yourUint32TypedPalette); // update palette
+		// 	frame.palette.set(yourUint32TypedPalette);
 	},
 
 	/**
@@ -1085,7 +1086,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * Frame might be in transit to the web-worker and is not available as parameter.
 	 *
 	 * @param {Zoomer} zoomer - This
-	 * @param {Frame}  frame  - Previous frame
+	 * @param {Frame}  frame   - Frame before releasing to pool
 	 */
 	onEndFrame: (zoomer, frame) => {
 		// console.log('fps', zoomer.avgFrameRate);
@@ -1184,17 +1185,25 @@ function Zoomer(domZoomer, enableAngle, options = {
 	    @description Current viewport angle (degrees) */
 	this.angle = 0;
 
+	/*
+	 * Display/storage dimensions.
+	 *
+	 * @date 2020-10-22 20:13:36
+	 * Sizes are lowered to next even to minimize rounding errors.
+	 * Make sure the parent container has "margin: auto" to supply extra space and not scale.
+	 */
+
 	/** @member {int}
 	    @description Display/screen width (pixels) */
-	this.viewWidth = domZoomer.clientWidth;
+	this.viewWidth = domZoomer.parentElement.clientWidth & ~1;
 
 	/** @member {int}
 	    @description Display/screen height (pixels) */
-	this.viewHeight = domZoomer.clientHeight;
+	this.viewHeight = domZoomer.parentElement.clientHeight & ~1;
 
 	/** @member {int}
 	    @description Frame buffer width (pixels) */
-	this.pixelWidth = !enableAngle ? this.viewWidth : Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
+	this.pixelWidth = !enableAngle ? this.viewWidth : Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight)) & ~1;
 
 	/** @member {int}
 	    @description Frame buffer height (pixels) */
@@ -1392,7 +1401,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 		this.centerX = centerX;
 		this.centerY = centerY;
 		this.radius = radius;
-		this.angle = angle;
+		this.angle = angle ? angle : 0;
 
 		// optionally inject keyFrame into current viewport
 		if (keyViewport) {
@@ -1458,13 +1467,13 @@ function Zoomer(domZoomer, enableAngle, options = {
 			/*
 			 * Test for DOM resize
 			 */
-			if (domZoomer.clientWidth !== this.viewWidth || domZoomer.clientHeight !== this.viewHeight) {
+			if ((domZoomer.parentElement.clientWidth & ~1) !== this.viewWidth || (domZoomer.parentElement.clientHeight & ~1) !== this.viewHeight) {
 
-				this.viewWidth = domZoomer.clientWidth;
-				this.viewHeight = domZoomer.clientHeight;
-
-				this.pixelWidth = Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight));
-				this.pixelHeight = this.pixelWidth
+				// snap to even sizes
+				this.viewWidth = domZoomer.parentElement.clientWidth & ~1;
+				this.viewHeight = domZoomer.parentElement.clientHeight & ~1;
+				this.pixelWidth = !enableAngle ? this.viewWidth : Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight)) & ~1;
+				this.pixelHeight = !enableAngle ? this.viewHeight : this.pixelWidth;
 
 				// set DOM size property
 				domZoomer.width = this.viewWidth;

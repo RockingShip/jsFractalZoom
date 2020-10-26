@@ -31,15 +31,14 @@
 <body>
 <canvas
 	id="idZoomer"
-	class="pane"
 	tabindex="0"
 	role="region"
 	aria-live="off">
 </canvas>
 <div id="idAutopilot"></div>
 <div id="top" class="pane">
-	<h1>jsFractalZoom <span id="idStatusTitle"></span></h1>
-	<span id="WxH"></span>
+	<h1 id="h1">jsFractalZoom </h1>
+	<span id="WxH"></span><span id="idStatusTitle"></span>
 	<span id="idStatusPosition"></span><br>
 	<span id="idStatusLoad"></span>
 	<span id="idStatusRect"></span>
@@ -374,8 +373,6 @@
 		window.gui = new GUI(window.config);
 
 		var domZoomer = window.gui.domZoomer;
-		domZoomer.width = domZoomer.clientWidth;
-		domZoomer.height = domZoomer.clientHeight;
 
 		// initial focus main view
 		window.gui.domZoomer.focus();

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 `Zoomer`, Isolate and extract core logic so it can be used within other projects
 
 ```
+2020-10-26 18:23:53 Lower DOM dimensions to minimize rounding errors.
 2020-10-26 17:34:34 Autopilot now sensitive to contrast.
 2020-10-26 16:58:01 Isolated `pixelIJ`, `screenUV` and `coordXY`.
 2020-10-24 23:23:19 Improved adaptive `maxIter`.
