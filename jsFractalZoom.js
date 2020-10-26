@@ -457,7 +457,7 @@ function Palette() {
 			this.randomize_segments3(whitemode, Config.maxIter, 1);
 			break;
 		case 6:
-			this.randomize_segments4();
+			this.randomize_segments4(whitemode);
 			break;
 		case 7:
 			this.randomize_segments5(whitemode);
@@ -618,17 +618,26 @@ function GUI(config) {
 		 * Start of a new frame.
 		 * Process timed updates (piloting), set x,y,radius,angle.
 		 *
-		 * @param {Zoomer}   zoomer            - This
-		 * @param {Viewport} currentViewport   - Current viewport
-		 * @param {Frame}    currentFrame      - Current frame
-		 * @param {Viewport} previousViewport  - Previous viewport to extract rulers/pixels
-		 * @param {Frame}    previousFrame     - Previous frame
+		 * @param {Zoomer}   zoomer        - This
+		 * @param {Viewport} calcViewport  - Current viewport
+		 * @param {Frame}    calcFrame     - Current frame
+		 * @param {Viewport} dispViewport  - Previous viewport to extract rulers/pixels
+		 * @param {Frame}    dispFrame     - Previous frame
 		 */
-		onBeginFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
+		onBeginFrame: (zoomer, calcViewport, calcFrame, dispViewport, dispFrame) => {
+			/*
+			 * how many seconds since last call
+			 * @date 2020-10-23 22:57:15
+			 * The time differences on individual frames are too large and is visible as stuttering.
+			 * Trying again with a more stable metrics
+			 */
+			// const diffSec = (currentFrame.timeStart - displayFrame.timeStart) / 1000;
+			const diffSec = (1000 / zoomer.avgFrameRate) / 1000;
+
 			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
 			// maxIter for embedded calc(), maxDepth for formula.js
-			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, maxIter: Config.maxIter, quality: previousFrame.quality});
+			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, maxIter: Config.maxIter, quality: dispFrame.quality});
 		},
 
 		/**
@@ -905,18 +914,18 @@ function GUI(config) {
 		// seconds since last cycle
 		const now = performance.now();
 		const diffSec = this.directionalInterval / 1000;
-		const currentViewport = this.zoomer.currentViewport;
+		const calcViewport = this.zoomer.currentViewport;
 
 		if (Config.autoPilot) {
-			if (currentViewport.reachedLimits()) {
+			if (calcViewport.reachedLimits()) {
 				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 				window.gui.domAutopilot.style.border = '4px solid orange';
 			} else {
 				this.domStatusPosition.innerHTML = "";
 
-				if (!this.updateAutopilot(currentViewport, 4, 16))
-					if (!this.updateAutopilot(currentViewport, 60, 16))
-						if (!this.updateAutopilot(currentViewport, Math.min(currentViewport.pixelWidth, currentViewport.pixelHeight) >> 1, 16))
+				if (!this.updateAutopilot(calcViewport, 4, 16))
+					if (!this.updateAutopilot(calcViewport, 60, 16))
+						if (!this.updateAutopilot(calcViewport, Math.min(calcViewport.pixelWidth, calcViewport.pixelHeight) >> 1, 16))
 							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 			}
 
@@ -1163,6 +1172,7 @@ GUI.prototype.handleMouse = function (event) {
 		document.addEventListener("contextmenu", this.handleMouse);
 	}
 
+	// determine mouse screen position
 	this.mouseU = event.pageX - rect.left;
 	this.mouseV = event.pageY - rect.top;
 
@@ -1189,30 +1199,30 @@ GUI.prototype.handleMouse = function (event) {
 
 		// visually verify pixel is correct
 		frame.palette[65534] = 0xff0000ff;
-		frame.pixels[j2*frame.pixelWidth+i2] = 65534;
+		frame.pixels[j2 * frame.pixelWidth + i2] = 65534;
 
 		const {u: u3, v: v3} = viewport.pixelIJtoScreenUV(i2, j2, Config.angle);
-		console.log('a', u3-u1, v3-v1);
+		console.log('a', u3 - u1, v3 - v1);
 
 		let {dx: x4, dy: y4} = viewport.screenUVtoCoordDXY(u3, v3, Config.angle);
 		x4 += Config.centerX;
 		y4 += Config.centerY;
 
-		let {i: i5, j: j5} = viewport.coordDXYtoPixelIJ(x4-Config.centerX, y4-Config.centerY);
-		console.log('b', i5-i2, j5-j2);
+		let {i: i5, j: j5} = viewport.coordDXYtoPixelIJ(x4 - Config.centerX, y4 - Config.centerY);
+		console.log('b', i5 - i2, j5 - j2);
 
 		// visually verify pixel is correct
 		frame.palette[65533] = 0xff00ff00;
-		frame.pixels[j5*frame.pixelWidth+i5] = 65533;
+		frame.pixels[j5 * frame.pixelWidth + i5] = 65533;
 
 		let {dx: x6, dy: y6} = viewport.pixelIJtoCoordDXY(i5, j5);
 		x6 += Config.centerX;
 		y6 += Config.centerY;
 		console.log('c', x6 - x4, y6 - y4);
 
-		let {u : u7, v : v7} = viewport.coordDXYtoScreenUV(x6-Config.centerX,  y6-Config.centerY, Config.angle);
-		console.log('d', u7-u3, v7-v3);
-		console.log('e', u7-u1, v7-v1);
+		let {u: u7, v: v7} = viewport.coordDXYtoScreenUV(x6 - Config.centerX, y6 - Config.centerY, Config.angle);
+		console.log('d', u7 - u3, v7 - v3);
+		console.log('e', u7 - u1, v7 - v1);
 
 	}
 
@@ -1263,8 +1273,9 @@ GUI.prototype.reload = function () {
 };
 
 /**
- * @param {number} lookPixelRadius
- * @param {number} borderPixelRadius
+ * @param {Viewport} viewport
+ * @param {number}   lookPixelRadius
+ * @param {number}   borderPixelRadius
  * @returns {boolean}
  */
 GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixelRadius) {
@@ -1300,7 +1311,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 
 	/** @var {Frame}
 	    @description Bounding box center location */
-	let bestI= 0;
+	let bestI = 0;
 
 	/** @var {Frame}
 	    @description Bounding box center location */

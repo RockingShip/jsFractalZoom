@@ -172,7 +172,13 @@
 				[-1.169227570673171, -0.2944274970152214],
 				[-0.563061028253071, +0.6431651290134239],
 				[-0.923805354837750, -0.2917629932645836],
-				[-0.883161689795792, +0.2345812238688531]];
+				[-0.883161689795792, +0.2345812238688531],
+				[-1.404188971954826, -1.012541869919062e-11],
+				[-1.786325362571105, +9.424944818704583e-16],
+				[-1.401160899237641, +7.217565339338879e-8, 1.468606780973129e-5, 0,  8402],
+				[-0.396162003229617, -0.5890606967867874,   3.793873880218094e-10],
+				[0.7494826196939126, -0.0439569112904434,   1.2928476956531068-7, 0, 13004],
+			];
 
 			const xy = initialXY[Math.round(Math.random() * 1e6) % initialXY.length];
 
@@ -222,13 +228,13 @@
 					// landscape, topbox is 1/10th total available height and contains 5 lines
 					lineHeight = viewHeight / 10 / numLines;
 
-					// shrink font if current size would exceed 15:1 aspect ratio
-					if (lineHeight > viewWidth / 15 / numLines)
-						lineHeight = viewWidth / 15 / numLines;
+					// shrink font if current size would exceed 16:1 aspect ratio
+					if (lineHeight > viewWidth / 16 / numLines)
+						lineHeight = viewWidth / 16 / numLines;
 				} else {
 					// portrait
 					// set lineHeight that it spans full width
-					lineHeight = viewWidth / 15 / numLines;
+					lineHeight = viewWidth / 16 / numLines;
 
 					// shrink if exceeds 1/10th available height
 					if (lineHeight > viewHeight / 10 / numLines)

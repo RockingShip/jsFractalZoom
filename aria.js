@@ -61,7 +61,7 @@ Aria.Button = function (domButton) {
 
 	/**
 	 * Attached DOM node
-	 * @member {Element}
+	 * @member {HTMLElement}
 	 */
 	this.domButton = domButton;
 
@@ -228,20 +228,20 @@ Aria.Button.prototype.handleMouseUp = function (event) {
  *
  * @constructor Aria.Slider
  *
- * @param {Element} domThumb
- * @param {Element} domRail
+ * @param {HTMLElement} domThumb
+ * @param {HTMLElement} domRail
  */
 Aria.Slider = function (domThumb, domRail, valueMin, valueMax, valueNow) {
 
 	/**
 	 * Attached DOM node to the movable thumb
-	 * @member {Element}
+	 * @member {HTMLElement}
 	 */
 	this.domThumb = domThumb;
 
 	/**
 	 * Attached DOM node to the background rail
-	 * @member {Element}
+	 * @member {HTMLElement}
 	 */
 	this.domRail = domRail;
 

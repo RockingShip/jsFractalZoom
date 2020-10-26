@@ -144,19 +144,19 @@ function Frame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	this.timeEnd = 0;
 
 	/** @member {int}
-	    @description Time of `COPY`  */
+	    @description Time spent on `COPY`  */
 	this.durationCOPY = 0;
 
 	/** @member {int}
-	    @description Time of `UPDATE`  */
+	    @description Time spent on `UPDATE`  */
 	this.durationUPDATE = 0;
 
 	/** @member {int}
-	    @description Time of `RENDER`  */
+	    @description Time spent on `RENDER`. */
 	this.durationRENDER = 0;
 
 	/** @member {int}
-	    @description Time of `PAINT`  */
+	    @description Time spend on `PAINT`  */
 	this.durationPAINT = 0;
 
 	/** @member {int}
@@ -271,8 +271,8 @@ function zoomerRenderFrame(frame) {
  * Coordinate system is the center x,y and radius. Angle is part of `Frame` rendering.
  *
  * @class
- * @param {int}   viewWidth   - Screen width (pixels)
- * @param {int}   viewHeight  - Screen height (pixels)
+ * @param {int}   viewWidth     - Screen width (pixels)
+ * @param {int}   viewHeight    - Screen height (pixels)
  * @param {int}   [pixelWidth]  - Frame width (pixels)
  * @param {int}   [pixelHeight] - Frame height (pixels)
  */
@@ -370,14 +370,14 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 	/**
 	 *
-	 * @param {number} start - start coordinate
-	 * @param {number} end - end coordinate
-	 * @param {Float64Array} newCoord - coordinate stops
+	 * @param {number}       start      - start coordinate
+	 * @param {number}       end        - end coordinate
+	 * @param {Float64Array} newCoord   - coordinate stops
 	 * @param {Float64Array} newNearest - nearest evaluated coordinate stop
-	 * @param {Float64Array} newError - difference between newCoord[] and newNearest[]
-	 * @param {Uint16Array} newFrom - matching oldNearest[] index
+	 * @param {Float64Array} newError   - difference between newCoord[] and newNearest[]
+	 * @param {Uint16Array}  newFrom    - matching oldNearest[] index
 	 * @param {Float64Array} oldNearest - source ruler
-	 * @param {Float64Array} oldError - source ruler
+	 * @param {Float64Array} oldError   - source ruler
 	 */
 	this.makeRuler = (start, end, newCoord, newNearest, newError, newFrom, oldNearest, oldError) => {
 
@@ -579,7 +579,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	/**
 	 * Simple background renderer
 	 *
-	 * @param {Calculator} calculate
+	 * @param {Zoomer} zoomer
 	 */
 	this.updateLines = (zoomer) => {
 
@@ -765,7 +765,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 		if (!angle) {
 			// fast convert
-			const u = pixelI - ((this.pixelWidth  - this.viewWidth ) >> 1);
+			const u = pixelI - ((this.pixelWidth - this.viewWidth) >> 1);
 			const v = pixelJ - ((this.pixelHeight - this.viewHeight) >> 1);
 
 			return {u: u, v: v};
@@ -822,7 +822,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	this.screenUVtoCoordDXY = (screenU, screenV, angle) => {
 
 		// move to center
-		let u = screenU - (this.viewWidth  >> 1);
+		let u = screenU - (this.viewWidth >> 1);
 		let v = screenV - (this.viewHeight >> 1);
 
 		if (angle) {
@@ -837,7 +837,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		}
 
 		// scale and shift to coord
-		const dx = u * this.radiusViewHor / (this.viewWidth  >> 1);
+		const dx = u * this.radiusViewHor / (this.viewWidth >> 1);
 		const dy = v * this.radiusViewVer / (this.viewHeight >> 1);
 
 		return {dx: dx, dy: dy};
@@ -874,7 +874,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		}
 
 		// scale and shift to screen
-		const u = dx * (this.viewWidth  >> 1) / this.radiusViewHor + (this.viewWidth  >> 1);
+		const u = dx * (this.viewWidth >> 1) / this.radiusViewHor + (this.viewWidth >> 1);
 		const v = dy * (this.viewHeight >> 1) / this.radiusViewVer + (this.viewHeight >> 1);
 
 		return {u: Math.round(u), v: Math.round(v)};
@@ -950,19 +950,19 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
  * Viewing direction is the center x,y and radius. Angle is part of `Frame` rendering.
  *
  * @class
- * @param {HTMLCanvasElement}	domZoomer		- Element to detect a resize	 -
- * @param {boolean}		enableAngle		- Enable rotation
- * @param {Object}		[options]   		- Template values for new frames. These may be changed during runtime.
- * @param {float}		[options.frameRate]	- Frames per second
- * @param {float}		[options.updateSlice]	- UPDATEs get sliced into smaller  chucks to stay responsive and limit overshoot
- * @param {float}		[options.coef]		- Low-pass filter coefficient to dampen spikes
- * @param {boolean}		[options.disableWW]	- Disable Web Workers
- * @param {function}		[options.onResize]	- Called when canvas resize detected.
- * @param {function}		[options.onInitFrame]	- Additional allocation of a new frame.
- * @param {function}		[options.onBeginFrame]	- Called before start frame. Set x,y,radius,angle.
- * @param {function}		[options.onUpdatePixel]	- Called to calculate pixel values.
- * @param {function}		[options.onRenderFrame]	- Called directly before rendering. Set palette.
- * @param {function}		[options.onEndFrame]	- Called directly after frame complete. Update statistics
+ * @param {HTMLCanvasElement}	domZoomer		 - Element to detect a resize	 -
+ * @param {boolean}		enableAngle		 - Enable rotation
+ * @param {Object}		[options]   		 - Template values for new frames. These may be changed during runtime.
+ * @param {float}		[options.frameRate]	 - Frames per second
+ * @param {float}		[options.updateSlice]	 - UPDATEs get sliced into smaller  chucks to stay responsive and limit overshoot
+ * @param {float}		[options.coef]		 - Low-pass filter coefficient to dampen spikes
+ * @param {boolean}		[options.disableWW]	 - Disable Web Workers
+ * @param {function}		[options.onResize]	 - Called when canvas resize detected.
+ * @param {function}		[options.onInitFrame]	 - Additional allocation of a new frame.
+ * @param {function}		[options.onBeginFrame]	 - Called before start frame. Set x,y,radius,angle.
+ * @param {function}		[options.onUpdatePixel]	 - Called to calculate pixel values.
+ * @param {function}		[options.onRenderFrame]	 - Called directly before rendering. Set palette.
+ * @param {function}		[options.onEndFrame]	 - Called directly after frame complete. Update statistics
  * @param {function}		[options.onPutImageData] - Inject frame into canvas.
  */
 function Zoomer(domZoomer, enableAngle, options = {
@@ -1086,7 +1086,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * Frame might be in transit to the web-worker and is not available as parameter.
 	 *
 	 * @param {Zoomer} zoomer - This
-	 * @param {Frame}  frame   - Frame before releasing to pool
+	 * @param {Frame}  frame  - Frame before releasing to pool
 	 */
 	onEndFrame: (zoomer, frame) => {
 		// console.log('fps', zoomer.avgFrameRate);
@@ -1293,23 +1293,23 @@ function Zoomer(domZoomer, enableAngle, options = {
 	    @description Average duration of states in milli seconds */
 	this.avgFrameDuration = [0, 0, 0, 0, 0];
 
-	/** @member {float[]}
+	/** @member {float}
 	    @description Average calculated pixels per frame */
 	this.avgPixelsPerFrame = 0;
 
-	/** @member {float[]}
+	/** @member {float}
 	    @description Average calculated lines per frame */
 	this.avgLinesPerFrame = 0;
 
-	/** @member {float[]}
+	/** @member {float}
 	    @description Average worker round-trip time */
 	this.avgRoundTrip = 0;
 
-	/** @member {float[]}
+	/** @member {float}
 	    @description Average real frame rate */
 	this.avgFrameRate = 0;
 
-	/** @member {float[]}
+	/** @member {float}
 	    @description Average quality (0..1) */
 	this.avgQuality = 0;
 
