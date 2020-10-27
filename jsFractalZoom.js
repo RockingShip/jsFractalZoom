@@ -110,9 +110,9 @@ function Config() {
 	Config.centerX = 0;
 	/** @member {number} - center Y coordinate - vsync updated */
 	Config.centerY = 0;
-	/** @member {number} - distance between center and viewport corner - vsync updated */
+	/** @member {number} - distance between center and view corner - vsync updated */
 	Config.radius = 0;
-	/** @member {number} - current viewport angle (degrees) - timer updated */
+	/** @member {number} - current view angle (degrees) - timer updated */
 	Config.angle = 0;
 	/** @member {number} - max Iteration for calculations */
 	Config.maxIter = 0;
@@ -127,7 +127,7 @@ function Config() {
 	/** @member {number} - Palette size before colours start repeating */
 	Config.paletteSize = 0;
 
-	/** @member {number} - current viewport zoomSpeed - timer updated */
+	/** @member {number} - current view zoomSpeed - timer updated */
 	Config.zoomSpeed = 0;
 	/** @member {number} - After 1sec, get 80% closer to target speed */
 	Config.zoomSpeedCoef = 0.80;
@@ -548,13 +548,13 @@ function GUI(config) {
 	this.domWxH = "WxH";
 	this.domAutopilot = "idAutopilot";
 
-	/** @member {number} - viewport mouse X coordinate */
+	/** @member {number} - view mouse X coordinate */
 	this.mouseU = 0;
 	this.mouseX = 0;
-	/** @member {number} - viewport mouse Y coordinate */
+	/** @member {number} - view mouse Y coordinate */
 	this.mouseV = 0;
 	this.mouseY = 0;
-	/** @member {number} - viewport mouse button state. OR-ed set of Aria.ButtonCode */
+	/** @member {number} - view mouse button state. OR-ed set of Aria.ButtonCode */
 	this.mouseButtons = 0;
 
 	/** @member {boolean} - fractal coordinate of pointer when button first pressed */
@@ -606,7 +606,7 @@ function GUI(config) {
 		 * NOTE: each frame has it's own palette.
 		 *
 		 * @param {Zoomer}   zoomer - This
-		 * @param {Frame}    frame  - Frame being initialized.
+		 * @param {ZoomerFrame} frame  - Frame being initialized.
 		 */
 		onInitFrame: (zoomer, frame) => {
 			// create a palette buffer for palette mode
@@ -619,12 +619,12 @@ function GUI(config) {
 		 * Process timed updates (piloting), set x,y,radius,angle.
 		 *
 		 * @param {Zoomer}   zoomer        - This
-		 * @param {Viewport} calcViewport  - Current viewport
-		 * @param {Frame}    calcFrame     - Current frame
-		 * @param {Viewport} dispViewport  - Previous viewport to extract rulers/pixels
-		 * @param {Frame}    dispFrame     - Previous frame
+		 * @param {ZoomerView}  calcView  - View about to be constructed
+		 * @param {ZoomerFrame} calcFrame - Frame about to be constructed
+		 * @param {ZoomerView}  dispView  - View to extract rulers
+		 * @param {ZoomerFrame} dispFrame - Frame to extract pixels
 		 */
-		onBeginFrame: (zoomer, calcViewport, calcFrame, dispViewport, dispFrame) => {
+		onBeginFrame: (zoomer, calcView, calcFrame, dispView, dispFrame) => {
 			/*
 			 * how many seconds since last call
 			 * @date 2020-10-23 22:57:15
@@ -644,7 +644,7 @@ function GUI(config) {
 		 * This is done for every pixel. optimize well!
 		 *
 		 * @param {Zoomer}   zoomer  - This
-		 * @param {Frame}    frame   - This
+		 * @param {ZoomerFrame} frame   - This
 		 * @param {float}    x       - X value
 		 * @param {float}    y       - Y value
 		 */
@@ -663,12 +663,12 @@ function GUI(config) {
 
 		/**
 		 * Start extracting (rotated) RGBA values from (paletted) pixels.
-		 * Extract rotated viewport from pixels and store them in specified imagedata.
+		 * Extract rotated view from pixels and store them in specified imagedata.
 		 * Called just before submitting the frame to a web-worker.
 		 * Previous frame is complete, current frame is under construction.
 		 *
 		 * @param {Zoomer} zoomer - This
-		 * @param {Frame}  frame  - Previous frame
+		 * @param {ZoomerFrame} frame  - Previous frame
 		 */
 		onRenderFrame: (zoomer, frame) => {
 			// inject palette into frame
@@ -680,9 +680,9 @@ function GUI(config) {
 		 * Frame construction complete. Update statistics.
 		 *
 		 * @param {Zoomer}   zoomer       - This
-		 * @param {Frame}    previousFrame - Current frame
+		 * @param {ZoomerFrame} frame  - Current frame
 		 */
-		onEndFrame: (zoomer, previousFrame) => {
+		onEndFrame: (zoomer, frame) => {
 
 			// window.gui.domStatusPosition.innerHTML = JSON.stringify(this.counters);
 
@@ -717,7 +717,7 @@ function GUI(config) {
 		 * This is a callback to keep all canvas resource handling/passing out of Zoomer context.
 		 *
 		 * @param {Zoomer}   zoomer - This
-		 * @param {Frame}    frame  - Frame to inject
+		 * @param {ZoomerFrame} frame  - Frame to inject
 		 */
 		onPutImageData: (zoomer, frame) => {
 
@@ -738,13 +738,13 @@ function GUI(config) {
 	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
 
 	// Create a small key frame (mandatory)
-	const keyViewport = new Viewport(64, 64, 64, 64); // Explicitly square
+	const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
 
 	// Calculate all the pixels, or choose any other content (optional)
-	keyViewport.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
+	keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
 
 	// set initial position and inject key frame (mandatory)
-	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyViewport)
+	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView)
 
 	// replace event handlers with a bound instance
 	this.handleMouse = this.handleMouse.bind(this);
@@ -916,18 +916,18 @@ function GUI(config) {
 		// seconds since last cycle
 		const now = performance.now();
 		const diffSec = this.directionalInterval / 1000;
-		const calcViewport = this.zoomer.currentViewport;
+		const calcView = this.zoomer.calcView;
 
 		if (Config.autoPilot) {
-			if (calcViewport.reachedLimits()) {
+			if (calcView.reachedLimits()) {
 				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 				window.gui.domAutopilot.style.border = '4px solid orange';
 			} else {
 				this.domStatusPosition.innerHTML = "";
 
-				if (!this.updateAutopilot(calcViewport, 4, 16))
-					if (!this.updateAutopilot(calcViewport, 60, 16))
-						if (!this.updateAutopilot(calcViewport, Math.min(calcViewport.pixelWidth, calcViewport.pixelHeight) >> 1, 16))
+				if (!this.updateAutopilot(calcView, 4, 16))
+					if (!this.updateAutopilot(calcView, 60, 16))
+						if (!this.updateAutopilot(calcView, Math.min(calcView.pixelWidth, calcView.pixelHeight) >> 1, 16))
 							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 			}
 
@@ -960,7 +960,7 @@ function GUI(config) {
 			Config.paletteOffsetFloat -= diffSec * Config.paletteSpeedNow;
 
 		/*
-		 * Update viewport angle (before zoom gestures)
+		 * Update view angle (before zoom gestures)
 		 */
 		if (Config.rotateSpeedNow)
 			Config.angle += diffSec * Config.rotateSpeedNow * 360;
@@ -968,13 +968,13 @@ function GUI(config) {
 		// drag gesture
 		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
 			// need screen coordinates to avoid drifting
-			const dispViewport = this.zoomer.previousViewport;
-			const {dx, dy} = dispViewport.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
+			const dispView = this.zoomer.dispView;
+			const {dx, dy} = dispView.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
 
 			if (!this.dragActive) {
 				// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
-				this.dragCenterX = dispViewport.centerX + dx;
-				this.dragCenterY = dispViewport.centerY + dy;
+				this.dragCenterX = dispView.centerX + dx;
+				this.dragCenterY = dispView.centerY + dy;
 				this.dragActive = true;
 			}
 
@@ -1180,10 +1180,10 @@ GUI.prototype.handleMouse = function (event) {
 
 	/*
 	 * @date 2020-10-26 12:42:18
-	 * Use the viewport angle as that is what you see when clicking. `Config.angle` lags behind.
+	 * Use the view angle as that is what you see when clicking. `Config.angle` lags behind.
 	 */
-	const viewport = (this.zoomer.frameNr & 1) ? this.zoomer.viewport1 : this.zoomer.viewport0;
-	let {dx, dy} = viewport.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
+	const view = (this.zoomer.frameNr & 1) ? this.zoomer.view1 : this.zoomer.view0;
+	let {dx, dy} = view.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
 
 	this.mouseX = Config.centerX + dx;
 	this.mouseY = Config.centerY + dy;
@@ -1197,32 +1197,32 @@ GUI.prototype.handleMouse = function (event) {
 		let u1 = this.mouseU;
 		let v1 = this.mouseV;
 
-		const {i: i2, j: j2} = viewport.screenUVtoPixelIJ(u1, v1, Config.angle);
+		const {i: i2, j: j2} = view.screenUVtoPixelIJ(u1, v1, Config.angle);
 
 		// visually verify pixel is correct
 		frame.palette[65534] = 0xff0000ff;
 		frame.pixels[j2 * frame.pixelWidth + i2] = 65534;
 
-		const {u: u3, v: v3} = viewport.pixelIJtoScreenUV(i2, j2, Config.angle);
+		const {u: u3, v: v3} = view.pixelIJtoScreenUV(i2, j2, Config.angle);
 		console.log('a', u3 - u1, v3 - v1);
 
-		let {dx: x4, dy: y4} = viewport.screenUVtoCoordDXY(u3, v3, Config.angle);
+		let {dx: x4, dy: y4} = view.screenUVtoCoordDXY(u3, v3, Config.angle);
 		x4 += Config.centerX;
 		y4 += Config.centerY;
 
-		let {i: i5, j: j5} = viewport.coordDXYtoPixelIJ(x4 - Config.centerX, y4 - Config.centerY);
+		let {i: i5, j: j5} = view.coordDXYtoPixelIJ(x4 - Config.centerX, y4 - Config.centerY);
 		console.log('b', i5 - i2, j5 - j2);
 
 		// visually verify pixel is correct
 		frame.palette[65533] = 0xff00ff00;
 		frame.pixels[j5 * frame.pixelWidth + i5] = 65533;
 
-		let {dx: x6, dy: y6} = viewport.pixelIJtoCoordDXY(i5, j5);
+		let {dx: x6, dy: y6} = view.pixelIJtoCoordDXY(i5, j5);
 		x6 += Config.centerX;
 		y6 += Config.centerY;
 		console.log('c', x6 - x4, y6 - y4);
 
-		let {u: u7, v: v7} = viewport.coordDXYtoScreenUV(x6 - Config.centerX, y6 - Config.centerY, Config.angle);
+		let {u: u7, v: v7} = view.coordDXYtoScreenUV(x6 - Config.centerX, y6 - Config.centerY, Config.angle);
 		console.log('d', u7 - u3, v7 - v3);
 		console.log('e', u7 - u1, v7 - v1);
 
@@ -1261,32 +1261,32 @@ GUI.prototype.reload = function () {
 	Config.maxIter = 300;
 
 	// Create a small key frame (mandatory)
-	const keyViewport = new Viewport(64, 64, 64, 64); // Explicitly square
+	const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
 
 	// set all pixels of thumbnail with latest set `calculate`
-	keyViewport.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
+	keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
 
 	// if nothing moving, enable idling
 	if (!Config.zoomSpeed && !this.mouseButtons && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
 		this.zoomer.timeLastWake = performance.now(); // safe to idle
 
-	// inject into current viewport
-	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyViewport);
+	// inject into current view
+	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView);
 };
 
 /**
- * @param {Viewport} viewport
+ * @param {ZoomerView} view
  * @param {number}   lookPixelRadius
  * @param {number}   borderPixelRadius
  * @returns {boolean}
  */
-GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixelRadius) {
+GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadius) {
 
-	const {pixelWidth, pixelHeight, viewWidth, viewHeight, pixels} = viewport;
+	const {pixelWidth, pixelHeight, viewWidth, viewHeight, pixels} = view;
 
 	// use '>>1' as integer '/2'
 
-	// Get viewport bounding box
+	// Get view bounding box
 	let minI = (pixelWidth - viewWidth) >> 1;
 	let maxI = pixelWidth - minI;
 	let minJ = (pixelHeight - viewHeight) >> 1;
@@ -1303,7 +1303,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 	const maxCnt = minCnt * 3;
 
 	// coordinate within pixel data pointed to by mouse
-	let {i: apI, j: apJ} = viewport.coordDXYtoPixelIJ(Config.autopilotX - viewport.centerX, Config.autopilotY - viewport.centerY);
+	let {i: apI, j: apJ} = view.coordDXYtoPixelIJ(Config.autopilotX - view.centerX, Config.autopilotY - view.centerY);
 
 	/*
 	 * @date 2020-10-24 23:59:53
@@ -1311,19 +1311,19 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 	 * Add moving to areas of high contrast.
 	 */
 
-	/** @var {Frame}
+	/** @var {ZoomerFrame}
 	    @description Bounding box center location */
 	let bestI = 0;
 
-	/** @var {Frame}
+	/** @var {ZoomerFrame}
 	    @description Bounding box center location */
 	let bestJ = 0;
 
-	/** @var {Frame}
+	/** @var {ZoomerFrame}
 	    @description Bounding box contains the highest `iter` */
 	let bestIterHigh = 0; // highest iter found within bounding box
 
-	/** @var {Frame}
+	/** @var {ZoomerFrame}
 	    @description Overall lowest iter found. Start with corner pixel */
 	let iterLow = 1 + Math.min(pixels[0], pixels[pixelWidth - 1], pixels[(pixelHeight - 1) * pixelWidth], pixels[pixelHeight * pixelWidth - 1]);
 
@@ -1355,7 +1355,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 
 		// go for horizon first
 		if (cnt >= minCnt && cnt <= maxCnt) {
-			let {dx, dy} = viewport.pixelIJtoCoordDXY(testI, testJ);
+			let {dx, dy} = view.pixelIJtoCoordDXY(testI, testJ);
 
 			// dampen sharp autopilot direction changes
 			Config.autopilotX += (Config.centerX + dx - Config.autopilotX) * Config.autopilotCoef;
@@ -1364,7 +1364,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
 			// get screen location
-			let {u, v} = viewport.pixelIJtoScreenUV(testI, testJ, Config.angle);
+			let {u, v} = view.pixelIJtoScreenUV(testI, testJ, Config.angle);
 
 			// and position autopilot mark
 			window.gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
@@ -1379,7 +1379,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 	// go for high contrast
 	// Something "hangs ". This needs extra working on.
 	if (0 && bestIterHigh > iterLow * Config.autopilotContrast) {
-		let {dx, dy} = viewport.pixelIJtoCoordDXY(bestI, bestJ);
+		let {dx, dy} = view.pixelIJtoCoordDXY(bestI, bestJ);
 
 		// dampen sharp autopilot direction changes
 		Config.autopilotX += (Config.centerX + dx - Config.autopilotX) * Config.autopilotCoef;
@@ -1388,7 +1388,7 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 		Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
 		// get screen location
-		let {u, v} = viewport.pixelIJtoScreenUV(bestI, bestJ, Config.angle);
+		let {u, v} = view.pixelIJtoScreenUV(bestI, bestJ, Config.angle);
 
 		// and position autopilot mark
 		window.gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
@@ -1406,15 +1406,15 @@ GUI.prototype.updateAutopilot = function (viewport, lookPixelRadius, borderPixel
 
 GUI.prototype.autopilotOn = function () {
 
-	const viewport = this.zoomer.currentViewport;
+	const view = this.zoomer.calcView;
 	Config.autopilotX = Config.centerX;
 	Config.autopilotY = Config.centerY;
 
-	const diameter = Math.min(viewport.pixelWidth, viewport.pixelHeight);
+	const diameter = Math.min(view.pixelWidth, view.pixelHeight);
 	let lookPixelRadius = Math.min(16, diameter >> 1);
 	const borderPixelRadius = Math.min(16, diameter >> 5);
 	do {
-		if (!this.updateAutopilot(viewport, lookPixelRadius, borderPixelRadius))
+		if (!this.updateAutopilot(view, lookPixelRadius, borderPixelRadius))
 			break;
 		lookPixelRadius >>= 1;
 	} while (lookPixelRadius > 2);

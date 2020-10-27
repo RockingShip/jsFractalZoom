@@ -97,7 +97,7 @@ function zoomerMemcpy(dst, dstOffset, src, srcOffset, length) {
  * @param {int}   pixelWidth  - Storage width (pixels)
  * @param {int}   pixelHeight - Storage Height (pixels)
  */
-function Frame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
+function ZoomerFrame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 	/** @member {int}
 	    @description Display width (pixels) */
@@ -148,19 +148,19 @@ function Frame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	this.timeEnd = 0;
 
 	/** @member {int}
-	    @description Time spent on `COPY`  */
+	    @description Time of `COPY`  */
 	this.durationCOPY = 0;
 
 	/** @member {int}
-	    @description Time spent on `UPDATE`  */
+	    @description Time of `UPDATE`  */
 	this.durationUPDATE = 0;
 
 	/** @member {int}
-	    @description Time spent on `RENDER`. NOTE: If zero, frame not rendered.  */
+	    @description Time of `RENDER`  */
 	this.durationRENDER = 0;
 
 	/** @member {int}
-	    @description Time spend on `PAINT`  */
+	    @description Time of `PAINT`  */
 	this.durationPAINT = 0;
 
 	/** @member {int}
@@ -185,10 +185,10 @@ function Frame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 }
 
 /**
- * Extract rotated viewport from pixels and store them in specified imagedata
+ * Extract rotated view from pixels and store them in specified imagedata
  * The pixel data is palette based, the imagedata is RGB
  *
- * @param {Frame} frame
+ * @param {ZoomerFrame} frame
  */
 function zoomerRenderFrame(frame) {
 
@@ -212,7 +212,7 @@ function zoomerRenderFrame(frame) {
 
 	if (angle === 0) {
 
-		// FAST extract viewport
+		// FAST extract view
 		let i = (pixelWidth - viewWidth) >> 1;
 		let j = (pixelHeight - viewHeight) >> 1;
 
@@ -243,9 +243,9 @@ function zoomerRenderFrame(frame) {
 
 	} else {
 
-		// SLOW viewport rotation
-		const rsin = Math.sin(angle * Math.PI / 180); // sine for viewport angle
-		const rcos = Math.cos(angle * Math.PI / 180); // cosine for viewport angle
+		// SLOW view rotation
+		const rsin = Math.sin(angle * Math.PI / 180); // sine for view angle
+		const rcos = Math.cos(angle * Math.PI / 180); // cosine for view angle
 		const xstart = Math.floor((pixelWidth - viewHeight * rsin - viewWidth * rcos) * 32768);
 		const ystart = Math.floor((pixelHeight - viewHeight * rcos + viewWidth * rsin) * 32768);
 		const ixstep = Math.floor(rcos * 65536);
@@ -275,7 +275,7 @@ function zoomerRenderFrame(frame) {
 };
 
 /**
- * Viewport to the fractal world.
+ * View to the fractal world.
  *
  * When using angles:
  * The frame must be square and its size must be the diagonal of the viewing area.
@@ -288,12 +288,12 @@ function zoomerRenderFrame(frame) {
  * @param {int}   [pixelWidth]  - Frame width (pixels)
  * @param {int}   [pixelHeight] - Frame height (pixels)
  */
-function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
+function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
-	/** @member {number} - width of viewport */
+	/** @member {number} - width of view */
 	this.viewWidth = viewWidth;
 
-	/** @member {number} - height of viewport */
+	/** @member {number} - height of view */
 	this.viewHeight = viewHeight;
 
 	/** @member {int}
@@ -304,7 +304,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	    @description data height (pixels) */
 	this.pixelHeight = pixelHeight ? pixelHeight : viewHeight;
 
-	/** @member {Frame}
+	/** @member {ZoomerFrame}
 	    @description Frame being managed */
 	this.frame = undefined;
 
@@ -325,7 +325,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	this.centerY = 0;
 
 	/** @member {float}
-	    @description Distance between center and viewport corner */
+	    @description Distance between center and view corner */
 	this.radius = 0;
 
 	/** @member {float}
@@ -437,16 +437,16 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 	/**
 	 * Set the center coordinate and radius.
-	 * Inherit pixels from oldViewport based on rulers.
-	 * Previous viewport/frame may have different dimensions.
+	 * Inherit pixels from oldView based on rulers.
+	 * Previous view/frame may have different dimensions.
 	 *
-	 * @param {Frame}    frame		- Current frame
+	 * @param {ZoomerFrame} frame		   - Current frame
 	 * @param {float}    centerX		- Center x of view
 	 * @param {float}    centerY		- Center y or view
 	 * @param {float}    radius		- Radius of view
-	 * @param {Viewport} [previousViewport]	- Previous frame to inherit pixels from
+	 * @param {ZoomerView}  [previousView] - Previous frame to inherit pixels from
 	 */
-	this.setPosition = (frame, centerX, centerY, radius, previousViewport) => {
+	this.setPosition = (frame, centerX, centerY, radius, previousView) => {
 
 		// deep link into frame
 		this.frame = frame;
@@ -479,7 +479,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		const pixelMinY = centerY - this.radiusPixelVer;
 		const pixelMaxY = centerY + this.radiusPixelVer;
 
-		if (!previousViewport) {
+		if (!previousView) {
 			// simple linear fill of rulers
 			for (let i = 0; i < xCoord.length; i++) {
 				xNearest[i] = xCoord[i] = i * (pixelMaxX - pixelMinX) / xCoord.length + pixelMinX;
@@ -495,11 +495,11 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			return;
 		}
 
-		const {xNearest: oldXnearest, xError: oldXerror, yNearest: oldYnearest, yNearest: oldYerror, pixelWidth: oldPixelWidth, pixelHeight: oldPixelHeight, pixels: oldPixels} = previousViewport;
+		const {xNearest: oldXnearest, xError: oldXerror, yNearest: oldYnearest, yNearest: oldYerror, pixelWidth: oldPixelWidth, pixelHeight: oldPixelHeight, pixels: oldPixels} = previousView;
 
 		// setup new rulers
-		const exactX = this.makeRuler(centerX - this.radiusPixelHor, centerX + this.radiusPixelHor, xCoord, xNearest, xError, xFrom, previousViewport.xNearest, previousViewport.xError);
-		const exactY = this.makeRuler(centerY - this.radiusPixelVer, centerY + this.radiusPixelVer, yCoord, yNearest, yError, yFrom, previousViewport.yNearest, previousViewport.yError);
+		const exactX = this.makeRuler(centerX - this.radiusPixelHor, centerX + this.radiusPixelHor, xCoord, xNearest, xError, xFrom, previousView.xNearest, previousView.xError);
+		const exactY = this.makeRuler(centerY - this.radiusPixelVer, centerY + this.radiusPixelVer, yCoord, yNearest, yError, yFrom, previousView.yNearest, previousView.yError);
 
 		frame.cntPixels += exactX * exactY;
 		frame.cntHLines += exactX; // todo: might need to swap XY
@@ -704,7 +704,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	};
 
 	/**
-	 * brute-force fill of all pixels. Intended for small/initial viewports
+	 * brute-force fill of all pixels. Intended for small/initial view
 	 *
 	 * @param {float}    centerX       - Center x of view
 	 * @param {float}    centerY       - Center y or view
@@ -721,7 +721,7 @@ function Viewport(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		this.centerY = centerY;
 		this.radius = radius;
 
-		// Determine the radius of the viewport
+		// Determine the radius of the view
 		if (this.viewWidth > this.viewHeight) {
 			this.radiusHor = radius * this.viewWidth / this.viewHeight;
 			this.radiusVer = radius;
@@ -1046,7 +1046,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * NOTE: each frame has it's own palette.
 	 *
 	 * @param {Zoomer}   zoomer - This
-	 * @param {Frame}    frame  - Frame being initialized.
+	 * @param {ZoomerFrame} frame  - Frame being initialized.
 	 */
 	onInitFrame: (zoomer, frame) => {
 		// frame.palette = new Uint32Array(65536);
@@ -1057,12 +1057,12 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * Process timed updates (piloting), set x,y,radius,angle.
 	 *
 	 * @param {Zoomer}   zoomer            - This
-	 * @param {Viewport} currentViewport   - Current viewport
-	 * @param {Frame}    currentFrame      - Current frame
-	 * @param {Viewport} previousViewport  - Previous viewport to extract rulers/pixels
-	 * @param {Frame}    previousFrame     - Previous frame
+	 * @param {ZoomerView}  calcView  - View about to be constructed
+	 * @param {ZoomerFrame} calcFrame - Frame about to be constructed
+	 * @param {ZoomerView}  dispView  - View to extract rulers
+	 * @param {ZoomerFrame} dispFrame - Frame to extract pixels
 	 */
-	onBeginFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
+	onBeginFrame: (zoomer, calcView, calcFrame, dispView, dispFrame) => {
 		// zoomer.setPosition(centerX, centerY, radius, angle);
 	},
 
@@ -1070,7 +1070,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * This is done for every pixel. optimize well!
 	 *
 	 * @param {Zoomer}   zoomer  - This
-	 * @param {Frame}    frame   - This
+	 * @param {ZoomerFrame} frame   - This
 	 * @param {float}    x       - X value
 	 * @param {float}    y       - Y value
 	 */
@@ -1080,12 +1080,12 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 	/**
 	 * Start extracting (rotated) RGBA values from (paletted) pixels.
-	 * Extract rotated viewport from pixels and store them in specified imnagedata.
+	 * Extract rotated view from pixels and store them in specified imnagedata.
 	 * Called just before submitting the frame to a web-worker.
 	 * Previous frame is complete, current frame is under construction.
 	 *
 	 * @param {Zoomer} zoomer - This
-	 * @param {Frame}  frame  - Frame about to render
+	 * @param {ZoomerFrame} frame  - Frame about to render
 	 */
 	onRenderFrame: (zoomer, frame) => {
 		// update palette
@@ -1098,7 +1098,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * Frame might be in transit to the web-worker and is not available as parameter.
 	 *
 	 * @param {Zoomer} zoomer - This
-	 * @param {Frame}  frame  - Frame before releasing to pool
+	 * @param {ZoomerFrame} frame  - Frame before releasing to pool
 	 */
 	onEndFrame: (zoomer, frame) => {
 		// console.log('fps', zoomer.avgFrameRate);
@@ -1109,7 +1109,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * This is a callback to keep all canvas resource handling/passing out of Zoomer context.
 	 *
 	 * @param {Zoomer}   zoomer - This
-	 * @param {Frame}    frame  - Frame to inject
+	 * @param {ZoomerFrame} frame  - Frame to inject
 	 */
 	onPutImageData: (zoomer, frame) => {
 
@@ -1190,11 +1190,11 @@ function Zoomer(domZoomer, enableAngle, options = {
 	this.centerY = 0;
 
 	/** @member {float}
-	    @description Distance between center and viewport corner */
+	    @description Distance between center and view corner */
 	this.radius = 0;
 
 	/** @member {float}
-	    @description Current viewport angle (degrees) */
+	    @description Current view angle (degrees) */
 	this.angle = 0;
 
 	/*
@@ -1249,23 +1249,27 @@ function Zoomer(domZoomer, enableAngle, options = {
 	    @description Number of times mainloop called */
 	this.mainloopNr = 0;
 
-	/** @member {Viewport}
-	    @description Viewport #0 for even frames */
-	this.viewport0 = new Viewport(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+	/** @member {ZoomerView}
+	    @description View #0 for even frames */
+	this.view0 = new ZoomerView(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 
-	/** @member {Viewport}
-	    @description Viewport #1 for odd frames*/
-	this.viewport1 = new Viewport(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+	/** @member {ZoomerView}
+	    @description View #1 for odd frames*/
+	this.view1 = new ZoomerView(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 
-	/** @member {Viewport}
-	    @description Active viewport (frame being updated/rendered) */
-	this.currentViewport = this.viewport0;
+	/** @member {ZoomerView}
+	    @description View being constructed */
+	this.calcView = this.view0;
 
-	/** @member {Viewport}
-	    @description Active viewport (frame being painted) */
-	this.previousViewport = this.viewport0;
+	/** @member {ZoomerFrame}
+	    @description Frame being constructed */
+	this.calcView = this.view0;
 
-	/** @member {Frame[]}
+	/** @member {ZoomerView}
+	    @description View being displayed. Frame is/might be detached. */
+	this.dispView = this.view0;
+
+	/** @member {ZoomerFrame[]}
 	    @description list of free frames */
 	this.frames = [];
 
@@ -1309,23 +1313,23 @@ function Zoomer(domZoomer, enableAngle, options = {
 	    @description Average duration of states in milli seconds */
 	this.avgFrameDuration = [0, 0, 0, 0, 0];
 
-	/** @member {float}
+	/** @member {float[]}
 	    @description Average calculated pixels per frame */
 	this.avgPixelsPerFrame = 0;
 
-	/** @member {float}
+	/** @member {float[]}
 	    @description Average calculated lines per frame */
 	this.avgLinesPerFrame = 0;
 
-	/** @member {float}
+	/** @member {float[]}
 	    @description Average worker round-trip time */
 	this.avgRoundTrip = 0;
 
-	/** @member {float}
+	/** @member {float[]}
 	    @description Average real frame rate */
 	this.avgFrameRate = 0;
 
-	/** @member {float}
+	/** @member {float[]}
 	    @description Average quality (0..1) */
 	this.avgQuality = 0;
 
@@ -1345,17 +1349,17 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {int}   pixelWidth  - Storage width (pixels)
 	 * @param {int}   pixelHeight - Storage Heignt (pixels)
 	 * @param {float} angle       - Angle (degrees)
-	 * @return {Frame}
+	 * @return {ZoomerFrame}
 	 */
 	this.allocFrame = (viewWidth, viewHeight, pixelWidth, pixelHeight, angle) => {
 		// find frame with matching dimensions
 		for (; ;) {
-			/** @var {Frame} */
+			/** @var {ZoomerFrame} */
 			let frame = this.frames.shift();
 
 			// allocate new if list empty
 			if (!frame)
-				frame = new Frame(viewWidth, viewHeight, pixelWidth, pixelHeight);
+				frame = new ZoomerFrame(viewWidth, viewHeight, pixelWidth, pixelHeight);
 
 			// return if dimensions match
 			if (frame.viewWidth === viewWidth && frame.viewHeight === viewHeight && frame.pixelWidth === pixelWidth && frame.pixelHeight === pixelHeight) {
@@ -1385,7 +1389,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	/**
 	 * Update statistics with frame metrics
 	 *
-	 * @param {Frame} frame
+	 * @param {ZoomerFrame} frame
 	 */
 	this.updateStatistics = (frame) => {
 		this.avgFrameDuration[COPY] += (frame.durationCOPY - this.avgFrameDuration[COPY]) * this.coef;
@@ -1406,9 +1410,9 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {float}    centerY       - Center y or view
 	 * @param {float}    radius        - Radius of view
 	 * @param {float}    [angle]       - Angle of view
-	 * @param {Viewport} [keyViewport] - Previous viewport to inherit keyFrame rulers/pixels
+	 * @param {ZoomerView} [keyView] - Previous view to inherit keyFrame rulers/pixels
 	 */
-	this.setPosition = (centerX, centerY, radius, angle, keyViewport) => {
+	this.setPosition = (centerX, centerY, radius, angle, keyView) => {
 		angle = angle && enableAngle ? angle : 0;
 
 		if (this.centerX !== centerX || this.centerY !== centerY || this.radius !== radius) {
@@ -1423,10 +1427,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 		this.radius = radius;
 		this.angle = angle ? angle : 0;
 
-		// optionally inject keyFrame into current viewport
-		if (keyViewport) {
-			this.currentFrame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
-			this.currentViewport.setPosition(this.currentFrame, this.centerX, this.centerY, this.radius, keyViewport);
+		// optionally inject keyFrame into current view
+		if (keyView) {
+			this.calcFrame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
+			this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, keyView);
 		}
 	};
 
@@ -1474,7 +1478,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 		let now = performance.now();
 
 		// make local for speed
-		const viewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+		const view = (this.frameNr & 1) ? this.view1 : this.view0;
 
 		// current time
 		this.stateTicks[this.state]++;
@@ -1499,16 +1503,16 @@ function Zoomer(domZoomer, enableAngle, options = {
 				domZoomer.width = this.viewWidth;
 				domZoomer.height = this.viewHeight;
 
-				this.previousViewport = this.currentViewport;
+				this.dispView = this.calcView;
 
-				// create new viewports
-				this.viewport0 = new Viewport(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
-				this.viewport1 = new Viewport(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
-				this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
+				// create new views
+				this.view0 = new ZoomerView(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+				this.view1 = new ZoomerView(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+				this.calcView = (this.frameNr & 1) ? this.view1 : this.view0;
 
 				// copy the contents
-				this.currentFrame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
-				this.currentViewport.setPosition(this.currentFrame, this.centerX, this.centerY, this.radius, this.previousViewport);
+				this.calcFrame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
+				this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, this.dispView);
 
 				// invoke initial callback
 				if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
@@ -1519,8 +1523,8 @@ function Zoomer(domZoomer, enableAngle, options = {
 			 */
 			this.frameNr++;
 
-			this.previousViewport = this.currentViewport;
-			const previousFrame = this.previousViewport.frame;
+			this.dispView = this.calcView;
+			const previousFrame = this.dispView.frame;
 
 			const frame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
 			frame.timeStart = now;
@@ -1529,13 +1533,13 @@ function Zoomer(domZoomer, enableAngle, options = {
 			previousFrame.timeExpire = Date.now() + 2 * (1000/this.frameRate);
 
 			// COPY (performance hit)
-			this.currentFrame = frame;
-			this.currentViewport = (this.frameNr & 1) ? this.viewport1 : this.viewport0;
-			this.currentViewport.setPosition(this.currentFrame, this.centerX, this.centerY, this.radius, this.previousViewport);
+			this.calcFrame = frame;
+			this.calcView = (this.frameNr & 1) ? this.view1 : this.view0;
+			this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, this.dispView);
 
 			now = performance.now();
 			frame.durationCOPY = now - frame.timeStart;
-			if (this.onBeginFrame) this.onBeginFrame(this, this.currentViewport, this.currentViewport.frame, this.previousViewport, previousFrame);
+			if (this.onBeginFrame) this.onBeginFrame(this, this.calcView, this.calcView.frame, this.dispView, previousFrame);
 
 			if (!this.disableWW) {
 				// RENDER `Worker` context
@@ -1574,7 +1578,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 			 * With `getContext("2d", {desynchronized: true}))`, `putImageData()` has been reduces to ~1mSec.
 			 * To reduce overhead, don't schedule the state `PAINT` but append directly
 			 */
-			const frame = this.previousViewport.frame;
+			const frame = this.dispView.frame;
 
 			// inform invoker
 			if (this.onRenderFrame) this.onRenderFrame(this, frame);
@@ -1627,7 +1631,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 			// return frame to free pool
 			this.frames.push(frame);
-			this.previousViewport.frame = undefined; // unlink frame
+			this.dispView.frame = undefined; // unlink frame
 
 			// state change
 			now = performance.now();
@@ -1644,7 +1648,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 			/*
 			 * UPDATE. calculate inaccurate pixels
 			 */
-			const frame = this.currentViewport.frame;
+			const frame = this.calcView.frame;
 
 			// when would the next frame syncpoint be
 			let nextsync;
@@ -1670,7 +1674,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 			// update inaccurate pixels
 			const stime = now;
 			while (now < etime) {
-				viewport.updateLines(this);
+				view.updateLines(this);
 
 				now = performance.now();
 			}
@@ -1757,7 +1761,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 			this.WWorkers[i] = new Worker(blobURL);
 
 			this.WWorkers[i].addEventListener("message", (e) => {
-				/** @var {Frame} */
+				/** @var {ZoomerFrame} */
 				const frame = e.data;
 
 				let now = performance.now();

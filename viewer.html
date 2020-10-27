@@ -254,7 +254,7 @@
 			 * NOTE: each frame has it's own palette.
 			 *
 			 * @param {Zoomer}   zoomer - This
-			 * @param {Frame}    frame  - Frame being initialized.
+			 * @param {ZoomerFrame} frame  - Frame being initialized.
 			 */
 			onInitFrame: (zoomer, frame) => {
 				// create a palette buffer for palette mode
@@ -272,8 +272,8 @@
 			 * @param {Viewport} previousViewport  - Previous viewport to extract rulers/pixels
 			 * @param {Frame}    previousFrame     - Previous frame
 			 */
-			onBeginFrame: (zoomer, currentViewport, currentFrame, previousViewport, previousFrame) => {
-				if (zoomer.currentViewport.reachedLimits()) {
+			onBeginFrame: (zoomer, calcView, calcFrame, dispView, dispFrame) => {
+				if (zoomer.calcView.reachedLimits()) {
 					newRound();
 					zoomer.centerX = initialX;
 					zoomer.centerY = initialY;
@@ -282,14 +282,14 @@
 
 				zoomer.setPosition(zoomer.centerX, zoomer.centerY, zoomer.radius * 0.99, zoomer.angle);
 
-				domPosition.innerHTML = JSON.stringify({x: zoomer.centerX, y: zoomer.centerY, radius: zoomer.radius, angle: Math.round(zoomer.angle * 10) / 10, maxiter: Math.round(maxIter), quality: previousFrame.quality});
+				domPosition.innerHTML = JSON.stringify({x: zoomer.centerX, y: zoomer.centerY, radius: zoomer.radius, angle: Math.round(zoomer.angle * 10) / 10, maxiter: Math.round(maxIter), quality: dispFrame.quality});
 			},
 
 			/**
 			 * This is done for every pixel. optimize well!
 			 *
 			 * @param {Zoomer}   zoomer  - This
-			 * @param {Frame}    frame   - This
+			 * @param {ZoomerFrame} frame   - This
 			 * @param {float}    x       - X value
 			 * @param {float}    y       - Y value
 			 */
@@ -327,12 +327,12 @@
 
 			/**
 			 * Start extracting (rotated) RGBA values from (paletted) pixels.
-			 * Extract rotated viewport from pixels and store them in specified imnagedata.
+			 * Extract rotated view from pixels and store them in specified imnagedata.
 			 * Called just before submitting the frame to a web-worker.
 			 * Previous frame is complete, current frame is under construction.
 			 *
 			 * @param {Zoomer} zoomer - This
-			 * @param {Frame}  frame  - Previous frame
+			 * @param {ZoomerFrame} frame  - Previous frame
 			 */
 			onRenderFrame: (zoomer, frame) => {
 				// update palette
@@ -344,9 +344,9 @@
 			 * Frame construction complete. Update statistics.
 			 *
 			 * @param {Zoomer}   zoomer       - This
-			 * @param {Frame}    previousFrame - Current frame
+			 * @param {ZoomerFrame} frame  - Current frame
 			 */
-			onEndFrame: (zoomer, previousFrame) => {
+			onEndFrame: (zoomer, frame) => {
 
 				const now = performance.now();
 
@@ -377,7 +377,7 @@
 			 * This is a callback to keep all canvas resource handling/passing out of Zoomer context.
 			 *
 			 * @param {Zoomer}   zoomer - This
-			 * @param {Frame}    frame  - Frame to inject
+			 * @param {ZoomerFrame} frame  - Frame to inject
 			 */
 			onPutImageData: (zoomer, frame) => {
 
@@ -393,24 +393,23 @@
 		 */
 
 		// Create a small key frame (mandatory)
-		const keyViewport = new Viewport(64, 64, 64, 64); // Explicitly square
+		const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
 
 		// Calculate all the pixels, or choose any other content (optional)
-		keyViewport.fill(initialX, initialY, initialRadius, initialAngle, zoomer, zoomer.onUpdatePixel);
+		keyView.fill(initialX, initialY, initialRadius, initialAngle, zoomer, zoomer.onUpdatePixel);
 
 		// set initial position and inject key frame (mandatory)
-		zoomer.setPosition(initialX, initialY, initialRadius, initialAngle, keyViewport)
+		zoomer.setPosition(initialX, initialY, initialRadius, initialAngle, keyView)
 
 		/*
 		 * If you need to debug (display) the contents of a frame
-		 * NOTE: zoomer.currentViewport is being calculated, zoomer.previousViewport is being displayed
 		 */
 		if (true) {
 			/*
 			 * Manually put key frame in canvas
 			 */
 
-			let frame = keyViewport.frame;
+			let frame = keyView.frame;
 			// update palette
 			zoomer.onRenderFrame(zoomer, frame);
 			// extract pixels to rgba
@@ -422,7 +421,7 @@
 			 * Manually put prepared frame in canvas
 			 */
 
-			frame = zoomer.currentFrame;
+			frame = zoomer.calcFrame;
 			// update palette
 			zoomer.onRenderFrame(zoomer, frame);
 			// extract pixels to rgba
