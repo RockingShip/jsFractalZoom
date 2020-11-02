@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-02 22:49:44 Added reference implementation `codec.js`.
 2020-10-27 22:11:25 Renamed `Frame` -> `ZoomerFrame` and `Viewport` -> `zoomerView`.
 2020-10-26 23:28:27 Correct site URL.
 ```
