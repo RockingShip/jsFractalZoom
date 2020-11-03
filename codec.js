@@ -1025,11 +1025,18 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 //---------
 
+let { createCanvas, ImageData } = require("canvas");
 let fs = require('fs');
 let { PNG, COLORTYPE_COLOR_ALPHA, COLORTYPE_COLOR} = require("pngjs");
 
 let width = 1920;
 let height = 1080;
+
+// create the canvas
+let canvas = createCanvas(width, height)
+canvas.width = width;
+canvas.height = height;
+let ctx = canvas.getContext("2d")
 
 /*
  * create view containing encoder
@@ -1167,21 +1174,55 @@ if (1) {
 
 	// start encoding
 	for (let frameNr = 0; ; frameNr++) {
-console.log(dataPos);
+console.log((dataPos/3-width-height)/ (width*height), Math.trunc((frameNr/25) / 60), Math.trunc(frameNr/25) % 60, frameNr%25);
 		const newDataPos = view.updateLines(null, dstPixels, srcPixels, data, dataPos, radius, false);
 		if (!newDataPos)
 			break; // short frame
 
 		// save frame
 		{
-			let writePNG = new PNG({width: width, height: height});
-			let pngPixels = new Uint32Array(writePNG.data.buffer);
-			let pixels = new Uint32Array(frame1.pixels.buffer);
+			// put final buffer in canvas
+			let idata = new ImageData(width, height);
+			let dstPixels = new Uint32Array(idata.data.buffer);
+			let srcPixels = new Uint32Array(frame1.pixels.buffer);
+
+			// contents
 			for (let j = 0; j < height; j++)
 				for (let i = 0; i < width; i++)
-					pngPixels[j * width + i] = pixels[j * width + i];
+					dstPixels[j * width + i] = srcPixels[j * width + i];
 
-			fs.writeFileSync('out-' + frameNr + '.png', PNG.sync.write(writePNG));
+			// set borders
+			for (let j = 0; j < height; j++) {
+				let col = (view.yError[j]) ? 0xff000000 : 0xffffffff;
+
+				for (let i = 0; i < 10; i++) {
+					dstPixels[j * width + i] = col;
+					dstPixels[j * width + width - 1 - i] = col;
+				}
+			}
+
+			for (let i = 0; i < width; i++) {
+				let col = (view.xError[i]) ? 0xff000000 : 0xffffffff;
+
+				for (let j = 0; j < 10; j++) {
+					dstPixels[j  * width + i] = col;
+					dstPixels[(height - 1 - j) * width + i] = col;
+				}
+			}
+
+			// inject into canvas
+			ctx.putImageData(idata, 0, 0);
+
+			// overlay/add text
+			ctx.beginPath();
+			ctx.strokeStyle = "#fff";
+			ctx.fillStyle = "#fff";
+			ctx.font = "1em fixed";
+			ctx.fillText(((dataPos / 3 - width - height) / (width * height)).toString().substring(0, 8), 20, height - 20);
+
+			// write
+			let buffer = canvas.toBuffer("image/png")
+			fs.writeFileSync('out-' + frameNr + '.png', buffer);
 		}
 
 		dataPos = newDataPos;
@@ -1197,6 +1238,7 @@ if (0) {
 	let writePNG = new PNG({width: width, height: height});
 	let pngPixels = new Uint32Array(writePNG.data.buffer);
 	let pixels = new Uint32Array(frame1.pixels.buffer);
+
 	for (let j = 0; j < height; j++)
 		for (let i = 0; i < width; i++)
 			pngPixels[j * width + i] = pixels[j * width + i];
