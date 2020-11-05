@@ -374,6 +374,13 @@
 		Config.home();
 		palette.mkrandom();
 
+		// override config/formula
+		const query = window.location.search.substring(1);
+		if (query) {
+			Config.load(query);
+			palette.loadTheme();
+		}
+
 		window.gui = new GUI(window.config);
 
 		// setup palette

@@ -136,11 +136,6 @@ function Config() {
 	/** @member {float} - After 1sec, get 80% closer to target speed */
 	Config.zoomSpeedCoef = 0.80;
 
-	Config.formula = "";
-	Config.incolour = "";
-	Config.outcolour = "";
-	Config.plane = "";
-
 	/** @member {float} - center X coordinate - autopilot updated */
 	Config.autopilotX = 0;
 	/** @member {float} - center Y coordinate - autopilot updated */
@@ -186,24 +181,56 @@ Config.logTolinear = function (min, max, log) {
 };
 
 /**
+ * Load config from query string
+ *
+ * @param {string} query
+ */
+Config.load = function (query) {
+	const vars = query.split('&');
+	for (let i = 0; i < vars.length; i++) {
+		const [k, v] = vars[i].split('=');
+		if (k === "x")
+			Config.centerX = Number.parseFloat(v);
+		else if (k === "y")
+			Config.centerY = Number.parseFloat(v);
+		else if (k === "r")
+			Config.radius = Number.parseFloat(v);
+		else if (k === "a")
+			Config.angle = Number.parseFloat(v);
+		else if (k === "iter")
+			Config.maxIter = Number.parseInt(v);
+		else if (k === "theme")
+			Config.theme = Number.parseInt(v);
+		else if (k === "seed")
+			Config.seed = Number.parseInt(v);
+		else if (k === "formula")
+			Formula.formula = Number.parseInt(v);
+		else if (k === "incolour")
+			Formula.incolour = Number.parseInt(v);
+		else if (k === "outcolour")
+			Formula.outcolour = Number.parseInt(v);
+		else if (k === "plane")
+			Formula.plane = Number.parseInt(v);
+	}
+}
+
+/**
  * set initial position
  */
 Config.home = function () {
-	if (Formula) {
-		const initial = Formula.initial[Formula.formula];
+	const initial = Formula.initial[Formula.formula];
 
-		Config.centerX = initial.x;
-		Config.centerY = initial.y;
-		Config.radius = initial.r;
-		Config.angle = initial.a;
+	Config.centerX = initial.x;
+	Config.centerY = initial.y;
+	Config.radius = initial.r;
+	Config.angle = initial.a;
 
-		// reset maxiter
-		Config.maxIter = 300;
+	// reset maxiter
+	Config.maxIter = 300;
 
-		// reset autopilot
-		Config.autopilotX = 0;
-		Config.autopilotY = 0;
-	}
+	// reset autopilot
+	Config.autopilotX = 0;
+	Config.autopilotY = 0;
 };
 
 /**
@@ -754,6 +781,36 @@ function GUI(config) {
 		onPutImageData: (zoomer, frame) => {
 
 			/*
+			 * Inject JSON into frame
+			 */
+			const json = JSON.stringify({
+				x: Config.centerX,
+				y: Config.centerY,
+				r: Config.radius,
+				a: Config.angle,
+				iter: Config.maxIter,
+				theme: Config.theme,
+				seed: Config.seed,
+				formula: Formula.formula,
+				incolour: Formula.incolour,
+				outcolour: Formula.outcolour,
+				plane: Formula.plane,
+			});
+
+			let k = 0;
+			for (let j = 0; j < json.length; j++) {
+				let code = json.charCodeAt(j);
+				for (let i = 0; i < 8; i++) {
+					if (code & 1)
+						frame.rgba[k] |= 1;
+					else
+						frame.rgba[k] &= ~1;
+					code >>= 1;
+					k++;
+				}
+			}
+
+			/*
 			 * draw frame onto canvas
 			 */
 			const imageData = new ImageData(new Uint8ClampedArray(frame.rgba.buffer), frame.viewWidth, frame.viewHeight);
@@ -810,6 +867,12 @@ function GUI(config) {
 	this.outcolour = new Aria.ListboxButton(this.domOutcolourButton, this.domOutcolourList);
 	this.plane = new Aria.ListboxButton(this.domPlaneButton, this.domPlaneList);
 
+	// set lists
+	this.formula.listbox.focusItem(document.getElementById("formula_" + Formula.formula));
+	this.incolour.listbox.focusItem(document.getElementById("incolour_" + Formula.incolour));
+	this.outcolour.listbox.focusItem(document.getElementById("outcolour_" + Formula.outcolour));
+	this.plane.listbox.focusItem(document.getElementById("plane_" + Formula.plane));
+
 	// construct buttons
 	this.power = new Aria.Button(this.domPowerButton, true);
 	this.autoPilot = new Aria.Button(this.domAutoPilotButton, true);
@@ -817,8 +880,6 @@ function GUI(config) {
 
 	// construct radio group
 	this.paletteGroup = new Aria.RadioGroup(document.getElementById("idPaletteGroup"));
-	this.randomPalette = this.paletteGroup.radioButtons[0];
-	this.defaultPalette = this.paletteGroup.radioButtons[1];
 
 	// sliders
 	this.speed.setCallbackValueChange((newValue) => {
@@ -856,34 +917,38 @@ function GUI(config) {
 
 	// listboxes
 	this.formula.listbox.setCallbackFocusChange((focusedItem) => {
-		Config.formula = focusedItem.id;
 		this.domFormulaButton.innerText = focusedItem.innerText;
 		const formula = focusedItem.id.substr(8) | 0;
-		Formula.formula = formula;
-		Config.home();
-		this.reload();
+		if (Formula.formula !== formula) {
+			Formula.formula = formula;
+			Config.home();
+			this.reload();
+		}
 	});
 	this.incolour.listbox.setCallbackFocusChange((focusedItem) => {
-		Config.incolour = focusedItem.id;
 		this.domIncolourButton.innerText = focusedItem.innerText;
 		const incolour = focusedItem.id.substr(9) | 0;
-		Formula.incolour = incolour;
-		this.reload();
+		if (Formula.incolour !== incolour) {
+			Formula.incolour = incolour;
+			this.reload();
+		}
 	});
 	this.outcolour.listbox.setCallbackFocusChange((focusedItem) => {
-		Config.outcolour = focusedItem.id;
 		this.domOutcolourButton.innerText = focusedItem.innerText;
 		const outcolour = focusedItem.id.substr(10) | 0;
-		Formula.outcolour = outcolour;
-		this.reload();
+		if (Formula.outcolour !== outcolour) {
+			Formula.outcolour = outcolour;
+			this.reload();
+		}
 	});
 	this.plane.listbox.setCallbackFocusChange((focusedItem) => {
-		Config.plane = focusedItem.id;
 		this.domPlaneButton.innerText = focusedItem.innerText;
 		const plane = focusedItem.id.substr(6) | 0;
-		Formula.plane = plane;
-		Config.home();
-		this.reload();
+		if (Formula.plane !== plane) {
+			Formula.plane = plane;
+			Config.home();
+			this.reload();
+		}
 	});
 
 	// buttons

@@ -98,8 +98,12 @@ Aria.Button = function (domButton) {
 Aria.Button.prototype.setCallbackValueChange = function (handler) {
 	this.callbackValueChange = handler;
 
-	var currentState = this.domButton.getAttribute('aria-pressed');
-	handler(currentState === 'true');
+	/*
+	 * @date 2020-11-05 01:37:29
+	 * Do not push buttons on initial load
+	 */
+	// var currentState = this.domButton.getAttribute('aria-pressed');
+	// handler(currentState === 'true');
 };
 
 /**
@@ -1158,7 +1162,12 @@ Aria.RadioGroup = function (domGroup) {
  */
 Aria.RadioGroup.prototype.setCallbackFocusChange = function (focusChangeHandler) {
 	this.callbackFocusChange = focusChangeHandler;
-	focusChangeHandler(this.checkedRadioButton);
+
+	/*
+	 * @date 2020-11-05 01:37:29
+	 * Do not push buttons on initial setting
+	 */
+	// focusChangeHandler(this.checkedRadioButton);
 };
 
 /**
