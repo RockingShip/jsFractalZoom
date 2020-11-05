@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-05 03:19:30 Seedable PRNG, loadable palette themes.
 2020-11-05 02:40:11 Modernized changelog and license.
 2020-11-03 14:57:53 Add text and borders to `codec.js`.
 2020-11-02 22:49:44 Added reference implementation `codec.js`.

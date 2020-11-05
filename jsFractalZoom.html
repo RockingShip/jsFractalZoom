@@ -365,13 +365,22 @@
 		// remove whitespace-only text nodes
 		cleanNode(document.body);
 
-		// setup and link top-level components
+		// Create components
 		Config(); // setup initial static values
 		Formula(); // setup initial static values
 		window.palette = new Palette();
+
+		// set initial defaults
+		Config.home();
+		palette.mkrandom();
+
 		window.gui = new GUI(window.config);
 
-		var domZoomer = window.gui.domZoomer;
+		// setup palette
+		palette.loadTheme(Config.theme, Config.seed);
+
+		// setup initial frame
+		window.gui.reload();
 
 		// initial focus main view
 		window.gui.domZoomer.focus();

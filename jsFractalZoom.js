@@ -70,65 +70,70 @@ function Config() {
 	Config.power = false;
 	Config.autoPilot = false;
 
-	/** @member {number} - zoom magnification slider Min */
+	/** @member {float} - zoom magnification slider Min */
 	Config.zoomManualSpeedMin = 1.01;
-	/** @member {number} - zoom magnification slider Max */
+	/** @member {float} - zoom magnification slider Max */
 	Config.zoomManualSpeedMax = 50.0;
-	/** @member {number} - zoom magnification slider Now */
+	/** @member {float} - zoom magnification slider Now */
 	Config.zoomManualSpeedNow = 20;
 
-	/** @member {number} - zoom magnification slider Min */
+	/** @member {float} - zoom magnification slider Min */
 	Config.zoomAutoSpeedMin = 1.01;
-	/** @member {number} - zoom magnification slider Max */
+	/** @member {float} - zoom magnification slider Max */
 	Config.zoomAutoSpeedMax = 4.0;
-	/** @member {number} - zoom magnification slider Now */
+	/** @member {float} - zoom magnification slider Now */
 	Config.zoomAutoSpeedNow = 2;
 
-	/** @member {number} - rotate speed slider Min */
+	/** @member {float} - rotate speed slider Min */
 	Config.rotateSpeedMin = -0.4;
-	/** @member {number} - rotate speed slider Max */
+	/** @member {float} - rotate speed slider Max */
 	Config.rotateSpeedMax = +0.4;
-	/** @member {number} - rotate speed slider Now */
+	/** @member {float} - rotate speed slider Now */
 	Config.rotateSpeedNow = 0;
 
-	/** @member {number} - palette cycle slider Min */
+	/** @member {float} - palette cycle slider Min */
 	Config.paletteSpeedMin = -30.0;
-	/** @member {number} - palette cycle slider Max */
+	/** @member {float} - palette cycle slider Max */
 	Config.paletteSpeedMax = +30.0;
-	/** @member {number} - palette cycle slider Now */
+	/** @member {float} - palette cycle slider Now */
 	Config.paletteSpeedNow = 0;
 
-	/** @member {number} - calculation depth slider Min */
+	/** @member {float} - calculation depth slider Min */
 	Config.framerateMin = 1;
-	/** @member {number} - calculation depth slider Max */
+	/** @member {float} - calculation depth slider Max */
 	Config.framerateMax = 60;
-	/** @member {number} - calculation depth slider Now */
+	/** @member {float} - calculation depth slider Now */
 	Config.framerateNow = 20;
 
-	/** @member {number} - center X coordinate - vsync updated */
+	/** @member {float} - center X coordinate - vsync updated */
 	Config.centerX = 0;
-	/** @member {number} - center Y coordinate - vsync updated */
+	/** @member {float} - center Y coordinate - vsync updated */
 	Config.centerY = 0;
-	/** @member {number} - distance between center and view corner - vsync updated */
+	/** @member {float} - distance between center and view corner - vsync updated */
 	Config.radius = 0;
-	/** @member {number} - current view angle (degrees) - timer updated */
+	/** @member {float} - current view angle (degrees) - timer updated */
 	Config.angle = 0;
-	/** @member {number} - max Iteration for calculations */
+	/** @member {int} - max Iteration for calculations */
 	Config.maxIter = 0;
-	/** @member {number} - Auto adapting low-pass coefficient */
+	/** @member {float} - Auto adapting low-pass coefficient */
 	Config.maxIterCoef = 0.01;
-	/** @member {number} - Auto adapting AllocateAhead */
+	/** @member {int} - Auto adapting AllocateAhead */
 	Config.maxIterBump = 100;
 
-
-	/** @member {number} - current palette offset - timer updated */
+	/** @member {float} - current palette offset - timer updated */
 	Config.paletteOffsetFloat = 0;
-	/** @member {number} - Palette size before colours start repeating */
+	/** @member {int} - Palette size before colours start repeating */
 	Config.paletteSize = 0;
 
-	/** @member {number} - current view zoomSpeed - timer updated */
+	/** @member {int} - Palette theme  */
+	Config.theme = Math.round(Math.random() * 8);
+
+	/** @member {int} - Starting seed for palette  */
+	Config.seed = Math.round(Math.random() * 2147483647);
+
+	/** @member {float} - current view zoomSpeed - timer updated */
 	Config.zoomSpeed = 0;
-	/** @member {number} - After 1sec, get 80% closer to target speed */
+	/** @member {float} - After 1sec, get 80% closer to target speed */
 	Config.zoomSpeedCoef = 0.80;
 
 	Config.formula = "";
@@ -191,6 +196,13 @@ Config.home = function () {
 		Config.centerY = initial.y;
 		Config.radius = initial.r;
 		Config.angle = initial.a;
+
+		// reset maxiter
+		Config.maxIter = 300;
+
+		// reset autopilot
+		Config.autopilotX = 0;
+		Config.autopilotY = 0;
 	}
 };
 
@@ -206,22 +218,32 @@ function Palette() {
 	/** @member {Uint32Array} - palette data */
 	this.palette = new Uint32Array(65536);
 
-	/** @member {number} - background red */
+	/** @member {int} - background red */
 	this.backgroundRed = 0;
-	/** @member {number} - background green */
+	/** @member {int} - background green */
 	this.backgroundGreen = 0;
-	/** @member {number} - background blue */
+	/** @member {int} - background blue */
 	this.backgroundBlue = 0;
+
+	/** @member {int} - current PRNG seed  */
+	this.seed = 0;
 
 	/**
 	 * Create a random number in range 0 <= return < n
+	 *
+	 * @date 2020-11-04 13:05:20
+	 * Javascript does not have a seedable number generator.
+	 * Implement MINSTD with reduced range
 	 *
 	 * @function
 	 * @param n
 	 * @returns {number}
 	 */
-	const random = function (n) {
-		return Math.floor(Math.random() * n);
+	this.random = function (n) {
+		this.seed = Number(BigInt(this.seed) * 48271n % 2147483647n);
+
+		// NOTE: n is non-inclusive upper bound
+		return Number(BigInt(this.seed) * BigInt(n) / 2147483647n);
 	};
 
 	this.mksmooth = function (nsegments, segmentsize, R, G, B) {
@@ -259,25 +281,25 @@ function Palette() {
 			B[0] = 255;
 			for (let i = 0; i < nsegments; i += 2) {
 				if (i !== 0) {
-					R[i] = random(256);
-					G[i] = random(256);
-					B[i] = random(256);
+					R[i] = this.random(256);
+					G[i] = this.random(256);
+					B[i] = this.random(256);
 				}
 				if (i + 1 < nsegments) {
-					R[i + 1] = random(35);
-					G[i + 1] = random(35);
-					B[i + 1] = random(35);
+					R[i + 1] = this.random(35);
+					G[i + 1] = this.random(35);
+					B[i + 1] = this.random(35);
 				}
 			}
 		} else {
 			for (let i = 0; i < nsegments; i += 2) {
-				R[i] = random(35);
-				G[i] = random(35);
-				B[i] = random(35);
+				R[i] = this.random(35);
+				G[i] = this.random(35);
+				B[i] = this.random(35);
 				if (i + 1 < nsegments) {
-					R[i + 1] = random(256);
-					G[i + 1] = random(256);
-					B[i + 1] = random(256);
+					R[i + 1] = this.random(256);
+					G[i + 1] = this.random(256);
+					B[i + 1] = this.random(256);
 				}
 			}
 		}
@@ -296,9 +318,9 @@ function Palette() {
 			B[i] = (!whitemode) * 255;
 			if (++i >= nsegments)
 				break;
-			R[i] = random(256);
-			G[i] = random(256);
-			B[i] = random(256);
+			R[i] = this.random(256);
+			G[i] = this.random(256);
+			B[i] = this.random(256);
 			if (++i >= nsegments)
 				break;
 			R[i] = whitemode * 255;
@@ -321,9 +343,9 @@ function Palette() {
 			} else if (i % 3 === 0) {
 				R[i] = G[i] = B[i] = 255;
 			} else {
-				s = random(256);
-				h = random(128 - 32);
-				v = random(128);
+				s = this.random(256);
+				h = this.random(128 - 32);
+				v = this.random(128);
 				if ((i % 6 > 3) ^ (i % 3 === 1)) {
 					h += 42 + 16;
 				} else {
@@ -414,23 +436,29 @@ function Palette() {
 		}
 	}
 
-	this.mkrandom = function () {
+	this.loadTheme = function () {
+		// set PRNG seed for this palette
+		this.seed = Config.seed;
+
 		// 85 = 255 / 3
 		let segmentsize, nsegments;
-		const whitemode = random(2);
+		const whitemode = this.random(2);
 
-		segmentsize = random(85 + 4);
-		segmentsize += random(85 + 4);
-		segmentsize += random(85 + 4);
-		segmentsize += random(85 + 4);	/* Make smaller segments with higher probability */
+		{
+			// XaoS code
+			segmentsize = this.random(85 + 4);
+			segmentsize += this.random(85 + 4);
+			segmentsize += this.random(85 + 4);
+			segmentsize += this.random(85 + 4); /* Make smaller segments with higher probability */
 
-		segmentsize = Math.abs(segmentsize >> 1 - 85 + 3);
-		if (segmentsize < 8)
-			segmentsize = 8;
-		if (segmentsize > 85)
-			segmentsize = 85;
+			segmentsize = Math.abs((segmentsize >> 1) - 85 + 3);
+			if (segmentsize < 8)
+				segmentsize = 8;
+			if (segmentsize > 85)
+				segmentsize = 85;
+		}
 
-		switch (random(8)) {
+		switch (Config.theme) {
 		case 0:
 			segmentsize = Math.floor(segmentsize / 2) * 2;
 			nsegments = Math.floor(256 / segmentsize);
@@ -464,6 +492,16 @@ function Palette() {
 		}
 	};
 
+	this.mkrandom = function () {
+		// get a new random number
+		Config.seed = Math.round(Math.random() * 2147483647);
+
+		// rotate though palette themes
+		Config.theme = (Config.theme + 1) % 8;
+
+		this.loadTheme();
+	}
+
 	this.mkdefault = function () {
 		const gray = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff];
 		this.mksmooth(16, 1, gray, gray, gray);
@@ -494,11 +532,6 @@ function Palette() {
 		// background colour
 		out32[65535] = 0x00000000; // transparent
 	};
-
-	/*
-	 * Create initial palette
-	 */
-	this.mkdefault();
 }
 
 /**
@@ -720,10 +753,11 @@ function GUI(config) {
 		 */
 		onPutImageData: (zoomer, frame) => {
 
-			const imagedata = new ImageData(new Uint8ClampedArray(frame.rgba.buffer), frame.viewWidth, frame.viewHeight);
-
-			// draw frame onto canvas
-			this.ctx.putImageData(imagedata, 0, 0);
+			/*
+			 * draw frame onto canvas
+			 */
+			const imageData = new ImageData(new Uint8ClampedArray(frame.rgba.buffer), frame.viewWidth, frame.viewHeight);
+			this.ctx.putImageData(imageData, 0, 0);
 		}
 	});
 
@@ -889,8 +923,6 @@ function GUI(config) {
 		this.speed.updateLabels();
 	});
 	this.home.setCallbackValueChange((newValue) => {
-		Config.autopilotX = 0;
-		Config.autopilotY = 0;
 		Config.home();
 		this.reload();
 	});
@@ -1256,9 +1288,6 @@ GUI.prototype.handleMouse = function (event) {
  * (re)load initial frame
  */
 GUI.prototype.reload = function () {
-	// reset maxiter
-	Config.maxIter = 300;
-
 	// Create a small key frame (mandatory)
 	const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
 
