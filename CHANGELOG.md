@@ -7,13 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-05 02:40:11 Modernized changelog and license.
 2020-11-03 14:57:53 Add text and borders to `codec.js`.
 2020-11-02 22:49:44 Added reference implementation `codec.js`.
 2020-10-27 22:11:25 Renamed `Frame` -> `ZoomerFrame` and `Viewport` -> `zoomerView`.
 2020-10-26 23:28:27 Correct site URL.
 ```
 
-## [0.9.0] 2020-10-26 22:32:53
+## [Version 0.9.0] 2020-10-26 22:32:53
 
 `Zoomer`, Isolate and extract core logic so it can be used within other projects.
 
@@ -68,7 +69,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 2020-10-12 07:38:22 Canvas size fix. Initial random palette.
 ```
 
-## [0.8.0] 2018-03-06
+## [Version 0.8.0] 2018-03-06
 
 ### Added
 - Formula, incolour, outcolour and plane
@@ -79,7 +80,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Improved palette and pixel value 65535 for background
 - Fast initial image
 
-## [0.7.0] 2018-02-20
+## [Version 0.7.0] 2018-02-20
 
 ### Added
 - Webworker for paint offloading (but with postMessage() disabled)
@@ -88,7 +89,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Improved update_pixels()
 - Simplified palette
 
-## [0.6.0] 2018-02-13
+## [Version 0.6.0] 2018-02-13
 
 ### Added
 - Home gesture
@@ -102,7 +103,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Changed
 - xyCoord[] calculation was causing out of sync.  
  
-## [0.5.0] 2018-02-09
+## [Version 0.5.0] 2018-02-09
 
 ### Added
 - Viewport mouse gestures
@@ -112,7 +113,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Relocate pixel data from GUI to newly created Viewport
 
-## [0.4.0] 2018-02-05
+## [Version 0.4.0] 2018-02-05
 
 ### Changed
 - High precision timers
@@ -120,7 +121,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - double imagedata buffer
 - Optimize paint when not rotated
 
-## [0.3.0] 2018-02-05
+## [Version 0.3.0] 2018-02-05
 
 ### Added
 - RadioButton/RadioGroup
@@ -131,7 +132,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Unified ARIA
 
-## [0.2.0] 2018-02-03
+## [Version 0.2.0] 2018-02-03
 
 ### Added
 - Redesigned user interface according to ARIA practices https://www.w3.org/TR/wai-aria-practices
@@ -148,11 +149,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Initial creation
 
 [Unreleased]: https://github.com/xyzzy/jsFractalZoom/compare/v0.9.0...HEAD
-[0.9.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.1.0...v0.2.0
+[Version 0.9.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.8.0...v0.9.0
+[Version 0.8.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.7.0...v0.8.0
+[Version 0.7.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.6.0...v0.7.0
+[Version 0.6.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.5.0...v0.6.0
+[Version 0.5.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.4.0...v0.5.0
+[Version 0.4.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.3.0...v0.4.0
+[Version 0.3.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.2.0...v0.3.0
+[Version 0.2.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.1.0...v0.2.0
