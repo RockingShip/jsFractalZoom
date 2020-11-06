@@ -503,7 +503,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		const exactY = this.makeRuler(centerY - this.radiusPixelVer, centerY + this.radiusPixelVer, yCoord, yNearest, yError, yFrom, previousView.yNearest, previousView.yError);
 
 		frame.cntPixels += exactX * exactY;
-		frame.cntHLines += exactX; // todo: might need to swap XY
+		frame.cntHLines += exactX;
 		frame.cntVLines += exactY;
 
 		/**
@@ -593,6 +593,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	 * Simple background renderer
 	 *
 	 * @param {Zoomer} zoomer
+	 * @return {int} number of lines updated
 	 */
 	this.updateLines = (zoomer) => {
 
@@ -617,8 +618,10 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			}
 		}
 
-		if (worstXerr + worstYerr === 0)
-			return; // nothing to do
+		if (worstXerr + worstYerr === 0) {
+			console.log(this.frame.cntHLines, this.frame.cntVLines)
+			return 0; // nothing to do
+		}
 
 		/**
 		 **!
@@ -634,7 +637,8 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			let x = xCoord[i];
 
 			let result = zoomer.onUpdatePixel(zoomer, frame, x, yCoord[0]);
-			frame.cntPixels++;
+			if (yError[0] === 0 || yFrom[0] !== -1)
+				frame.cntPixels++;
 
 			let ji = 0 * pixelWidth + i;
 			pixels[ji] = result;
@@ -662,7 +666,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 			xNearest[i] = x;
 			xError[i] = 0;
-			frame.cntVLines++;
+			frame.cntHLines++;
 
 		} else {
 
@@ -670,7 +674,8 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			let y = yCoord[j];
 
 			let result = zoomer.onUpdatePixel(zoomer, frame, xCoord[0], y);
-			frame.cntPixels++;
+			if (xError[0] === 0 || xFrom[0] !== -1)
+				frame.cntPixels++;
 
 			let ji = j * pixelWidth + 0;
 			pixels[ji++] = result;
@@ -697,11 +702,12 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 			yNearest[j] = y;
 			yError[j] = 0;
-			frame.cntHLines++;
+			frame.cntVLines++;
 		}
 
 		// update quality
 		frame.quality = frame.cntPixels / (frame.pixelWidth * frame.pixelHeight);
+		return 1;
 	};
 
 	/**
@@ -1674,10 +1680,15 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 			// update inaccurate pixels
 			const stime = now;
+			let cntUpdated = 0;
 			while (now < etime) {
-				view.updateLines(this);
+				cntUpdated = view.updateLines(this);
 
 				now = performance.now();
+
+				// test for completion
+				if (!cntUpdated)
+					break;
 			}
 
 			// update stats
@@ -1685,9 +1696,11 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 			// end time reached?
 			etime = nextsync;
-			if (now >= etime) {
-				// register overshoot
-				this.timeOvershoot += now - etime;
+			if (now >= etime || !cntUpdated) {
+				if (now >= etime) {
+					// register overshoot
+					this.timeOvershoot += now - etime;
+				}
 
 				// change state
 				this.avgStateDuration[this.state] += ((now - this.stateStart[this.state]) - this.avgStateDuration[this.state]) * this.coef;
@@ -1695,8 +1708,16 @@ function Zoomer(domZoomer, enableAngle, options = {
 				this.stateStart[this.state] = now;
 			}
 
-			// return and call again.
-			postMessage("mainloop", "*");
+			if (!cntUpdated) {
+				// nothing was calculate, enter sleep mode
+				window.setTimeout(() => {
+					this.stateStart[this.state] = performance.now();
+					postMessage("mainloop", "*");
+				}, 200);
+			} else {
+				// return and call again.
+				postMessage("mainloop", "*");
+			}
 			return true;
 		}
 

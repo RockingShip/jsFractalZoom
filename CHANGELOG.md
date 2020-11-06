@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-06 01:48:54 Sleep state when done calculating.
 2020-11-06 01:46:45 Code cleanup.
 2020-11-06 01:38:53 Added Save/Url button.
 2020-11-06 01:23:30 One/Two state buttons and improved UI.
