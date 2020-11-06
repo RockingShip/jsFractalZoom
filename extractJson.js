@@ -37,8 +37,8 @@ loadImage(process.argv[2]).catch(e => {
 	const canvas = createCanvas(image.width, image.height);
 	const ctx = canvas.getContext('2d');
 
-	ctx.strokeStyle = "#f00";
-	ctx.fillStyle = "#f00";
+	ctx.strokeStyle = "#00000000"; // transparent
+	ctx.fillStyle = "#00000000";
 	ctx.fillRect(0, 0, image.width, image.height);
 
 	// draw image on canvas
@@ -47,12 +47,19 @@ loadImage(process.argv[2]).catch(e => {
 	// get pixel data
 	const rgba = new Uint32Array(ctx.getImageData(0, 0, image.width, image.height).data.buffer);
 
-	let k = 0;
 	let json = "";
-	for (let j = 0; j < image.width * image.height; j++) {
+
+	// skip first line and column
+	let k = image.width + 1;
+	while (k < image.width * image.height) {
 		let code = 0;
-		for (let i = 0; i < 8; i++)
+		for (let i = 0; i < 8; i++) {
+			// pixel must not be transparent
+			while (!(rgba[k] & 0xff000000))
+				k++;
+
 			code |= (rgba[k++] & 1) << i;
+		}
 
 		if (code < 32 || code >= 128) {
 			// invalid code
@@ -65,6 +72,9 @@ loadImage(process.argv[2]).catch(e => {
 		} else if (code === 125 /* '}' */) {
 			// string complete
 			json += '}';
+
+		// test that it has a bit of body
+		if (json.length > 16)
 			break;
 		} else {
 			// add character

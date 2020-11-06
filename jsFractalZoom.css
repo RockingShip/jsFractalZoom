@@ -74,6 +74,31 @@ body {
 	position: absolute;
 }
 
+#idCopyText {
+	position: absolute;
+	display: none;
+	width: 1px;
+	height: 1px;
+	border: none;
+	margin: 0;
+	padding: 0;
+}
+
+#idPopup {
+	position: fixed;
+	background-color: #ccc;
+	opacity: 0;
+	transition: 0.6s;
+	margin-top: -5em;
+	margin-left: -7em;
+	padding: .5em;
+	border-radius: .5em;
+}
+
+#idPopup.active {
+	opacity: 1;
+}
+
 #top {
 	position: absolute;
 	padding: .4em;
@@ -425,7 +450,6 @@ body {
 .navButton .nolight {
 	padding: 0 0.4em;
 }
-
 
 #idProjectPage {
 	display: block;

@@ -582,6 +582,9 @@ function GUI(config) {
 	this.domPowerButton = "idPowerButton";
 	this.domAutoPilotButton = "idAutoPilotButton";
 	this.domHomeButton = "idHomeButton";
+	this.domSaveButton = "idSaveButton";
+	this.domUrlButton = "idUrlButton";
+	this.domPopup = "idPopup";
 	this.domFormulaButton = "idFormulaButton";
 	this.domFormulaList = "idFormulaList";
 	this.domIncolourButton = "idIncolourButton";
@@ -797,10 +800,15 @@ function GUI(config) {
 				plane: Formula.plane,
 			});
 
-			let k = 0;
+			let k = frame.viewWidth + 1; // skip first line and column
 			for (let j = 0; j < json.length; j++) {
 				let code = json.charCodeAt(j);
 				for (let i = 0; i < 8; i++) {
+					// pixel must not be transparent
+					while (!frame.rgba[k])
+						k++;
+
+					// inject bit
 					if (code & 1)
 						frame.rgba[k] |= 1;
 					else
@@ -877,6 +885,8 @@ function GUI(config) {
 	this.power = new Aria.Button(this.domPowerButton, false);
 	this.autoPilot = new Aria.Button(this.domAutoPilotButton, false);
 	this.home = new Aria.Button(this.domHomeButton, true);
+	this.save = new Aria.Button(this.domSaveButton, true);
+	this.url = new Aria.Button(this.domUrlButton, true);
 
 	// construct radio group
 	this.paletteGroup = new Aria.RadioGroup(document.getElementById("idPaletteGroup"));
@@ -990,6 +1000,70 @@ function GUI(config) {
 	this.home.setCallbackValueChange((newValue) => {
 		Config.home();
 		this.reload();
+	});
+	this.save.setCallbackValueChange((newValue) => {
+		/*
+		 * Popup
+		 */
+		this.domPopup.innerText = "saving";
+		this.domPopup.className = "active";
+		setTimeout(()=>{
+			this.domPopup.className = "";
+		}, 2000)
+
+		// save image through clicking hidden <a href="blob"/>
+		const link = document.createElement("a");
+		link.download = "image.png";
+		this.domZoomer.toBlob(function (blob) {
+			link.href = URL.createObjectURL(blob);
+			link.click();
+		}, "image/png");
+	});
+	this.url.setCallbackValueChange((newValue) => {
+		/*
+		 * Inject JSON into frame
+		 */
+		const obj = {
+			x: Config.centerX,
+			y: Config.centerY,
+			r: Config.radius,
+			a: Config.angle,
+			iter: Config.maxIter,
+			theme: Config.theme,
+			seed: Config.seed,
+			formula: Formula.formula,
+			incolour: Formula.incolour,
+			outcolour: Formula.outcolour,
+			plane: Formula.plane,
+		};
+
+		// convert to query string
+		let qarr = [];
+		for (let k in obj) {
+			qarr.push(k + '=' + obj[k]);
+		}
+		let qstr = qarr.join("&");
+
+		/*
+		 * Copy to clipboard
+		 * NOTE: the following only works when called from a "click" event.
+		 */
+		const copyText = document.getElementById("idCopyText");
+		copyText.style.display = "block";
+		copyText.value = location.origin + location.pathname + '?' + qstr;
+
+		copyText.select();
+		copyText.setSelectionRange(0, 99999);
+		document.execCommand("copy");
+
+		/*
+		 * Popup
+		 */
+		this.domPopup.innerText = "copied to clipboard";
+		this.domPopup.className = "active";
+		setTimeout(()=>{
+			this.domPopup.className = "";
+		}, 2000)
 	});
 
 	this.paletteGroup.setCallbackFocusChange((newButton) => {
