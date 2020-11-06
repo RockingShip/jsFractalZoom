@@ -1145,8 +1145,18 @@ function GUI() {
 			// update x/y but keep radius
 			Config.centerX = this.dragCenterX - dx;
 			Config.centerY = this.dragCenterY - dy;
+
+			// mark visual center
+			const borderPixelRadius = 4;
+			gui.domAutopilot.style.top = ((this.zoomer.viewHeight >> 1) - borderPixelRadius) + "px";
+			gui.domAutopilot.style.left = ((this.zoomer.viewWidth >> 1) - borderPixelRadius) + "px";
+			gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
+			gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
+			gui.domAutopilot.style.border = "4px solid green";
+
 		} else {
 			this.dragActive = false;
+			gui.domAutopilot.style.border = "";
 		}
 
 		// zoom-in/out gesture
