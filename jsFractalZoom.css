@@ -28,7 +28,7 @@
 	display: none;
 }
 .focus {
-	outline: 2px dotted #888;
+	outline: .2em dotted #888;
 }
 
 body {
@@ -76,7 +76,7 @@ body {
 
 #top {
 	position: absolute;
-	padding: 4px;
+	padding: .4em;
 	background: rgba(255,255,255,.5);
 	height: 5em;
 	top: 1em;
@@ -87,7 +87,7 @@ body {
 
 #nav {
 	position: absolute;
-	padding: 4px;
+	padding: .4em;
 	overflow: hidden;
 	background: rgba(255,255,255,.5);
 	width: 32em;
@@ -120,7 +120,7 @@ body {
 
 #idZoomer.focus {
 	/*border-color: #888;*/
-	outline: 2px dotted #000;
+	outline: .2em dotted #000;
 }
 
 /*
@@ -159,7 +159,7 @@ body {
 }
 .navLine {
 	display: inline-block;
-	border: 1px inset gray;
+	border: .1em inset gray;
 	vertical-align: middle;
 	text-align: center;
 	width: 9em;
@@ -171,7 +171,7 @@ body {
  */
 .navRow {
 	width: 32em;
-	margin: 0 5px;
+	margin: 0 .5em;
 	height: 2em;
 	white-space: nowrap;
 }
@@ -242,7 +242,7 @@ body {
 .navSlider .rail {
 	margin: 0.8em;
 	background-color: #eee;
-	border: 2px solid #888;
+	border: .2em solid #888;
 	height: 0.3em;
 	width: auto;
 	cursor: pointer;
@@ -253,7 +253,7 @@ body {
 }
 
 .navSlider .thumb  {
-	margin: 2px;
+	margin: .2em;
 	position: relative;
 	border-radius: 0.8em;
 	cursor: pointer;
@@ -282,7 +282,7 @@ body {
 	background-color: inherit;
 	box-sizing: content-box;
 	cursor: pointer;
-	border: 2px inset ThreeDLightShadow;
+	border: .2em inset ThreeDLightShadow;
 	width: 14.25em; /* compensate (13em-margin)*current-font-size (13-0.8-0.8)/0.8 */
 	height: 1.4em;
 	line-height: 1.4em;
@@ -299,7 +299,7 @@ body {
 	font-size: 0.8em; /* this changes em for this node and children */
 	line-height: 1em;
 
-	border: 2px outset ThreeDLightShadow;
+	border: .2em outset ThreeDLightShadow;
 	background-color: #fff;
 	position: absolute;
 	cursor: pointer;
@@ -326,7 +326,7 @@ body {
 	width: 0;
 	height: 0;
 	border-top: none;
-	border-bottom: 5px solid #000;
+	border-bottom: .5em solid #000;
 }
 
 /* dropdown list */
@@ -365,7 +365,7 @@ body {
 	white-space: nowrap;
 	box-sizing: content-box;
 	cursor: pointer;
-	border: 2px outset ThreeDLightShadow;
+	border: .25em outset ThreeDLightShadow;
 	width: auto;
 	height: 1.4em;
 	line-height: 1.4em;
@@ -398,7 +398,7 @@ body {
 	width: 1.4em;
 	height: 1.4em;
 	top: 0;
-	border: 2px outset ThreeDLightShadow;
+	border: .2em outset ThreeDLightShadow;
 	background-color: #f0f0f0;
 	box-sizing: border-box;
 }
@@ -410,7 +410,7 @@ body {
 	height: .4em;
 	top: 0;
 	right: .3em;
-	border: 3px inset #f0f0f0;
+	border: .2em inset #f0f0f0;
 	background-color: #000;
 	bottom: 0;
 	margin: auto;
@@ -422,9 +422,8 @@ body {
 	background-color: #0f0;
 }
 
-/* home button has no light */
-#idHomeButton {
-		padding: 0 0.4em;
+.navButton .nolight {
+	padding: 0 0.4em;
 }
 
 

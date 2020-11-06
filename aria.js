@@ -56,14 +56,22 @@ Aria.ButtonCode = Object.freeze({
  * @constructor Aria.Button
  *
  * @param {Element} domButton
+ * @param {boolean} oneTwo - true=OneState false=TwoState
  */
-Aria.Button = function (domButton) {
+Aria.Button = function (domButton, oneTwo) {
 
 	/**
 	 * Attached DOM node
 	 * @member {HTMLElement}
 	 */
 	this.domButton = domButton;
+
+	/**
+	 * true=OneState false=TwoState
+	 *
+	 * @member {boolean}
+	 */
+	this.oneTwo = oneTwo;
 
 	/**
 	 * True is button is being pushed down
@@ -115,20 +123,16 @@ Aria.Button.prototype.buttonDown = function () {
 		return;
 	this.down = true;
 
-	var currentState = this.domButton.getAttribute('aria-pressed');
-	if (currentState) {
-		// 2-state button, down gesture toggles active state
-		if (currentState === 'true') {
-			currentState = 'false';
-			this.domButton.setAttribute('aria-pressed', 'false');
-			this.domButton.classList.remove('active');
-		} else {
-			currentState = 'true';
-			this.domButton.setAttribute('aria-pressed', 'true');
-			this.domButton.classList.add('active');
-		}
+	this.domButton.classList.add('active');
+
+	let currentState = this.domButton.getAttribute('aria-pressed');
+	// 2-state button, down gesture toggles active state
+	if (currentState === 'true') {
+		currentState = 'false';
+		this.domButton.setAttribute('aria-pressed', 'false');
 	} else {
-		this.domButton.classList.add('active');
+		currentState = 'true';
+		this.domButton.setAttribute('aria-pressed', 'true');
 	}
 
 	// activate callback
@@ -140,6 +144,12 @@ Aria.Button.prototype.buttonDown = function () {
  */
 Aria.Button.prototype.buttonUp = function () {
 	this.down = false;
+
+	this.domButton.classList.remove('active');
+
+	// release one-state
+	if (this.oneTwo)
+		this.domButton.setAttribute('aria-pressed', 'false');
 
 	// remove CSS decoration
 	this.domButton.classList.remove('active');
