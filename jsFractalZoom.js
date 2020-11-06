@@ -173,7 +173,7 @@ Config.linearToLog = function (min, max, lin) {
  * @param {number} now
  * @returns {number}
  */
-Config.logTolinear = function (min, max, log) {
+Config.logToLinear = function (min, max, log) {
 
 	const v = (log - min) * (Math.E - 1) / (max - min) + 1;
 
@@ -889,12 +889,12 @@ function GUI() {
 	this.speed.setCallbackValueChange((newValue) => {
 		if (Config.autoPilot) {
 			// scale exponentially
-			newValue = Config.logTolinear(Config.zoomAutoSpeedMin, Config.zoomAutoSpeedMax, newValue);
+			newValue = Config.logToLinear(Config.zoomAutoSpeedMin, Config.zoomAutoSpeedMax, newValue);
 			Config.zoomAutoSpeedNow = newValue;
 			this.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
 		} else {
 			// scale exponentially
-			newValue = Config.logTolinear(Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, newValue);
+			newValue = Config.logToLinear(Config.zoomManualSpeedMin, Config.zoomManualSpeedMax, newValue);
 			Config.zoomManualSpeedNow = newValue;
 			this.domZoomSpeedLeft.innerHTML = newValue.toFixed(2);
 		}

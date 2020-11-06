@@ -618,10 +618,8 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			}
 		}
 
-		if (worstXerr + worstYerr === 0) {
-			console.log(this.frame.cntHLines, this.frame.cntVLines)
+		if (worstXerr + worstYerr === 0)
 			return 0; // nothing to do
-		}
 
 		/**
 		 **!

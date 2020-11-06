@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-06 13:02:50 Code cleanup.
 2020-11-06 01:50:49 Mark screen center when dragging.
 2020-11-06 01:48:54 Sleep state when done calculating.
 2020-11-06 01:46:45 Code cleanup.
