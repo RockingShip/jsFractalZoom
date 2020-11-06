@@ -565,12 +565,8 @@ function Palette() {
  * DOM bindings and event handlers
  *
  * @class
- * @param {Config} config
  */
-function GUI(config) {
-	/** @member {Config} - Reference to config object */
-	this.config = config;
-
+function GUI() {
 	/*
 	 * DOM elements and their matching id's
 	 */
@@ -745,8 +741,6 @@ function GUI(config) {
 		 * @param {ZoomerFrame} frame  - Current frame
 		 */
 		onEndFrame: (zoomer, frame) => {
-
-			// window.gui.domStatusPosition.innerHTML = JSON.stringify(this.counters);
 
 			const now = performance.now();
 
@@ -1068,9 +1062,9 @@ function GUI(config) {
 
 	this.paletteGroup.setCallbackFocusChange((newButton) => {
 		if (newButton.domButton.id === "idRandomPaletteButton") {
-			window.palette.mkrandom();
+			palette.mkrandom();
 		} else {
-			window.palette.mkdefault();
+			palette.mkdefault();
 		}
 
 		/*
@@ -1091,7 +1085,7 @@ function GUI(config) {
 		if (Config.autoPilot) {
 			if (calcView.reachedLimits()) {
 				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-				window.gui.domAutopilot.style.border = '4px solid orange';
+				gui.domAutopilot.style.border = "4px solid orange";
 			} else {
 				this.domStatusPosition.innerHTML = "";
 
@@ -1561,11 +1555,11 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 			let {u, v} = view.pixelIJtoScreenUV(testI, testJ, Config.angle);
 
 			// and position autopilot mark
-			window.gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
-			window.gui.domAutopilot.style.left = (u - borderPixelRadius) + "px";
-			window.gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
-			window.gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
-			window.gui.domAutopilot.style.border = '4px solid green';
+			gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
+			gui.domAutopilot.style.left = (u - borderPixelRadius) + "px";
+			gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
+			gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
+			gui.domAutopilot.style.border = "4px solid green";
 			return true;
 		}
 	}
@@ -1585,16 +1579,16 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 		let {u, v} = view.pixelIJtoScreenUV(bestI, bestJ, Config.angle);
 
 		// and position autopilot mark
-		window.gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
-		window.gui.domAutopilot.style.left = (u - borderPixelRadius) + "px";
-		window.gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
-		window.gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
-		window.gui.domAutopilot.style.border = '4px solid green';
+		gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
+		gui.domAutopilot.style.left = (u - borderPixelRadius) + "px";
+		gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
+		gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
+		gui.domAutopilot.style.border = "4px solid green";
 		return true;
 	}
 
 	Config.autopilotButtons = 0;
-	window.gui.domAutopilot.style.border = '4px solid red';
+	gui.domAutopilot.style.border = "4px solid red";
 	return false;
 };
 
@@ -1616,6 +1610,6 @@ GUI.prototype.autopilotOn = function () {
 
 GUI.prototype.autopilotOff = function () {
 	this.mouseButtons = 0;
-	this.domAutopilot.style.border = 'none';
+	this.domAutopilot.style.border = "none";
 
 };

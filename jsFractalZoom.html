@@ -393,27 +393,26 @@
 		palette.mkrandom();
 
 		// override config/formula
-		const query = window.location.search.substring(1);
+		const query = location.search.substring(1);
 		if (query) {
 			Config.load(query);
 			palette.loadTheme();
 		}
 
-		window.gui = new GUI(window.config);
+		window.gui = new GUI();
 
 		// setup palette
 		palette.loadTheme(Config.theme, Config.seed);
 
 		// setup initial frame
-		window.gui.reload();
+		gui.reload();
 
 		// initial focus main view
-		window.gui.domZoomer.focus();
+		gui.domZoomer.focus();
 		// press power button
-		window.gui.power.buttonDown(); // push
-		window.gui.power.buttonUp(); // and release
+		gui.power.buttonDown(); // push
+		gui.power.buttonUp(); // and release
 	});
 </script>
 </body>
 </html>
-`
