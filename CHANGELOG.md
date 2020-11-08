@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-08 01:54:59 Wheel for FireFox.
 2020-11-08 01:17:17 Activate angle overhead when actually rotating.
 2020-11-08 00:31:03 Added `Theme` button.
 2020-11-08 00:22:28 Added palette density.

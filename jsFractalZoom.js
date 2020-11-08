@@ -944,11 +944,16 @@ function GUI() {
 
 		/*
 		 * Node: the slider has logarithmic values. "Times N" is "add log(N)"
+		 *
+		 * @date 2020-11-08 01:50:53
+		 * Chrome does WheelEvent.DOM_DELTA_PIXEL with +/- 150
+		 * Firefox does WheelEvent.DOM_DELTA_LINE with +/- 3
+		 *
+		 * Do simple, and move slide 1 position per event
 		 */
-		let delta = e.deltaY;
-		while (delta >= 150) {
-			delta -= 150;
 
+		let delta = e.deltaY;
+		if (delta >= 1) {
 			let newValue = Config.densityNow + Math.log(1.05);
 			if (newValue > Config.densityMax)
 				newValue = Config.densityMax;
@@ -957,9 +962,7 @@ function GUI() {
 			Config.density = Math.exp(newValue);
 			Config.density = Math.round(Config.density * 10000)/ 10000; // round
 		}
-		while (delta <= -150) {
-			delta += 150;
-
+		if (delta <= -1) {
 			let newValue = Config.densityNow - Math.log(1.05);
 			if (newValue < Config.densityMin)
 				newValue = Config.densityMin;
