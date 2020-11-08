@@ -1711,7 +1711,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 				window.setTimeout(() => {
 					this.stateStart[this.state] = performance.now();
 					postMessage("mainloop", "*");
-				}, 200);
+				}, 1000 / this.frameRate / 2); // half the rate because of mainloop overhead
 			} else {
 				// return and call again.
 				postMessage("mainloop", "*");

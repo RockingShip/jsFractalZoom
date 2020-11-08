@@ -95,6 +95,15 @@ function Config() {
 	/** @member {float} - palette cycle slider Now */
 	Config.paletteSpeedNow = 0;
 
+	/** @member {float} - density slider Min */
+	Config.density = 1; // actual value
+	/** @member {float} - density slider Min */
+	Config.densityMin = Math.log(0.0001);
+	/** @member {float} - density slider Max */
+	Config.densityMax = Math.log(20);
+	/** @member {float} - density slider Now */
+	Config.densityNow = Math.log(Config.density);
+
 	/** @member {float} - calculation depth slider Min */
 	Config.framerateMin = 1;
 	/** @member {float} - calculation depth slider Max */
@@ -162,7 +171,10 @@ Config.load = function (query) {
 			Config.radius = Number.parseFloat(v);
 		else if (k === "a")
 			Config.angle = Number.parseFloat(v);
-		else if (k === "iter")
+		else if (k === "density") {
+			Config.density = Number.parseFloat(v);
+			Config.densityNow =Math.log(Config.density);
+		} else if (k === "iter")
 			Config.maxIter = Number.parseInt(v);
 		else if (k === "theme")
 			Config.theme = Number.parseInt(v);
@@ -196,6 +208,10 @@ Config.home = function () {
 	// reset autopilot
 	Config.autopilotX = 0;
 	Config.autopilotY = 0;
+
+	// reset palette density
+	Config.density = 1;
+	Config.densityNow = Math.log(Config.density);
 };
 
 /**
@@ -207,15 +223,22 @@ Config.home = function () {
  * @class
  */
 function Palette() {
-	/** @member {Uint32Array} - palette data */
+	/** @member {Uint8Array} - Red */
+	this.R = new Uint8Array(65536);
+	/** @member {Uint8Array} - Green */
+	this.G = new Uint8Array(65536);
+	/** @member {Uint8Array} - Blue */
+	this.B = new Uint8Array(65536);
+
+	/** @member {int} - Length of a single "logical" cycle */
+	this.rgbSize = 0;
+
+	/** @member {Uint32Array} - "Physical" palette scaled with `Config.density` to span 65535 entries */
 	this.palette = new Uint32Array(65536);
 
-	/** @member {int} - background red */
-	this.backgroundRed = 0;
-	/** @member {int} - background green */
-	this.backgroundGreen = 0;
-	/** @member {int} - background blue */
-	this.backgroundBlue = 0;
+	/** @member {int} - Number of entries in palette[] for a complete cycle  */
+	this.paletteSize = 0;
+
 
 	/** @member {int} - current PRNG seed  */
 	this.seed = 0;
@@ -240,13 +263,13 @@ function Palette() {
 
 	this.mksmooth = function (nsegments, segmentsize, R, G, B) {
 		// set palette modulo size
-		Config.paletteSize = nsegments * segmentsize;
+		this.rgbSize = nsegments * segmentsize;
 
 		let k = 0;
 		for (let i = 0; i < nsegments; i++) {
-			let r = R[i % nsegments];
-			let g = G[i % nsegments];
-			let b = B[i % nsegments];
+			let r = R[i];
+			let g = G[i];
+			let b = B[i];
 			const rs = (R[(i + 1) % nsegments] - r) / segmentsize;
 			const gs = (G[(i + 1) % nsegments] - g) / segmentsize;
 			const bs = (B[(i + 1) % nsegments] - b) / segmentsize;
@@ -400,31 +423,33 @@ function Palette() {
 
 		let rcycle, gcycle, bcycle;
 		do {
-			rcycle = Math.random() * 128 + 8;
-			gcycle = Math.random() * 128 + 8;
-			bcycle = Math.random() * 128 + 8;
-			Config.paletteSize = rcycle * gcycle * bcycle;
-		} while (Config.paletteSize >= 65535);
+			rcycle = this.random(128) + 8;
+			gcycle = this.random(128) + 8;
+			bcycle = this.random(128) + 8;
+			this.rgbSize = Math.round(rcycle * gcycle * bcycle);
+		} while (this.rgbSize < 0xc000 || this.rgbSize >= 0xffff);
 
-		for (let i = 0; i < Config.paletteSize; i++) {
+		const t0 = this.random(10000) * 2 * Math.PI / 10000;
+		for (let i = 0; i < this.rgbSize; i++) {
 			this.palette[i] =
-				Math.round(128.0 + 127 * Math.sin(Math.PI * i / rcycle)) << 0 | /* Red */
-				Math.round(128.0 + 127 * Math.sin(Math.PI * i / gcycle)) << 8 | /* Green */
-				Math.round(128.0 + 127 * Math.sin(Math.PI * i / bcycle)) << 16 | /* Blue */
-				255 << 24; /* Alpha */
+				(128.0 + 127 * Math.sin(Math.PI * i / rcycle + t0)) << 0 | // Red
+				(128.0 + 127 * Math.sin(Math.PI * i / gcycle + t0)) << 8 | // Green
+				(128.0 + 127 * Math.sin(Math.PI * i / bcycle + t0)) << 16 | // Blue
+				255 << 24; // Alpha
 		}
 	}
 
 	this.randomize_segments5 = function (whitemode) {
 
-		Config.paletteSize = 1000;
-		for (let i = 0; i < 1000; i++) {
-			const g = whitemode ? 255 - Math.round(i * 255 / 1000) : Math.round(i * 255 / 1000);
+		this.rgbSize = 1000; // magic number so it looks good with density=1
+		for (let i = 0; i < this.rgbSize; i++) {
+			const g = whitemode ? 255 - Math.round(i * 255 / this.rgbSize) : Math.round(i * 255 / this.rgbSize);
+
 			this.palette[i] =
-				g << 0 | /* Red */
-				g << 8 | /* Green */
-				g << 16 | /* Blue */
-				255 << 24; /* Alpha */
+				g << 0 | // Red
+				g << 8 | // Green
+				g << 16 | // Blue
+				255 << 24; // Alpha
 		}
 	}
 
@@ -432,38 +457,27 @@ function Palette() {
 		// set PRNG seed for this palette
 		this.seed = Config.seed;
 
-		// 85 = 255 / 3
 		let segmentsize, nsegments;
 		const whitemode = this.random(2);
 
 		{
 			// XaoS code
-			segmentsize = this.random(85 + 4);
-			segmentsize += this.random(85 + 4);
-			segmentsize += this.random(85 + 4);
-			segmentsize += this.random(85 + 4); /* Make smaller segments with higher probability */
+			nsegments = this.random(10);
+			nsegments += this.random(10);
+			nsegments += this.random(10);
+			nsegments += this.random(10); // Make smaller segments with higher probability
 
-			segmentsize = Math.abs((segmentsize >> 1) - 85 + 3);
-			if (segmentsize < 8)
-				segmentsize = 8;
-			if (segmentsize > 85)
-				segmentsize = 85;
+			segmentsize = Math.floor(160 / nsegments); // magic number so it looks good with density=1
 		}
 
 		switch (Config.theme) {
 		case 0:
-			segmentsize = Math.floor(segmentsize / 2) * 2;
-			nsegments = Math.floor(256 / segmentsize);
 			this.randomize_segments1(whitemode, nsegments, segmentsize);
 			break;
 		case 1:
-			segmentsize = Math.floor(segmentsize / 3) * 3;
-			nsegments = Math.floor(256 / segmentsize);
 			this.randomize_segments2(whitemode, nsegments, segmentsize);
 			break;
 		case 2:
-			segmentsize = Math.floor(segmentsize / 6) * 6;
-			nsegments = Math.floor(256 / segmentsize);
 			this.randomize_segments3(whitemode, nsegments, segmentsize);
 			break;
 		case 3:
@@ -494,31 +508,48 @@ function Palette() {
 		this.loadTheme();
 	}
 
-	this.mkdefault = function () {
-		const gray = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff];
-		this.mksmooth(16, 1, gray, gray, gray);
-	};
-
 	/**
 	 * Set palette
 	 *
 	 * @param {Uint32Array} out32  - frame.palette
-	 * @param {int}         offset - Starting positionfor colour rotation
+	 * @param {int}         offset - Starting position for colour rotation
+	 * @param {int}         maxIter - Starting position for colour rotation
 	 */
 	this.setPalette = function (out32, offset, maxIter) {
-		const paletteSize = Config.paletteSize;
+
+		const {palette, rgbSize } = this;
 
 		// palette offset may not be negative
 		if (offset < 0)
-			offset = (paletteSize - 1) - (-offset - 1) % paletteSize;
+			offset = (rgbSize - 1) - (-offset - 1) % rgbSize;
 		else
-			offset = offset % paletteSize;
+			offset = offset % rgbSize;
 
-		// apply colour cycling
+		/*
+		 * @date 2020-11-07 00:27:00
+		 *
+		 * Assume rgbSize > densityNow
+		 * Integer arithmetic to avoid slow floats
+		 * offset is 16 bits, 0..65535
+		 * scale by 15 bits to fit into 31 bits int.
+		 *
+		 * Following is to optimize `palette[Math.round(i * densityNow) % rgbSize];
+		 */
+
+		const stepK = Math.round(Config.density * 32768);
+		const maxK = rgbSize * 32768;
+		let k = offset * 32768;
+
+		// copy palette and apply colour cycling
 		for (let i = 0; i < maxIter; i++) {
-			out32[i] = this.palette[offset++];
-			if (offset >= paletteSize)
-				offset -= paletteSize;
+
+			// copy pixel
+			out32[i] = palette[k >> 15];
+
+			// increment k
+			k += stepK;
+			if (k >= maxK)
+				k -= maxK;
 		}
 
 		// background colour
@@ -565,6 +596,9 @@ function GUI() {
 	this.domPaletteSpeedThumb = "idPaletteSpeedThumb";
 	this.domRandomPaletteButton = "idRandomPaletteButton";
 	this.domDefaultPaletteButton = "idDefaultPaletteButton";
+	this.domDensityLeft = "idDensityLeft";
+	this.domDensityRail = "idDensityRail";
+	this.domDensityThumb = "idDensityThumb";
 	this.domFramerateLeft = "idFramerateLeft";
 	this.domFramerateRail = "idFramerateRail";
 	this.domFramerateThumb = "idFramerateThumb";
@@ -660,7 +694,7 @@ function GUI() {
 			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
 			// maxIter for embedded calc(), maxDepth for formula.js
-			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, maxIter: Config.maxIter, quality: dispFrame.quality});
+			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, density: Config.density, iter: Config.maxIter, quality: dispFrame.quality});
 		},
 
 		/**
@@ -760,19 +794,28 @@ function GUI() {
 			});
 
 			let k = frame.viewWidth + 1; // skip first line and column
+			let maxk = frame.viewWidth * frame.viewHeight;
+			let rgba = frame.rgba;
+			done:
 			for (let j = 0; j < json.length; j++) {
 				let code = json.charCodeAt(j);
 				for (let i = 0; i < 8; i++) {
 					// pixel must not be transparent
-					while (!frame.rgba[k])
+					while (!rgba[k]) {
+						if (k >= maxk)
+							break done;
 						k++;
+					}
 
 					// inject bit
 					if (code & 1)
-						frame.rgba[k] |= 1;
+						rgba[k] |= 1;
 					else
-						frame.rgba[k] &= ~1;
+						rgba[k] &= ~1;
 					code >>= 1;
+
+					if (k >= maxk)
+						break done;
 					k++;
 				}
 			}
@@ -825,6 +868,8 @@ function GUI() {
 		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
 	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
 		Config.paletteSpeedMin, Config.paletteSpeedMax, Config.paletteSpeedNow);
+	this.density = new Aria.Slider(this.domDensityThumb, this.domDensityRail,
+		Config.densityMin, Config.densityMax, Config.densityNow);
 	this.Framerate = new Aria.Slider(this.domFramerateThumb, this.domFramerateRail,
 		Config.framerateMin, Config.framerateMax, Config.framerateNow);
 
@@ -876,6 +921,47 @@ function GUI() {
 		Config.paletteSpeedNow = newValue;
 		this.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
 	});
+	this.density.setCallbackValueChange((newValue) => {
+		Config.densityNow = newValue;
+		Config.density = Math.exp(newValue);
+		// round
+		Config.density = Math.round(Config.density * 10000)/ 10000;
+		this.domDensityLeft.innerHTML = Config.density;
+	});
+
+	document.addEventListener("wheel", (e) => {
+		e.preventDefault();
+
+		/*
+		 * Node: the slider has logarithmic values. "Times N" is "add log(N)"
+		 */
+		let delta = e.deltaY;
+		while (delta >= 150) {
+			delta -= 150;
+
+			let newValue = Config.densityNow + Math.log(1.05);
+			if (newValue > Config.densityMax)
+				newValue = Config.densityMax;
+
+			Config.densityNow = newValue;
+			Config.density = Math.exp(newValue);
+			Config.density = Math.round(Config.density * 10000)/ 10000; // round
+		}
+		while (delta <= -150) {
+			delta += 150;
+
+			let newValue = Config.densityNow - Math.log(1.05);
+			if (newValue < Config.densityMin)
+				newValue = Config.densityMin;
+
+			Config.densityNow = newValue;
+			Config.density = Math.exp(newValue);
+			Config.density = Math.round(Config.density * 10000)/ 10000; // round
+		}
+
+		this.density.moveSliderTo(Config.densityNow);
+	}, { passive: false });
+
 	this.Framerate.setCallbackValueChange((newValue) => {
 		newValue = Math.round(newValue);
 		Config.framerateNow = newValue;
@@ -982,6 +1068,7 @@ function GUI() {
 			y: Config.centerY,
 			r: Config.radius,
 			a: Config.angle,
+			density: Config.density,
 			iter: Config.maxIter,
 			theme: Config.theme,
 			seed: Config.seed,
@@ -1020,12 +1107,8 @@ function GUI() {
 		}, 2000)
 	});
 
-	this.paletteGroup.setCallbackFocusChange((newButton) => {
-		if (newButton.domButton.id === "idRandomPaletteButton") {
-			palette.mkrandom();
-		} else {
-			palette.mkdefault();
-		}
+	this.theme.setCallbackValueChange(() => {
+		palette.mkrandom();
 
 		/*
 		 * @date 2020-10-15 13:02:00
@@ -1086,8 +1169,18 @@ function GUI() {
 		/*
 		 * Update view angle (before zoom gestures)
 		 */
-		if (Config.rotateSpeedNow)
+		if (Config.rotateSpeedNow) {
 			Config.angle += diffSec * Config.rotateSpeedNow * 360;
+
+			// fold range
+			if (Config.angle < 0)
+				Config.angle += 360;
+			else if (Config.angle >= 360)
+				Config.angle -= 360;
+
+			// round
+			Config.angle = Math.round(Config.angle * 100) / 100;
+		}
 
 		// drag gesture
 		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
@@ -1232,7 +1325,7 @@ GUI.prototype.handleKeyDown = function (event) {
  */
 GUI.prototype.handleKeyUp = function (event) {
 	// Grab the keydown and click events
-	switch (event.code) {
+	switch (event.key) {
 	case "A":
 	case "a":
 		this.autoPilot.buttonUp();
