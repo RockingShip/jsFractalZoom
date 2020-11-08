@@ -82,9 +82,9 @@ function Config() {
 	Config.zoomAccelNow = Math.log(20);
 
 	/** @member {float} - rotate speed slider Min */
-	Config.rotateSpeedMin = -0.4;
+	Config.rotateSpeedMin = -0.5;
 	/** @member {float} - rotate speed slider Max */
-	Config.rotateSpeedMax = +0.4;
+	Config.rotateSpeedMax = +0.5;
 	/** @member {float} - rotate speed slider Now */
 	Config.rotateSpeedNow = 0;
 
@@ -594,8 +594,7 @@ function GUI() {
 	this.domPaletteSpeedLeft = "idPaletteSpeedLeft";
 	this.domPaletteSpeedRail = "idPaletteSpeedRail";
 	this.domPaletteSpeedThumb = "idPaletteSpeedThumb";
-	this.domRandomPaletteButton = "idRandomPaletteButton";
-	this.domDefaultPaletteButton = "idDefaultPaletteButton";
+	this.domThemeButton = "idThemeButton";
 	this.domDensityLeft = "idDensityLeft";
 	this.domDensityRail = "idDensityRail";
 	this.domDensityThumb = "idDensityThumb";
@@ -891,9 +890,7 @@ function GUI() {
 	this.home = new Aria.Button(this.domHomeButton, true);
 	this.save = new Aria.Button(this.domSaveButton, true);
 	this.url = new Aria.Button(this.domUrlButton, true);
-
-	// construct radio group
-	this.paletteGroup = new Aria.RadioGroup(document.getElementById("idPaletteGroup"));
+	this.theme = new Aria.Button(this.domThemeButton, true);
 
 	// sliders
 	this.speed.setCallbackValueChange((newValue) => {
@@ -1244,6 +1241,14 @@ GUI.prototype.handleKeyDown = function (event) {
 		this.autoPilot.buttonDown();
 		this.domAutoPilotButton.focus();
 		break;
+	case "C":
+		this.paletteSpeed.moveSliderTo(this.speed.valueNow + Math.log(1.05)); // raise 5%
+		this.domPaletteSpeedThumb.focus();
+		break;
+	case "c":
+		this.paletteSpeed.moveSliderTo(this.speed.valueNow - Math.log(1.05)); // lower 5%
+		this.domPaletteSpeedThumb.focus();
+		break;
 	case "D":
 	case "d":
 		this.paletteGroup.radioButtons[1].buttonDown();
@@ -1275,13 +1280,21 @@ GUI.prototype.handleKeyDown = function (event) {
 		this.domPowerButton.focus();
 		break;
 	case "R":
+		this.rotateSpeed.moveSliderTo(Config.rotateSpeedNow + (this.rotateSpeed.valueMax - this.rotateSpeed.valueMin) / 100);
+		this.domRotateThumb.focus();
+		break;
 	case "r":
-		this.paletteGroup.radioButtons[0].buttonDown();
-		this.domRandomPaletteButton.focus();
+		this.rotateSpeed.moveSliderTo(Config.rotateSpeedNow - (this.rotateSpeed.valueMax - this.rotateSpeed.valueMin) / 100);
+		this.domRotateThumb.focus();
 		break;
 	case "S":
 	case "s":
 		this.save.buttonDown();
+		this.domZoomer.focus();
+		break;
+	case "T":
+	case "t":
+		this.theme.buttonDown();
 		this.domZoomer.focus();
 		break;
 	case "U":
@@ -1289,25 +1302,17 @@ GUI.prototype.handleKeyDown = function (event) {
 		this.url.buttonDown();
 		this.domZoomer.focus();
 		break;
+	case "Z":
+		this.speed.moveSliderTo(this.speed.valueNow + Math.log(1.05)); // raise 5%
+		this.domZoomSpeedThumb.focus();
+		break;
+	case "z":
+		this.speed.moveSliderTo(this.speed.valueNow - Math.log(1.05)); // lower 5%
+		this.domZoomSpeedThumb.focus();
+		break;
 	case "Home":
 		this.home.buttonDown();
 		this.domHomeButton.focus();
-		break;
-	case "ArrowUp":
-		this.speed.moveSliderTo(this.speed.valueNow + 1);
-		this.domZoomSpeedThumb.focus();
-		break;
-	case "ArrowDown":
-		this.speed.moveSliderTo(this.speed.valueNow - 1);
-		this.domZoomSpeedThumb.focus();
-		break;
-	case "PageUp":
-		this.rotateSpeed.moveSliderTo(Config.rotateSpeedNow + .02);
-		this.domRotateThumb.focus();
-		break;
-	case "PageDown":
-		this.rotateSpeed.moveSliderTo(this.rotateSpeed.valueNow - .02);
-		this.domRotateThumb.focus();
 		break;
 	default:
 		return;
@@ -1331,6 +1336,10 @@ GUI.prototype.handleKeyUp = function (event) {
 		this.autoPilot.buttonUp();
 		this.domZoomer.focus();
 		break;
+	case "C":
+	case "c":
+		this.domZoomer.focus();
+		break;
 	case "D":
 	case "d":
 		this.paletteGroup.radioButtons[1].buttonUp();
@@ -1341,19 +1350,8 @@ GUI.prototype.handleKeyUp = function (event) {
 		this.power.buttonUp();
 		this.domZoomer.focus();
 		break;
-	case "r":
-		Config.theme = (Config.theme + 1) % 8;
-		// FALLTHROUGH
 	case "R":
-		// rotate though palette themes
-		// get a new random number
-		Config.seed = Math.round(Math.random() * 2147483647);
-		palette.loadTheme();
-		/*
-		 * @date 2020-11-05 04:00:09
-		 * original code:
-		 *   this.paletteGroup.radioButtons[0].buttonUp();
-		 */
+	case "r":
 		this.domZoomer.focus();
 		break;
 	case "S":
@@ -1361,25 +1359,22 @@ GUI.prototype.handleKeyUp = function (event) {
 		this.save.buttonUp();
 		this.domZoomer.focus();
 		break;
+	case "T":
+	case "t":
+		this.theme.buttonUp();
+		this.domZoomer.focus();
+		break;
 	case "U":
 	case "u":
 		this.url.buttonUp();
 		this.domZoomer.focus();
 		break;
+	case "Z":
+	case "z":
+		this.domZoomer.focus();
+		break;
 	case "Home":
 		this.home.buttonUp();
-		this.domZoomer.focus();
-		break;
-	case "ArrowUp":
-		this.domZoomer.focus();
-		break;
-	case "ArrowDown":
-		this.domZoomer.focus();
-		break;
-	case "PageUp":
-		this.domZoomer.focus();
-		break;
-	case "PageDown":
 		this.domZoomer.focus();
 		break;
 	default:
