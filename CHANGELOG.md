@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-08 01:17:17 Activate angle overhead when actually rotating.
 2020-11-08 00:31:03 Added `Theme` button.
-2020-11-08 00:22:28 Added Palette density.
+2020-11-08 00:22:28 Added palette density.
 2020-11-07 21:54:23 Logarithmic zoom speed slider.
 2020-11-06 13:02:50 Code cleanup.
 2020-11-06 01:50:49 Mark screen center when dragging.

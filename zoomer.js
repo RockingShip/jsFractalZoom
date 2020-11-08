@@ -1210,6 +1210,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * Make sure the parent container has "margin: auto" to supply extra space and not scale.
 	 */
 
+	/** @member {boolean}
+	    @description Enable rotation */
+	this.enableAngle = enableAngle;
+
 	/** @member {int}
 	    @description Display/screen width (pixels) */
 	this.viewWidth = domZoomer.parentElement.clientWidth & ~1;
@@ -1220,11 +1224,11 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 	/** @member {int}
 	    @description Frame buffer width (pixels) */
-	this.pixelWidth = !enableAngle ? this.viewWidth : Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight)) & ~1;
+	this.pixelWidth = !this.enableAngle ? this.viewWidth : Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight)) & ~1;
 
 	/** @member {int}
 	    @description Frame buffer height (pixels) */
-	this.pixelHeight = !enableAngle ? this.viewHeight : this.pixelWidth;
+	this.pixelHeight = !this.enableAngle ? this.viewHeight : this.pixelWidth;
 
 	/*
 	 * Main state settings
@@ -1418,7 +1422,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {ZoomerView} [keyView] - Previous view to inherit keyFrame rulers/pixels
 	 */
 	this.setPosition = (centerX, centerY, radius, angle, keyView) => {
-		angle = angle && enableAngle ? angle : 0;
+		angle = angle && this.enableAngle ? angle : 0;
 
 		if (this.centerX !== centerX || this.centerY !== centerY || this.radius !== radius) {
 			// waking idle, mark last change.
@@ -1469,6 +1473,41 @@ function Zoomer(domZoomer, enableAngle, options = {
 	};
 
 	/**
+	 * Resize request
+	 *
+	 * @param {int}     viewWidth   - Width
+	 * @param {int}     viewHeight  - Height
+	 * @param {boolean} enableAngle - Allow rotation
+	 */
+	this.resize = (viewWidth, viewHeight, enableAngle) => {
+		this.enableAngle = enableAngle;
+
+		// snap to even sizes
+		this.viewWidth = viewWidth & ~1;
+		this.viewHeight = viewHeight & ~1;
+		this.pixelWidth = !this.enableAngle ? this.viewWidth : Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight)) & ~1;
+		this.pixelHeight = !this.enableAngle ? this.viewHeight : this.pixelWidth;
+
+		// set DOM size property
+		domZoomer.width = this.viewWidth;
+		domZoomer.height = this.viewHeight;
+
+		this.dispView = this.calcView;
+
+		// create new views
+		this.view0 = new ZoomerView(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+		this.view1 = new ZoomerView(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+		this.calcView = (this.frameNr & 1) ? this.view1 : this.view0;
+
+		// copy the contents
+		this.calcFrame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
+		this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, this.dispView);
+
+		// invoke initial callback
+		if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+	}
+
+	/**
 	 * GUI mainloop called by timer event
 	 *
 	 * @returns {boolean}
@@ -1496,32 +1535,8 @@ function Zoomer(domZoomer, enableAngle, options = {
 			/*
 			 * Test for DOM resize
 			 */
-			if ((domZoomer.parentElement.clientWidth & ~1) !== this.viewWidth || (domZoomer.parentElement.clientHeight & ~1) !== this.viewHeight) {
-
-				// snap to even sizes
-				this.viewWidth = domZoomer.parentElement.clientWidth & ~1;
-				this.viewHeight = domZoomer.parentElement.clientHeight & ~1;
-				this.pixelWidth = !enableAngle ? this.viewWidth : Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight)) & ~1;
-				this.pixelHeight = !enableAngle ? this.viewHeight : this.pixelWidth;
-
-				// set DOM size property
-				domZoomer.width = this.viewWidth;
-				domZoomer.height = this.viewHeight;
-
-				this.dispView = this.calcView;
-
-				// create new views
-				this.view0 = new ZoomerView(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
-				this.view1 = new ZoomerView(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
-				this.calcView = (this.frameNr & 1) ? this.view1 : this.view0;
-
-				// copy the contents
-				this.calcFrame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
-				this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, this.dispView);
-
-				// invoke initial callback
-				if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
-			}
+			if ((domZoomer.parentElement.clientWidth & ~1) !== this.viewWidth || (domZoomer.parentElement.clientHeight & ~1) !== this.viewHeight)
+				this.resize(domZoomer.parentElement.clientWidth, domZoomer.parentElement.clientHeight, this.enableAngle);
 
 			/*
 			 * allocate new frame
@@ -1535,7 +1550,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 			frame.timeStart = now;
 
 			// set expiration time. Use `Date.now()` as that syncs with the workers
-			previousFrame.timeExpire = Date.now() + 2 * (1000/this.frameRate);
+			previousFrame.timeExpire = Date.now() + 2 * (1000 / this.frameRate);
 
 			// COPY (performance hit)
 			this.calcFrame = frame;

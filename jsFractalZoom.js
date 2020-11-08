@@ -633,7 +633,7 @@ function GUI() {
 		}
 	}
 
-	this.zoomer = new Zoomer(this.domZoomer, true, {
+	this.zoomer = new Zoomer(this.domZoomer, false, {
 
 		/**
 		 * Disable web-workers.
@@ -911,6 +911,19 @@ function GUI() {
 			newValue = 0; // snap to center
 		Config.rotateSpeedNow = newValue;
 		this.domRotateLeft.innerHTML = newValue.toFixed(2);
+
+		/*
+		 * Rotation is a CPU hit, enable/disable appropriately
+		 */
+		if (newValue) {
+			// rotating, enable
+			if (!this.zoomer.enableAngle)
+				this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, true);
+		} else if (this.zoomer.angle === 0) {
+			// stopped and horizontal, disable
+			if (this.zoomer.enableAngle)
+				this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, false);
+		}
 	});
 	this.paletteSpeed.setCallbackValueChange((newValue) => {
 		if (newValue > -1 && newValue < +1)
