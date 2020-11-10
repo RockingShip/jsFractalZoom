@@ -79,7 +79,7 @@ function Config() {
 	/** @member {float} - zoom magnification slider Max */
 	Config.zoomAccelMax = Math.log(25.0);
 	/** @member {float} - zoom magnification slider Now */
-	Config.zoomAccelNow = Math.log(20);
+	Config.zoomAccelNow = Math.log(Config.zoomAccelManual);
 
 	/** @member {float} - rotate speed slider Min */
 	Config.rotateSpeedMin = -0.5;
@@ -638,6 +638,53 @@ function GUI() {
 	}
 
 	/*
+	 * Construct UI components
+	 */
+
+	// construct sliders
+	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
+		Config.zoomAccelMin, Config.zoomAccelMax, Config.zoomAccelNow);
+	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
+		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
+	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
+		Config.paletteSpeedMin, Config.paletteSpeedMax, Config.paletteSpeedNow);
+	this.density = new Aria.Slider(this.domDensityThumb, this.domDensityRail,
+		Config.densityMin, Config.densityMax, Config.densityNow);
+	this.Framerate = new Aria.Slider(this.domFramerateThumb, this.domFramerateRail,
+		Config.framerateMin, Config.framerateMax, Config.framerateNow);
+
+	// construct controlling listbox button
+	this.formula = new Aria.ListboxButton(this.domFormulaButton, this.domFormulaList);
+	this.incolour = new Aria.ListboxButton(this.domIncolourButton, this.domIncolourList);
+	this.outcolour = new Aria.ListboxButton(this.domOutcolourButton, this.domOutcolourList);
+	this.plane = new Aria.ListboxButton(this.domPlaneButton, this.domPlaneList);
+
+	// set lists
+	this.formula.listbox.focusItem(document.getElementById("formula_" + Formula.formula));
+	this.incolour.listbox.focusItem(document.getElementById("incolour_" + Formula.incolour));
+	this.outcolour.listbox.focusItem(document.getElementById("outcolour_" + Formula.outcolour));
+	this.plane.listbox.focusItem(document.getElementById("plane_" + Formula.plane));
+
+	// construct buttons
+	this.power = new Aria.Button(this.domPowerButton, false);
+	this.autoPilot = new Aria.Button(this.domAutoPilotButton, false);
+	this.home = new Aria.Button(this.domHomeButton, true);
+	this.save = new Aria.Button(this.domSaveButton, true);
+	this.url = new Aria.Button(this.domUrlButton, true);
+	this.theme = new Aria.Button(this.domThemeButton, true);
+
+	/*
+	 * It's easier to redraw the sliders than to hack "em" into them
+	 */
+	this.redrawSliders = () => {
+		this.speed.moveSliderTo(this.speed.valueNow);
+		this.rotateSpeed.moveSliderTo(this.rotateSpeed.valueNow);
+		this.paletteSpeed.moveSliderTo(this.paletteSpeed.valueNow);
+		this.density.moveSliderTo(this.density.valueNow);
+		this.Framerate.moveSliderTo(this.Framerate.valueNow);
+	}
+
+	/*
 	 * Set fontsize
 	 */
 	this.setFontSize = () => {
@@ -707,6 +754,8 @@ function GUI() {
 
 				document.body.style.fontSize = fontSize + "px";
 			}
+
+			this.redrawSliders();
 		}
 	};
 
@@ -918,61 +967,9 @@ function GUI() {
 	/** @member {CanvasRenderingContext2D} */
 	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
 
-	// Create a small key frame (mandatory)
-	const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
-
-	// Calculate all the pixels, or choose any other content (optional)
-	keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
-
-	// set initial position and inject key frame (mandatory)
-	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView)
-
-	// replace event handlers with a bound instance
-	this.handleMouse = this.handleMouse.bind(this);
-	this.handleFocus = this.handleFocus.bind(this);
-	this.handleBlur = this.handleBlur.bind(this);
-	this.handleKeyDown = this.handleKeyDown.bind(this);
-	this.handleKeyUp = this.handleKeyUp.bind(this);
-
-	// register global key bindings before widgets overrides
-	this.domZoomer.addEventListener("focus", this.handleFocus);
-	this.domZoomer.addEventListener("blur", this.handleBlur);
-	this.domZoomer.addEventListener("mousedown", this.handleMouse);
-	this.domZoomer.addEventListener("contextmenu", this.handleMouse);
-	document.addEventListener("keydown", this.handleKeyDown);
-	document.addEventListener("keyup", this.handleKeyUp);
-
-	// construct sliders
-	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
-		Config.zoomAccelMin, Config.zoomAccelMax, Config.zoomAccelNow);
-	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
-		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
-	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
-		Config.paletteSpeedMin, Config.paletteSpeedMax, Config.paletteSpeedNow);
-	this.density = new Aria.Slider(this.domDensityThumb, this.domDensityRail,
-		Config.densityMin, Config.densityMax, Config.densityNow);
-	this.Framerate = new Aria.Slider(this.domFramerateThumb, this.domFramerateRail,
-		Config.framerateMin, Config.framerateMax, Config.framerateNow);
-
-	// construct controlling listbox button
-	this.formula = new Aria.ListboxButton(this.domFormulaButton, this.domFormulaList);
-	this.incolour = new Aria.ListboxButton(this.domIncolourButton, this.domIncolourList);
-	this.outcolour = new Aria.ListboxButton(this.domOutcolourButton, this.domOutcolourList);
-	this.plane = new Aria.ListboxButton(this.domPlaneButton, this.domPlaneList);
-
-	// set lists
-	this.formula.listbox.focusItem(document.getElementById("formula_" + Formula.formula));
-	this.incolour.listbox.focusItem(document.getElementById("incolour_" + Formula.incolour));
-	this.outcolour.listbox.focusItem(document.getElementById("outcolour_" + Formula.outcolour));
-	this.plane.listbox.focusItem(document.getElementById("plane_" + Formula.plane));
-
-	// construct buttons
-	this.power = new Aria.Button(this.domPowerButton, false);
-	this.autoPilot = new Aria.Button(this.domAutoPilotButton, false);
-	this.home = new Aria.Button(this.domHomeButton, true);
-	this.save = new Aria.Button(this.domSaveButton, true);
-	this.url = new Aria.Button(this.domUrlButton, true);
-	this.theme = new Aria.Button(this.domThemeButton, true);
+	/*
+	 * callbacks and listeners
+	 */
 
 	// sliders
 	this.speed.setCallbackValueChange((newValue) => {
@@ -1020,43 +1017,6 @@ function GUI() {
 		Config.density = Math.round(Config.density * 10000) / 10000;
 		this.domDensityLeft.innerHTML = Config.density;
 	});
-
-	document.addEventListener("wheel", (e) => {
-		e.preventDefault();
-
-		/*
-		 * Node: the slider has logarithmic values. "Times N" is "add log(N)"
-		 *
-		 * @date 2020-11-08 01:50:53
-		 * Chrome does WheelEvent.DOM_DELTA_PIXEL with +/- 150
-		 * Firefox does WheelEvent.DOM_DELTA_LINE with +/- 3
-		 *
-		 * Do simple, and move slide 1 position per event
-		 */
-
-		let delta = e.deltaY;
-		if (delta >= 1) {
-			let newValue = Config.densityNow + Math.log(1.05);
-			if (newValue > Config.densityMax)
-				newValue = Config.densityMax;
-
-			Config.densityNow = newValue;
-			Config.density = Math.exp(newValue);
-			Config.density = Math.round(Config.density * 10000) / 10000; // round
-		}
-		if (delta <= -1) {
-			let newValue = Config.densityNow - Math.log(1.05);
-			if (newValue < Config.densityMin)
-				newValue = Config.densityMin;
-
-			Config.densityNow = newValue;
-			Config.density = Math.exp(newValue);
-			Config.density = Math.round(Config.density * 10000) / 10000; // round
-		}
-
-		this.density.moveSliderTo(Config.densityNow);
-	}, {passive: false});
-
 	this.Framerate.setCallbackValueChange((newValue) => {
 		newValue = Math.round(newValue);
 		Config.framerateNow = newValue;
@@ -1201,7 +1161,6 @@ function GUI() {
 			this.domPopup.className = "";
 		}, 2000)
 	});
-
 	this.theme.setCallbackValueChange(() => {
 		palette.mkrandom();
 
@@ -1214,6 +1173,55 @@ function GUI() {
 		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 	});
 
+	// replace event handlers with a bound instance
+	this.handleMouse = this.handleMouse.bind(this);
+	this.handleFocus = this.handleFocus.bind(this);
+	this.handleBlur = this.handleBlur.bind(this);
+	this.handleKeyDown = this.handleKeyDown.bind(this);
+	this.handleKeyUp = this.handleKeyUp.bind(this);
+
+	// register global key bindings before widgets overrides
+	this.domZoomer.addEventListener("focus", this.handleFocus);
+	this.domZoomer.addEventListener("blur", this.handleBlur);
+	this.domZoomer.addEventListener("mousedown", this.handleMouse);
+	this.domZoomer.addEventListener("contextmenu", this.handleMouse);
+	document.addEventListener("keydown", this.handleKeyDown);
+	document.addEventListener("keyup", this.handleKeyUp);
+	document.addEventListener("wheel", (e) => {
+		e.preventDefault();
+
+		/*
+		 * Node: the slider has logarithmic values. "Times N" is "add log(N)"
+		 *
+		 * @date 2020-11-08 01:50:53
+		 * Chrome does WheelEvent.DOM_DELTA_PIXEL with +/- 150
+		 * Firefox does WheelEvent.DOM_DELTA_LINE with +/- 3
+		 *
+		 * Do simple, and move slide 1 position per event
+		 */
+
+		let delta = e.deltaY;
+		if (delta >= 1) {
+			let newValue = Config.densityNow + Math.log(1.05);
+			if (newValue > Config.densityMax)
+				newValue = Config.densityMax;
+
+			Config.densityNow = newValue;
+			Config.density = Math.exp(newValue);
+			Config.density = Math.round(Config.density * 10000) / 10000; // round
+		}
+		if (delta <= -1) {
+			let newValue = Config.densityNow - Math.log(1.05);
+			if (newValue < Config.densityMin)
+				newValue = Config.densityMin;
+
+			Config.densityNow = newValue;
+			Config.density = Math.exp(newValue);
+			Config.density = Math.round(Config.density * 10000) / 10000; // round
+		}
+
+		this.density.moveSliderTo(Config.densityNow);
+	}, {passive: false});
 	this.domResize.addEventListener("mousedown", (e0) => {
 		e0.preventDefault();
 
@@ -1247,6 +1255,8 @@ function GUI() {
 
 				// set relative fontsize
 			this.domNav.style.fontSize = y + "em";
+
+			this.redrawSliders();
 		};
 		const mouseUp = (e) => {
 			e0.preventDefault();
@@ -1374,6 +1384,16 @@ function GUI() {
 	 * Constructor
 	 */
 	{
+		// Create a small key frame (mandatory)
+		const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
+
+		// Calculate all the pixels, or choose any other content (optional)
+		keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
+
+		// set initial position and inject key frame (mandatory)
+		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView)
+
+		// snap to actual dimensions
 		this.setFontSize();
 	}
 }
@@ -1392,11 +1412,11 @@ GUI.prototype.handleKeyDown = function (event) {
 		this.domAutoPilotButton.focus();
 		break;
 	case "C":
-		this.paletteSpeed.moveSliderTo(this.speed.valueNow + Math.log(1.05)); // raise 5%
+		this.paletteSpeed.moveSliderTo(this.paletteSpeed.valueNow + 1);
 		this.domPaletteSpeedThumb.focus();
 		break;
 	case "c":
-		this.paletteSpeed.moveSliderTo(this.speed.valueNow - Math.log(1.05)); // lower 5%
+		this.paletteSpeed.moveSliderTo(this.paletteSpeed.valueNow - 1);
 		this.domPaletteSpeedThumb.focus();
 		break;
 	case "D":

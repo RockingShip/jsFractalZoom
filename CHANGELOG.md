@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-10 14:22:43 Redraw sliders on layout changes.
 2020-11-10 12:50:20 Added frame numbers for syncing.
 2020-11-10 02:12:54 Resizable control pane.
 2020-11-08 01:54:59 Wheel for FireFox.
