@@ -35,327 +35,334 @@
 	aria-live="off">
 </canvas>
 <div id="idAutopilot"></div>
-<div id="top" class="pane">
-	<h1 id="h1">jsFractalZoom </h1>
-	<span id="WxH"></span><span id="idStatusTitle"></span>
-	<span id="idStatusPosition"></span><br>
-	<span id="idStatusLoad"></span>
-	<span id="idStatusRect"></span>
+/* NOTE: need to wrap `idTop`/`idNav` as changing fontSize will influence the positioning and margins. */
+<div id="idTopWrapper">
+	<div id="idTop" class="pane">
+		<h1 id="h1">jsFractalZoom </h1>
+		<span id="WxH"></span><span id="idStatusTitle"></span>
+		<span id="idStatusPosition"></span><br>
+		<span id="idStatusLoad"></span>
+		<span id="idStatusRect"></span>
+	</div>
 </div>
-<div id="nav" class="pane" aria-controls="main">
+<div id="idNavWrapper">
+	<div id="idNav" class="pane" aria-controls="main">
 
-	<div class="navRow navButton">
-		<div id="idPowerButton"
-		     class="button"
-		     tabindex="0"
-		     role="button"
-		     aria-pressed="false">
-			Power
-
-			<div class="light"></div>
-		</div>
-		<span class="navCaption">[Q]</span>
-
-		<div id="idAutoPilotButton"
-		     class="button"
-		     tabindex="0"
-		     role="button"
-		     aria-pressed="false">
-			Autopilot
-
-			<div class="light"></div>
-		</div>
-		<span class="navCaption">[A]</span>
-
-		<div id="idHomeButton"
-		     class="button nolight"
-		     tabindex="0"
-		     role="button">
-			Home
-		</div>
-		<span class="navCaption">[HOME]</span>
-
-		<div id="idSaveButton"
-		     class="button nolight"
-		     tabindex="0"
-		     role="button">
-			Save
-		</div>
-		<span class="navCaption">[S]</span>
-
-		<div id="idUrlButton"
-		     class="button nolight"
-		     tabindex="0"
-		     role="button">
-			URL
-			<div id="idPopup"></div>
-		</div>
-		<span class="navCaption">[U]</span>
-	</div>
-
-	<div class="navSeparator">
-		<div class="navSepLeft">
-			<div class="navLine"></div>
-		</div>
-		<div class="navSepName"><strong>Algorithm</strong></div>
-		<div class="navSepRight">
-			<div class="navLine"></div>
-		</div>
-	</div>
-
-	<div id="idFormula" class="navRow navListbox">
-		<div id="idFormulaLabel" class="navLabel">Formula</div>
-		<div id="idFormulaLeft" class="navLeft"></div>
-		<div id="idFormulaValue" class="navValue">
-			<div id="idFormulaButton"
+		<div class="navRow navButton">
+			<div id="idPowerButton"
 			     class="button"
 			     tabindex="0"
 			     role="button"
-			     aria-haspopup="listbox"
-			     aria-labelledby="idFormulaLabel">
-			</div>
-			<ul id="idFormulaList"
-			    class="hidden"
-			    tabindex="-1"
-			    role="listbox"
-			    aria-labelledby="idFormulaLabel">
-				<li id="formula_0" role="option">mandelbrot</li>
-				<li id="formula_1" role="option">mandelbrot^3</li>
-				<li id="formula_2" role="option">mandelbrot^4</li>
-				<li id="formula_3" role="option">mandelbrot^5</li>
-				<li id="formula_4" role="option">mandelbrot^6</li>
-				<li id="formula_5" role="option">octal</li>
-				<li id="formula_6" role="option">newton</li>
-				<li id="formula_7" role="option">barnsley1</li>
-				<li id="formula_8" role="option">barnsley2</li>
-				<li id="formula_9" role="option">phoenix</li>
-				<li id="formula_10" role="option">magnet1</li>
-				<li id="formula_11" role="option">magnet2</li>
-			</ul>
-		</div>
-		<div id="idFormulaRight" class="navRight"><span class="navCaption">[F]</span></div>
-	</div>
+			     aria-pressed="false">
+				Power
 
-	<div id="idIncolour" class="navRow navListbox">
-		<div id="idIncolourLabel" class="navLabel">Incolour</div>
-		<div id="idIncolourLeft" class="navLeft"></div>
-		<div id="idIncolourValue" class="navValue">
-			<div id="idIncolourButton"
+				<div class="light"></div>
+			</div>
+			<span class="navCaption">[Q]</span>
+
+			<div id="idAutoPilotButton"
 			     class="button"
 			     tabindex="0"
 			     role="button"
-			     aria-haspopup="listbox"
-			     aria-labelledby="idIncolourLabel">
+			     aria-pressed="false">
+				Autopilot
+
+				<div class="light"></div>
 			</div>
-			<ul id="idIncolourList"
-			    class="hidden"
-			    tabindex="-1"
-			    role="listbox"
-			    aria-labelledby="idIncolourLabel">
-				<li id="incolour_0" role="option">maxiter</li>
-				<li id="incolour_1" role="option">zmag</li>
-				<li id="incolour_2" role="option">decomposition-like</li>
-				<li id="incolour_3" role="option">real/imag</li>
-				<li id="incolour_4" role="option">mag*cos(real^2)</li>
-				<li id="incolour_5" role="option">sin(real^2-imag^2)</li>
-				<li id="incolour_6" role="option">atan(real*imag*creal*cimag)</li>
-				<li id="incolour_7" role="option">squares</li>
-			</ul>
-		</div>
-		<div id="idIncolourRight" class="navRight"><span class="navCaption">[I]</span></div>
-	</div>
+			<span class="navCaption">[A]</span>
 
-	<div id="idOutcolour" class="navRow navListbox">
-		<div id="idOutcolourLabel" class="navLabel">Outcolour</div>
-		<div id="idOutcolourLeft" class="navLeft"></div>
-		<div id="idOutcolourValue" class="navValue">
-			<div id="idOutcolourButton"
-			     class="button"
-			     tabindex="0"
-			     role="button"
-			     aria-haspopup="listbox"
-			     aria-labelledby="idOutcolourLabel">
-			</div>
-			<ul id="idOutcolourList"
-			    class="hidden"
-			    tabindex="-1"
-			    role="listbox"
-			    aria-labelledby="idOutcolourLabel">
-				<li id="outcolour_0" role="option">iter</li>
-				<li id="outcolour_1" role="option">iter+real</li>
-				<li id="outcolour_2" role="option">iter+imag</li>
-				<li id="outcolour_3" role="option">iter+real/imag</li>
-				<li id="outcolour_4" role="option">iter+real+imag+real/imag</li>
-				<li id="outcolour_5" role="option">binary decomposition</li>
-				<li id="outcolour_6" role="option">biomorphs</li>
-				<li id="outcolour_7" role="option">potential</li>
-				<li id="outcolour_8" role="option">color decomposition</li>
-			</ul>
-		</div>
-		<div id="idOutcolourRight" class="navRight"><span class="navCaption">[O]</span></div>
-	</div>
-
-	<div id="idPlane" class="navRow navListbox">
-		<div id="idPlaneLabel" class="navLabel">Plane</div>
-		<div id="idPlaneLeft" class="navLeft"></div>
-		<div id="idPlaneValue" class="navValue">
-			<div id="idPlaneButton"
-			     class="button"
-			     tabindex="0"
-			     role="button"
-			     aria-haspopup="listbox"
-			     aria-labelledby="idPlaneLabel">
-			</div>
-			<ul id="idPlaneList"
-			    class="hidden"
-			    tabindex="-1"
-			    role="listbox"
-			    aria-labelledby="idPlaneLabel">
-				<li id="plane_0" role="option">mu</li>
-				<li id="plane_1" role="option">1/mu</li>
-				<li id="plane_2" role="option">1/(mu+0.25)</li>
-				<li id="plane_3" role="option">lambda</li>
-				<li id="plane_4" role="option">1/lambda</li>
-				<li id="plane_5" role="option">1/(lambda-1)</li>
-				<li id="plane_6" role="option">1/(mu-1.40115)</li>
-			</ul>
-		</div>
-		<div id="idPlaneRight" class="navRight"><span class="navCaption">[P]</span></div>
-	</div>
-
-	<div class="navSeparator">
-		<div class="navSepLeft">
-			<div class="navLine"></div>
-		</div>
-		<div class="navSepName"><strong>Movement</strong></div>
-		<div class="navSepRight">
-			<div class="navLine"></div>
-		</div>
-	</div>
-
-	<div id="idZoomSpeed" class="navRow navSlider">
-		<div id="idZoomSpeedLabel" class="navLabel">Zoom speed</div>
-		<div id="idZoomSpeedLeft" class="navLeft"></div>
-		<div id="idZoomSpeedValue" class="navValue">
-			<div id="idZoomSpeedRail" class="rail">
-				<div id="idZoomSpeedThumb"
-				     role="slider"
-				     tabindex="0"
-				     class="thumb"
-				     aria-labelledby="idZoomSpeedLabel">
-				</div>
-			</div>
-		</div>
-		<div id="idZoomSpeedRight" class="navRight"><span class="navCaption">[z/Z]</span></div>
-	</div>
-
-	<div id="idRotate" class="navRow navSlider">
-		<div id="idRotateLabel" class="navLabel">Rotate</div>
-		<div id="idRotateLeft" class="navLeft"></div>
-		<div id="idRotateValue" class="navValue">
-			<div id="idRotateRail" class="rail">
-				<div id="idRotateThumb"
-				     role="slider"
-				     tabindex="0"
-				     class="thumb"
-				     aria-labelledby="idRotateLabel">
-				</div>
-			</div>
-		</div>
-		<div id="idRotateRight" class="navRight"><span class="navCaption">[r/R]</span></div>
-	</div>
-
-	<div class="navSeparator">
-		<div class="navSepLeft">
-			<div class="navLine"></div>
-		</div>
-		<div class="navSepName"><strong>Colours</strong></div>
-		<div class="navSepRight">
-			<div class="navLine"></div>
-		</div>
-	</div>
-
-	<div id="idDensity" class="navRow navSlider">
-		<div id="idDensityLabel" class="navLabel">Density</div>
-		<div id="idDensityLeft" class="navLeft"></div>
-		<div id="idDensityValue" class="navValue">
-			<div id="idDensityRail" class="rail">
-				<div id="idDensityThumb"
-				     role="slider"
-				     tabindex="0"
-				     class="thumb"
-				     aria-labelledby="idDensityLabel">
-				</div>
-			</div>
-		</div>
-		<div id="idDensityRight" class="navRight"><span class="navCaption">[WHEEL]</span></div>
-	</div>
-
-	<div id="idPaletteSpeed" class="navRow navSlider">
-		<div id="idPaletteSpeedLabel" class="navLabel">Colour speed</div>
-		<div id="idPaletteSpeedLeft" class="navLeft"></div>
-		<div id="idPaletteSpeedValue" class="navValue">
-			<div id="idPaletteSpeedRail" class="rail">
-				<div id="idPaletteSpeedThumb"
-				     role="slider"
-				     tabindex="0"
-				     class="thumb"
-				     aria-labelledby="idPaletteSpeedLabel">
-				</div>
-			</div>
-		</div>
-		<div id="idPaletteSpeedRight" class="navRight"><span class="navCaption">[c/C]</span></div>
-	</div>
-
-	<div id="idPalette" class="navRow navButton">
-		<div id="idPaletteLabel" class="navLabel">Theme</div>
-		<div id="idPaletteLeft" class="navLeft"></div>
-		<div id="idPaletteValue" class="navValue">
-
-			<div id="idThemeButton"
+			<div id="idHomeButton"
 			     class="button nolight"
 			     tabindex="0"
 			     role="button">
-				Theme
+				Home
 			</div>
-			<span class="navCaption">[T]</span>
+			<span class="navCaption">[HOME]</span>
 
-		</div>
-		<div id="idPaletteRight" class="navRight"></div>
-	</div>
+			<div id="idSaveButton"
+			     class="button nolight"
+			     tabindex="0"
+			     role="button">
+				Save
+			</div>
+			<span class="navCaption">[S]</span>
 
-	<div class="navSeparator">
-		<div class="navSepLeft">
-			<div class="navLine"></div>
+			<div id="idUrlButton"
+			     class="button nolight"
+			     tabindex="0"
+			     role="button">
+				URL
+				<div id="idPopup"></div>
+			</div>
+			<span class="navCaption">[U]</span>
 		</div>
-		<div class="navSepName"><strong>Performance</strong></div>
-		<div class="navSepRight">
-			<div class="navLine"></div>
-		</div>
-	</div>
 
-	<div id="idFramerate" class="navRow navSlider">
-		<div id="idFramerateLabel" class="navLabel">Framerate</div>
-		<div id="idFramerateLeft" class="navLeft"></div>
-		<div id="idFramerateValue" class="navValue">
-			<div id="idFramerateRail" class="rail">
-				<div id="idFramerateThumb"
-				     role="slider"
+		<div class="navSeparator">
+			<div class="navSepLeft">
+				<div class="navLine"></div>
+			</div>
+			<div class="navSepName"><strong>Algorithm</strong></div>
+			<div class="navSepRight">
+				<div class="navLine"></div>
+			</div>
+		</div>
+
+		<div id="idFormula" class="navRow navListbox">
+			<div id="idFormulaLabel" class="navLabel">Formula</div>
+			<div id="idFormulaLeft" class="navLeft"></div>
+			<div id="idFormulaValue" class="navValue">
+				<div id="idFormulaButton"
+				     class="button"
 				     tabindex="0"
-				     class="thumb"
-				     aria-labelledby="idFramerateLabel">
+				     role="button"
+				     aria-haspopup="listbox"
+				     aria-labelledby="idFormulaLabel">
+				</div>
+				<ul id="idFormulaList"
+				    class="hidden"
+				    tabindex="-1"
+				    role="listbox"
+				    aria-labelledby="idFormulaLabel">
+					<li id="formula_0" role="option">mandelbrot</li>
+					<li id="formula_1" role="option">mandelbrot^3</li>
+					<li id="formula_2" role="option">mandelbrot^4</li>
+					<li id="formula_3" role="option">mandelbrot^5</li>
+					<li id="formula_4" role="option">mandelbrot^6</li>
+					<li id="formula_5" role="option">octal</li>
+					<li id="formula_6" role="option">newton</li>
+					<li id="formula_7" role="option">barnsley1</li>
+					<li id="formula_8" role="option">barnsley2</li>
+					<li id="formula_9" role="option">phoenix</li>
+					<li id="formula_10" role="option">magnet1</li>
+					<li id="formula_11" role="option">magnet2</li>
+				</ul>
+			</div>
+			<div id="idFormulaRight" class="navRight"><span class="navCaption">[F]</span></div>
+		</div>
+
+		<div id="idIncolour" class="navRow navListbox">
+			<div id="idIncolourLabel" class="navLabel">Incolour</div>
+			<div id="idIncolourLeft" class="navLeft"></div>
+			<div id="idIncolourValue" class="navValue">
+				<div id="idIncolourButton"
+				     class="button"
+				     tabindex="0"
+				     role="button"
+				     aria-haspopup="listbox"
+				     aria-labelledby="idIncolourLabel">
+				</div>
+				<ul id="idIncolourList"
+				    class="hidden"
+				    tabindex="-1"
+				    role="listbox"
+				    aria-labelledby="idIncolourLabel">
+					<li id="incolour_0" role="option">maxiter</li>
+					<li id="incolour_1" role="option">zmag</li>
+					<li id="incolour_2" role="option">decomposition-like</li>
+					<li id="incolour_3" role="option">real/imag</li>
+					<li id="incolour_4" role="option">mag*cos(real^2)</li>
+					<li id="incolour_5" role="option">sin(real^2-imag^2)</li>
+					<li id="incolour_6" role="option">atan(real*imag*creal*cimag)</li>
+					<li id="incolour_7" role="option">squares</li>
+				</ul>
+			</div>
+			<div id="idIncolourRight" class="navRight"><span class="navCaption">[I]</span></div>
+		</div>
+
+		<div id="idOutcolour" class="navRow navListbox">
+			<div id="idOutcolourLabel" class="navLabel">Outcolour</div>
+			<div id="idOutcolourLeft" class="navLeft"></div>
+			<div id="idOutcolourValue" class="navValue">
+				<div id="idOutcolourButton"
+				     class="button"
+				     tabindex="0"
+				     role="button"
+				     aria-haspopup="listbox"
+				     aria-labelledby="idOutcolourLabel">
+				</div>
+				<ul id="idOutcolourList"
+				    class="hidden"
+				    tabindex="-1"
+				    role="listbox"
+				    aria-labelledby="idOutcolourLabel">
+					<li id="outcolour_0" role="option">iter</li>
+					<li id="outcolour_1" role="option">iter+real</li>
+					<li id="outcolour_2" role="option">iter+imag</li>
+					<li id="outcolour_3" role="option">iter+real/imag</li>
+					<li id="outcolour_4" role="option">iter+real+imag+real/imag</li>
+					<li id="outcolour_5" role="option">binary decomposition</li>
+					<li id="outcolour_6" role="option">biomorphs</li>
+					<li id="outcolour_7" role="option">potential</li>
+					<li id="outcolour_8" role="option">color decomposition</li>
+				</ul>
+			</div>
+			<div id="idOutcolourRight" class="navRight"><span class="navCaption">[O]</span></div>
+		</div>
+
+		<div id="idPlane" class="navRow navListbox">
+			<div id="idPlaneLabel" class="navLabel">Plane</div>
+			<div id="idPlaneLeft" class="navLeft"></div>
+			<div id="idPlaneValue" class="navValue">
+				<div id="idPlaneButton"
+				     class="button"
+				     tabindex="0"
+				     role="button"
+				     aria-haspopup="listbox"
+				     aria-labelledby="idPlaneLabel">
+				</div>
+				<ul id="idPlaneList"
+				    class="hidden"
+				    tabindex="-1"
+				    role="listbox"
+				    aria-labelledby="idPlaneLabel">
+					<li id="plane_0" role="option">mu</li>
+					<li id="plane_1" role="option">1/mu</li>
+					<li id="plane_2" role="option">1/(mu+0.25)</li>
+					<li id="plane_3" role="option">lambda</li>
+					<li id="plane_4" role="option">1/lambda</li>
+					<li id="plane_5" role="option">1/(lambda-1)</li>
+					<li id="plane_6" role="option">1/(mu-1.40115)</li>
+				</ul>
+			</div>
+			<div id="idPlaneRight" class="navRight"><span class="navCaption">[P]</span></div>
+		</div>
+
+		<div class="navSeparator">
+			<div class="navSepLeft">
+				<div class="navLine"></div>
+			</div>
+			<div class="navSepName"><strong>Movement</strong></div>
+			<div class="navSepRight">
+				<div class="navLine"></div>
+			</div>
+		</div>
+
+		<div id="idZoomSpeed" class="navRow navSlider">
+			<div id="idZoomSpeedLabel" class="navLabel">Zoom speed</div>
+			<div id="idZoomSpeedLeft" class="navLeft"></div>
+			<div id="idZoomSpeedValue" class="navValue">
+				<div id="idZoomSpeedRail" class="rail">
+					<div id="idZoomSpeedThumb"
+					     role="slider"
+					     tabindex="0"
+					     class="thumb"
+					     aria-labelledby="idZoomSpeedLabel">
+					</div>
 				</div>
 			</div>
+			<div id="idZoomSpeedRight" class="navRight"><span class="navCaption">[z/Z]</span></div>
 		</div>
-		<div id="idFramerateRight" class="navRight"><span class="navCaption">[]</span></div>
-	</div>
 
-	<div id="idProjectPage">
-		mouse-left: zoom in<br/>
-		mouse-right: zoom out<br/>
-		press-wheel: drag<br/>
-		<br/>
-		Visit <a href="https://www.rockingship.org/jsFractalZoom">jsFractalZoom</a> project page
+		<div id="idRotate" class="navRow navSlider">
+			<div id="idRotateLabel" class="navLabel">Rotate</div>
+			<div id="idRotateLeft" class="navLeft"></div>
+			<div id="idRotateValue" class="navValue">
+				<div id="idRotateRail" class="rail">
+					<div id="idRotateThumb"
+					     role="slider"
+					     tabindex="0"
+					     class="thumb"
+					     aria-labelledby="idRotateLabel">
+					</div>
+				</div>
+			</div>
+			<div id="idRotateRight" class="navRight"><span class="navCaption">[r/R]</span></div>
+		</div>
+
+		<div class="navSeparator">
+			<div class="navSepLeft">
+				<div class="navLine"></div>
+			</div>
+			<div class="navSepName"><strong>Colours</strong></div>
+			<div class="navSepRight">
+				<div class="navLine"></div>
+			</div>
+		</div>
+
+		<div id="idDensity" class="navRow navSlider">
+			<div id="idDensityLabel" class="navLabel">Density</div>
+			<div id="idDensityLeft" class="navLeft"></div>
+			<div id="idDensityValue" class="navValue">
+				<div id="idDensityRail" class="rail">
+					<div id="idDensityThumb"
+					     role="slider"
+					     tabindex="0"
+					     class="thumb"
+					     aria-labelledby="idDensityLabel">
+					</div>
+				</div>
+			</div>
+			<div id="idDensityRight" class="navRight"><span class="navCaption">[WHEEL]</span></div>
+		</div>
+
+		<div id="idPaletteSpeed" class="navRow navSlider">
+			<div id="idPaletteSpeedLabel" class="navLabel">Colour speed</div>
+			<div id="idPaletteSpeedLeft" class="navLeft"></div>
+			<div id="idPaletteSpeedValue" class="navValue">
+				<div id="idPaletteSpeedRail" class="rail">
+					<div id="idPaletteSpeedThumb"
+					     role="slider"
+					     tabindex="0"
+					     class="thumb"
+					     aria-labelledby="idPaletteSpeedLabel">
+					</div>
+				</div>
+			</div>
+			<div id="idPaletteSpeedRight" class="navRight"><span class="navCaption">[c/C]</span></div>
+		</div>
+
+		<div id="idPalette" class="navRow navButton">
+			<div id="idPaletteLabel" class="navLabel">Theme</div>
+			<div id="idPaletteLeft" class="navLeft"></div>
+			<div id="idPaletteValue" class="navValue">
+
+				<div id="idThemeButton"
+				     class="button nolight"
+				     tabindex="0"
+				     role="button">
+					Theme
+				</div>
+				<span class="navCaption">[T]</span>
+
+			</div>
+			<div id="idPaletteRight" class="navRight"></div>
+		</div>
+
+		<div class="navSeparator">
+			<div class="navSepLeft">
+				<div class="navLine"></div>
+			</div>
+			<div class="navSepName"><strong>Performance</strong></div>
+			<div class="navSepRight">
+				<div class="navLine"></div>
+			</div>
+		</div>
+
+		<div id="idFramerate" class="navRow navSlider">
+			<div id="idFramerateLabel" class="navLabel">Framerate</div>
+			<div id="idFramerateLeft" class="navLeft"></div>
+			<div id="idFramerateValue" class="navValue">
+				<div id="idFramerateRail" class="rail">
+					<div id="idFramerateThumb"
+					     role="slider"
+					     tabindex="0"
+					     class="thumb"
+					     aria-labelledby="idFramerateLabel">
+					</div>
+				</div>
+			</div>
+			<div id="idFramerateRight" class="navRight"><span class="navCaption">[]</span></div>
+		</div>
+
+		<div id="idProjectPage">
+			mouse-left: zoom in<br/>
+			mouse-right: zoom out<br/>
+			press-wheel: drag<br/>
+			<br/>
+			Visit <a href="https://www.rockingship.org/jsFractalZoom">jsFractalZoom</a> project page
+		</div>
+
+		<img id="idResize" src="resize.svg" alt="resize">
 	</div>
 </div>
 <input id="idCopyText">

@@ -73,7 +73,7 @@ function Config() {
 	/** @member {float} - zoom magnification */
 	Config.zoomAccelManual = 20;
 	/** @member {float} - zoom magnification */
-	Config.zoomAccelAuto = 4;
+	Config.zoomAccelAuto = 2;
 	/** @member {float} - zoom magnification slider Min */
 	Config.zoomAccelMin = Math.log(1.01);
 	/** @member {float} - zoom magnification slider Max */
@@ -173,7 +173,7 @@ Config.load = function (query) {
 			Config.angle = Number.parseFloat(v);
 		else if (k === "density") {
 			Config.density = Number.parseFloat(v);
-			Config.densityNow =Math.log(Config.density);
+			Config.densityNow = Math.log(Config.density);
 		} else if (k === "iter")
 			Config.maxIter = Number.parseInt(v);
 		else if (k === "theme")
@@ -517,7 +517,7 @@ function Palette() {
 	 */
 	this.setPalette = function (out32, offset, maxIter) {
 
-		const {palette, rgbSize } = this;
+		const {palette, rgbSize} = this;
 
 		// palette offset may not be negative
 		if (offset < 0)
@@ -571,6 +571,9 @@ function GUI() {
 	this.domStatusPosition = "idStatusPosition";
 	this.domStatusLoad = "idStatusLoad";
 	this.domStatusRect = "idStatusRect";
+	this.domNavWrapper = "idNavWrapper";
+	this.domNav = "idNav";
+	this.domTop = "idTop";
 	this.domPowerButton = "idPowerButton";
 	this.domAutoPilotButton = "idAutoPilotButton";
 	this.domHomeButton = "idHomeButton";
@@ -603,6 +606,7 @@ function GUI() {
 	this.domFramerateThumb = "idFramerateThumb";
 	this.domWxH = "WxH";
 	this.domAutopilot = "idAutopilot";
+	this.domResize = "idResize";
 
 	/** @member {number} - view mouse X coordinate */
 	this.mouseU = 0;
@@ -633,6 +637,82 @@ function GUI() {
 		}
 	}
 
+	/*
+	 * Set fontsize
+	 */
+	this.setFontSize = () => {
+		const viewWidth = document.body.clientWidth;
+		const viewHeight = document.body.clientHeight;
+
+		/*
+		 * @date 2020-11-10 00:49:49
+		 * `idTop` depends on body.fontSize
+		 * `idNav` depends on `idTop`
+		 * body.fontSize depends on `idNav`
+		 *
+		 * Perform a couple of iterations to create a stable situation.
+		 * This only happens during resize events, so the overhead should not be a big problem.
+		 */
+		for (let iRound=0; iRound<10; iRound++) {
+			{
+				// `top` box is 5em high, and takes 10% of screen height
+				// zoomer is 100% wide, 100% high and a 1em border
+				let numLines = 5;
+				let lineHeight;
+
+				if (viewWidth > viewHeight) {
+					// landscape, top box is 1/10th total available height and contains 5 lines
+					lineHeight = viewHeight / 10 / numLines;
+
+					// shrink font if current size would exceed 16:1 aspect ratio
+					if (lineHeight > viewWidth / 16 / numLines)
+						lineHeight = viewWidth / 16 / numLines;
+				} else {
+					// portrait
+					// set lineHeight that it spans full width
+					lineHeight = viewWidth / 16 / numLines;
+
+					// shrink if exceeds 1/10th available height
+					if (lineHeight > viewHeight / 10 / numLines)
+						lineHeight = viewHeight / 10 / numLines;
+				}
+
+				// assume fontSize = lineheight / 1.2
+				let fontSize = lineHeight / 1.2;
+
+				// set fontsize (em)
+				this.domTop.style.fontSize = fontSize + "px";
+			}
+
+			/*
+			 * If `idTop` top margin is "1em", determine height of "idTop" in em
+			 */
+			let topEm;
+			{
+				const rect = this.domTop.getBoundingClientRect();
+
+				topEm = 1 + ((rect.bottom - rect.top) / rect.top) + 0.5;
+				this.domNavWrapper.style.top = topEm + "em";
+			}
+
+			{
+				const rect = this.domNavWrapper.getBoundingClientRect();
+
+				// fontSize for landscape
+				let fontSize = document.body.clientHeight / (topEm + 34.4 + 1); // `idNav` has a top/bottom of 7em/1em
+
+				// scale down when portrait to fit width
+				if ((1 + 32.8 + 1) * fontSize > document.body.clientWidth)
+					fontSize = fontSize * document.body.clientWidth / ((1 + 32.8 + 1) * fontSize);
+
+				document.body.style.fontSize = fontSize + "px";
+			}
+		}
+	};
+
+	/*
+	 * Create the zoomer
+	 */
 	this.zoomer = new Zoomer(this.domZoomer, false, {
 
 		/**
@@ -654,6 +734,8 @@ function GUI() {
 		 */
 		onResize: (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
 			this.domWxH.innerHTML = "[" + viewWidth + "x" + viewHeight + "]";
+
+			this.setFontSize();
 		},
 
 		/**
@@ -796,28 +878,28 @@ function GUI() {
 			let maxk = frame.viewWidth * frame.viewHeight;
 			let rgba = frame.rgba;
 			done:
-			for (let j = 0; j < json.length; j++) {
-				let code = json.charCodeAt(j);
-				for (let i = 0; i < 8; i++) {
-					// pixel must not be transparent
-					while (!rgba[k]) {
+				for (let j = 0; j < json.length; j++) {
+					let code = json.charCodeAt(j);
+					for (let i = 0; i < 8; i++) {
+						// pixel must not be transparent
+						while (!rgba[k]) {
+							if (k >= maxk)
+								break done;
+							k++;
+						}
+
+						// inject bit
+						if (code & 1)
+							rgba[k] |= 1;
+						else
+							rgba[k] &= ~1;
+						code >>= 1;
+
 						if (k >= maxk)
 							break done;
 						k++;
 					}
-
-					// inject bit
-					if (code & 1)
-						rgba[k] |= 1;
-					else
-						rgba[k] &= ~1;
-					code >>= 1;
-
-					if (k >= maxk)
-						break done;
-					k++;
 				}
-			}
 
 			/*
 			 * draw frame onto canvas
@@ -900,7 +982,7 @@ function GUI() {
 		const zoomAccel = Math.round(Math.exp(newValue) * 10) / 10; // round
 
 		if (Config.autoPilot)
-			Config.zoomAccelAuto =zoomAccel;
+			Config.zoomAccelAuto = zoomAccel;
 		else
 			Config.zoomAccelManual = zoomAccel;
 
@@ -935,7 +1017,7 @@ function GUI() {
 		Config.densityNow = newValue;
 		Config.density = Math.exp(newValue);
 		// round
-		Config.density = Math.round(Config.density * 10000)/ 10000;
+		Config.density = Math.round(Config.density * 10000) / 10000;
 		this.domDensityLeft.innerHTML = Config.density;
 	});
 
@@ -960,7 +1042,7 @@ function GUI() {
 
 			Config.densityNow = newValue;
 			Config.density = Math.exp(newValue);
-			Config.density = Math.round(Config.density * 10000)/ 10000; // round
+			Config.density = Math.round(Config.density * 10000) / 10000; // round
 		}
 		if (delta <= -1) {
 			let newValue = Config.densityNow - Math.log(1.05);
@@ -969,11 +1051,11 @@ function GUI() {
 
 			Config.densityNow = newValue;
 			Config.density = Math.exp(newValue);
-			Config.density = Math.round(Config.density * 10000)/ 10000; // round
+			Config.density = Math.round(Config.density * 10000) / 10000; // round
 		}
 
 		this.density.moveSliderTo(Config.densityNow);
-	}, { passive: false });
+	}, {passive: false});
 
 	this.Framerate.setCallbackValueChange((newValue) => {
 		newValue = Math.round(newValue);
@@ -1060,7 +1142,7 @@ function GUI() {
 		 */
 		this.domPopup.innerText = "saving";
 		this.domPopup.className = "active";
-		setTimeout(()=>{
+		setTimeout(() => {
 			this.domPopup.className = "";
 		}, 2000)
 
@@ -1115,7 +1197,7 @@ function GUI() {
 		 */
 		this.domPopup.innerText = "copied to clipboard";
 		this.domPopup.className = "active";
-		setTimeout(()=>{
+		setTimeout(() => {
 			this.domPopup.className = "";
 		}, 2000)
 	});
@@ -1130,6 +1212,51 @@ function GUI() {
 		 * However, this handler is UI event context and `renderFrame()` is `postMessage()` context.
 		 */
 		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
+	});
+
+	this.domResize.addEventListener("mousedown", (e0) => {
+		e0.preventDefault();
+
+		// where (procent-wise) in the parent element did the click occur
+		const navRect = this.domNavWrapper.getBoundingClientRect();
+
+		const mouseMove = (e) => {
+			e0.preventDefault();
+
+			/*
+			 * Calculate point on line that is closest to mouse
+			 * line: y = (34.4 / 32) * x
+			 */
+			// mouse position relative to top-right `idNav`.
+			// where 0<=y<=1, scale x accordingly
+			let mouseX = (navRect.right - e.clientX) / (navRect.bottom - navRect.top);
+			let mouseY = (e.clientY - navRect.top) / (navRect.bottom - navRect.top);
+
+			// determine point on line (allowed positions of the resizer)
+			let a = -(34.4 / 32);
+			let b = 1;
+			let c = 0;
+			let x = (b*(b*mouseX-a*mouseY)-a*c) / (a*a+b*b);
+			let y = (a*(a*mouseY-b*mouseX)-b*c) / (a*a+b*b);
+
+			// limits
+			if (y > 1)
+				y = 1;
+			else if (y < 0.2)
+				y = 0.2;
+
+				// set relative fontsize
+			this.domNav.style.fontSize = y + "em";
+		};
+		const mouseUp = (e) => {
+			e0.preventDefault();
+
+			document.body.removeEventListener("mousemove", mouseMove);
+			document.body.removeEventListener("mouseup", mouseUp);
+		};
+
+		document.body.addEventListener("mousemove", mouseMove);
+		document.body.addEventListener("mouseup", mouseUp);
 	});
 
 	setInterval((e) => {
@@ -1220,7 +1347,7 @@ function GUI() {
 			gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
 			gui.domAutopilot.style.border = "4px solid green";
 
-		} else {
+		} else if (this.dragActive) {
 			this.dragActive = false;
 			gui.domAutopilot.style.border = "";
 		}
@@ -1242,6 +1369,13 @@ function GUI() {
 			this.zoomer.timeLastWake = 0;
 
 	}, this.directionalInterval);
+
+	/*
+	 * Constructor
+	 */
+	{
+		this.setFontSize();
+	}
 }
 
 /**
@@ -1533,6 +1667,9 @@ GUI.prototype.reload = function () {
 
 	// inject into current view
 	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView);
+
+	// slider value might have changed
+	this.density.moveSliderTo(Config.densityNow);
 };
 
 /**

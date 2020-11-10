@@ -45,6 +45,7 @@ body {
 	left: 0;
 	overflow: hidden; /* layout is pixel precise. don't let whitespace between tags FIU */
 	background-color: #000;
+	line-height: 1.2; /* needed for box calculations, do not remove or change */
 }
 
 #idZoomer {
@@ -99,40 +100,70 @@ body {
 	opacity: 1;
 }
 
-#top {
+#idTopWrapper {
+	position: absolute;
+	top: 1em;
+	left: 1em;
+	right: 1em;
+}
+
+#idTop {
 	position: absolute;
 	padding: .4em;
 	background: rgba(255,255,255,.5);
 	height: 5em;
-	top: 1em;
-	left: 1em;
-	right: 1em;
-	bottom: auto;
+	top: 0;
+	left: 0;
+	right: 0;
 }
 
-#nav {
+#idNavWrapper {
+	position: absolute;
+	top: 7em;
+	left: 1em;
+	right: 1em;
+	bottom: 1em;
+	pointer-events: none;
+}
+
+#idNav {
 	position: absolute;
 	padding: .4em;
 	overflow: hidden;
 	background: rgba(255,255,255,.5);
 	width: 32em;
-	top: 7em;
+	top: 0;
 	left: auto;
-	right: 1em;
+	right: 0;
 	bottom: auto;
+	pointer-events: auto;
+}
+
+#idProjectPage {
+	display: block;
+	margin: 0 3em;
+	font-size: 0.6em;
+	height: 6em; /* NOTE: 5 lines of text @1.2em */
+}
+
+#idResize {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	height: 1.2em;
 }
 
 /*
  * top box
  */
 
-#top h1 {
+#idTop h1 {
 	margin: 0;
 	padding:0;
 	text-align: center;
 }
 
-#top a {
+#idTop a {
 	text-decoration: none;
 	color: #000;
 	display: block;
@@ -262,7 +293,6 @@ body {
  * Slider
  */
 .navSlider {
-	height: 2em;
 }
 .navSlider .rail {
 	margin: 0.8em;
@@ -449,10 +479,4 @@ body {
 
 .navButton .nolight {
 	padding: 0 0.4em;
-}
-
-#idProjectPage {
-	display: block;
-	margin: 0.5em 1em;
-	font-size: 0.6em;
 }
