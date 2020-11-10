@@ -136,6 +136,10 @@ function ZoomerFrame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	    @description Expire time. To protect against queue overloading. Use Date.now() because that is synced between workers. */
 	this.timeExpire = 0;
 
+	/** @member {int}
+	    @description Frame number. */
+	this.frameNr = 0;
+
 	/*
 	 * Statistics
 	 */
@@ -1306,6 +1310,14 @@ function Zoomer(domZoomer, enableAngle, options = {
 	    @description Timestamp of last dropped frame */
 	this.timeLastDrop = 0;
 
+	/** @member {int}
+	    @description Frame number sending to workers */
+	this.sendFrameNr = 0;
+
+	/** @member {int}
+	    @description Frame number receiving from workers */
+	this.recvFrameNr = 0;
+
 	/*
 	 * Statistics
 	 */
@@ -1492,7 +1504,11 @@ function Zoomer(domZoomer, enableAngle, options = {
 		domZoomer.width = this.viewWidth;
 		domZoomer.height = this.viewHeight;
 
-		this.dispView = this.calcView;
+		/*
+		 * dispFrame may already be on its way to the worker
+		 * create a new current frame based on the (incomplete) current
+		 */
+		const oldCalcView = this.calcView;
 
 		// create new views
 		this.view0 = new ZoomerView(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
@@ -1501,7 +1517,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 		// copy the contents
 		this.calcFrame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
-		this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, this.dispView);
+		this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, oldCalcView);
 
 		// invoke initial callback
 		if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
@@ -1570,6 +1586,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 				// transfer frame to worker
 				previousFrame.durationRoundTrip = now;
+				previousFrame.frameNr = this.sendFrameNr++;
 				if (previousFrame.palette)
 					this.WWorkers[this.frameNr & 1].postMessage(previousFrame, [previousFrame.rgba.buffer, previousFrame.pixels.buffer, previousFrame.palette.buffer]);
 				else
@@ -1802,7 +1819,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 				let now = performance.now();
 				frame.durationRoundTrip = now - frame.durationRoundTrip;
 
-				if (frame.durationRENDER === 0) {
+				if (frame.frameNr < this.recvFrameNr) {
+					// highly delayed frame, skip
+					this.cntDropped++;
+				} else if (frame.durationRENDER === 0) {
 					// throttled/dropped
 					this.cntDropped++;
 					if (now - this.timeLastDrop > 2000) {
@@ -1830,6 +1850,9 @@ function Zoomer(domZoomer, enableAngle, options = {
 					frame.durationPAINT = now - stime;
 					this.updateStatistics(frame);
 				}
+
+				// update frame number
+				this.recvFrameNr = frame.frameNr;
 
 				// update actual framerate
 				if (this.timeLastFrame)
