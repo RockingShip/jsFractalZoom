@@ -1356,10 +1356,11 @@ function GUI() {
 			gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
 			gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
 			gui.domAutopilot.style.border = "4px solid green";
+			gui.domAutopilot.style.display = "block";
 
 		} else if (this.dragActive) {
 			this.dragActive = false;
-			gui.domAutopilot.style.border = "";
+			gui.domAutopilot.style.display = "none";
 		}
 
 		// zoom-in/out gesture
@@ -1828,6 +1829,8 @@ GUI.prototype.autopilotOn = function () {
 	Config.autopilotX = Config.centerX;
 	Config.autopilotY = Config.centerY;
 
+	this.domAutopilot.style.display = "block";
+
 	const diameter = Math.min(view.pixelWidth, view.pixelHeight);
 	let lookPixelRadius = Math.min(16, diameter >> 1);
 	const borderPixelRadius = Math.min(16, diameter >> 5);
@@ -1840,6 +1843,5 @@ GUI.prototype.autopilotOn = function () {
 
 GUI.prototype.autopilotOff = function () {
 	this.mouseButtons = 0;
-	this.domAutopilot.style.border = "none";
-
+	this.domAutopilot.style.display = "none";
 };
