@@ -1416,7 +1416,7 @@ function GUI() {
 		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
 			// need screen coordinates to avoid drifting
 			const dispView = this.zoomer.dispView;
-			const {dx, dy} = dispView.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
+			const {dx, dy} = this.zoomer.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
 
 			if (!this.dragActive) {
 				// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
@@ -1661,6 +1661,7 @@ GUI.prototype.handleBlur = function (event) {
  */
 GUI.prototype.handleMouse = function (event) {
 
+	const zoomer = this.zoomer;
 	const rect = this.domZoomer.getBoundingClientRect();
 
 	/*
@@ -1681,8 +1682,8 @@ GUI.prototype.handleMouse = function (event) {
 	 * @date 2020-10-26 12:42:18
 	 * Use the view angle as that is what you see when clicking. `Config.angle` lags behind.
 	 */
-	const view = (this.zoomer.frameNr & 1) ? this.zoomer.view1 : this.zoomer.view0;
-	let {dx, dy} = view.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
+	const view = (zoomer.frameNr & 1) ? zoomer.view1 : zoomer.view0;
+	let {dx, dy} = zoomer.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
 
 	this.mouseX = Config.centerX + dx;
 	this.mouseY = Config.centerY + dy;
@@ -1696,32 +1697,32 @@ GUI.prototype.handleMouse = function (event) {
 		let u1 = this.mouseU;
 		let v1 = this.mouseV;
 
-		const {i: i2, j: j2} = view.screenUVtoPixelIJ(u1, v1, Config.angle);
+		const {i: i2, j: j2} = zoomer.screenUVtoPixelIJ(u1, v1, Config.angle);
 
 		// visually verify pixel is correct
 		frame.palette[65534] = 0xff0000ff;
 		frame.pixels[j2 * frame.pixelWidth + i2] = 65534;
 
-		const {u: u3, v: v3} = view.pixelIJtoScreenUV(i2, j2, Config.angle);
+		const {u: u3, v: v3} = zoomer.pixelIJtoScreenUV(i2, j2, Config.angle);
 		console.log('a', u3 - u1, v3 - v1);
 
-		let {dx: x4, dy: y4} = view.screenUVtoCoordDXY(u3, v3, Config.angle);
+		let {dx: x4, dy: y4} = zoomer.screenUVtoCoordDXY(u3, v3, Config.angle);
 		x4 += Config.centerX;
 		y4 += Config.centerY;
 
-		let {i: i5, j: j5} = view.coordDXYtoPixelIJ(x4 - Config.centerX, y4 - Config.centerY);
+		let {i: i5, j: j5} = zoomer.coordDXYtoPixelIJ(x4 - Config.centerX, y4 - Config.centerY);
 		console.log('b', i5 - i2, j5 - j2);
 
 		// visually verify pixel is correct
 		frame.palette[65533] = 0xff00ff00;
 		frame.pixels[j5 * frame.pixelWidth + i5] = 65533;
 
-		let {dx: x6, dy: y6} = view.pixelIJtoCoordDXY(i5, j5);
+		let {dx: x6, dy: y6} = zoomer.pixelIJtoCoordDXY(i5, j5);
 		x6 += Config.centerX;
 		y6 += Config.centerY;
 		console.log('c', x6 - x4, y6 - y4);
 
-		let {u: u7, v: v7} = view.coordDXYtoScreenUV(x6 - Config.centerX, y6 - Config.centerY, Config.angle);
+		let {u: u7, v: v7} = zoomer.coordDXYtoScreenUV(x6 - Config.centerX, y6 - Config.centerY, Config.angle);
 		console.log('d', u7 - u3, v7 - v3);
 		console.log('e', u7 - u1, v7 - v1);
 
@@ -1744,9 +1745,9 @@ GUI.prototype.handleMouse = function (event) {
 	 * Don't wait and wake immediately
 	 */
 	if (!event.buttons && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
-		this.zoomer.timeLastWake = performance.now(); // safe to idle
+		zoomer.timeLastWake = performance.now(); // safe to idle
 	else
-		this.zoomer.timeLastWake = 0; // something is moving, don't idle
+		zoomer.timeLastWake = 0; // something is moving, don't idle
 
 	event.preventDefault();
 	event.stopPropagation();
@@ -1756,18 +1757,20 @@ GUI.prototype.handleMouse = function (event) {
  * (re)load initial frame
  */
 GUI.prototype.reload = function () {
+	const zoomer = this.zoomer;
+
 	// Create a small key frame (mandatory)
 	const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
 
 	// set all pixels of thumbnail with latest set `calculate`
-	keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
+	keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, zoomer, zoomer.onUpdatePixel);
 
 	// if nothing moving, enable idling
 	if (!Config.zoomSpeed && !this.mouseButtons && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
-		this.zoomer.timeLastWake = performance.now(); // safe to idle
+		zoomer.timeLastWake = performance.now(); // safe to idle
 
 	// inject into current view
-	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView);
+	zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView);
 
 	// slider value might have changed
 	this.density.moveSliderTo(Config.densityNow);
@@ -1782,6 +1785,7 @@ GUI.prototype.reload = function () {
 GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadius) {
 
 	const {pixelWidth, pixelHeight, viewWidth, viewHeight, pixels} = view;
+	const zoomer = this.zoomer;
 
 	// use '>>1' as integer '/2'
 
@@ -1802,7 +1806,7 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 	const maxCnt = minCnt * 3;
 
 	// coordinate within pixel data pointed to by mouse
-	let {i: apI, j: apJ} = view.coordDXYtoPixelIJ(Config.autopilotX - view.centerX, Config.autopilotY - view.centerY);
+	let {i: apI, j: apJ} = zoomer.coordDXYtoPixelIJ(Config.autopilotX - view.centerX, Config.autopilotY - view.centerY);
 
 	/*
 	 * @date 2020-10-24 23:59:53
@@ -1854,7 +1858,7 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 
 		// go for horizon first
 		if (cnt >= minCnt && cnt <= maxCnt) {
-			let {dx, dy} = view.pixelIJtoCoordDXY(testI, testJ);
+			let {dx, dy} = zoomer.pixelIJtoCoordDXY(testI, testJ);
 
 			// dampen sharp autopilot direction changes
 			Config.autopilotX += (Config.centerX + dx - Config.autopilotX) * Config.autopilotCoef;
@@ -1863,7 +1867,7 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
 			// get screen location
-			let {u, v} = view.pixelIJtoScreenUV(testI, testJ, Config.angle);
+			let {u, v} = zoomer.pixelIJtoScreenUV(testI, testJ, Config.angle);
 
 			// and position autopilot mark
 			gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
@@ -1878,7 +1882,7 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 	// go for high contrast
 	// Something "hangs ". This needs extra working on.
 	if (0 && bestIterHigh > iterLow * Config.autopilotContrast) {
-		let {dx, dy} = view.pixelIJtoCoordDXY(bestI, bestJ);
+		let {dx, dy} = zoomer.pixelIJtoCoordDXY(bestI, bestJ);
 
 		// dampen sharp autopilot direction changes
 		Config.autopilotX += (Config.centerX + dx - Config.autopilotX) * Config.autopilotCoef;
@@ -1887,7 +1891,7 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 		Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
 		// get screen location
-		let {u, v} = view.pixelIJtoScreenUV(bestI, bestJ, Config.angle);
+		let {u, v} = zoomer.pixelIJtoScreenUV(bestI, bestJ, Config.angle);
 
 		// and position autopilot mark
 		gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";

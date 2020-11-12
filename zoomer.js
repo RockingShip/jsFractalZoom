@@ -333,22 +333,6 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	    @description Distance between center and view corner */
 	this.radius = 0;
 
-	/** @member {float}
-	    @description radius of horiontal view edges */
-	this.radiusViewHor = 0;
-
-	/** @member {float}
-	    @description radius of vertical view edges */
-	this.radiusViewVer = 0;
-
-	/** @member {float}
-	    @description radius of horiontal pixel edges */
-	this.radiusPixelHor = 0;
-
-	/** @member {float}
-	    @description radius of vertical pixel edges */
-	this.radiusPixelVer = 0;
-
 	/*
 	 * Rulers
 	 */
@@ -465,24 +449,21 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 		// Determine the radius of the borders
 		// NOTE: this determines the aspect ration
+		let radiusPixelHor, radiusPixelVer;
 		if (this.viewWidth > this.viewHeight) {
 			// landscape
-			this.radiusViewVer = radius;
-			this.radiusViewHor = radius * viewWidth / viewHeight;
-			this.radiusPixelVer = radius * pixelHeight / viewHeight;
-			this.radiusPixelHor = radius * pixelWidth / viewHeight;
+			radiusPixelVer = radius * pixelHeight / viewHeight;
+			radiusPixelHor = radius * pixelWidth / viewHeight;
 		} else {
 			// portrait
-			this.radiusViewHor = radius;
-			this.radiusViewVer = radius * viewHeight / viewWidth;
-			this.radiusPixelHor = radius * pixelWidth / viewWidth;
-			this.radiusPixelVer = radius * pixelHeight / viewWidth;
+			radiusPixelHor = radius * pixelWidth / viewWidth;
+			radiusPixelVer = radius * pixelHeight / viewWidth;
 		}
 
-		const pixelMinX = centerX - this.radiusPixelHor;
-		const pixelMaxX = centerX + this.radiusPixelHor;
-		const pixelMinY = centerY - this.radiusPixelVer;
-		const pixelMaxY = centerY + this.radiusPixelVer;
+		const pixelMinX = centerX - radiusPixelHor;
+		const pixelMaxX = centerX + radiusPixelHor;
+		const pixelMinY = centerY - radiusPixelVer;
+		const pixelMaxY = centerY + radiusPixelVer;
 
 		if (!previousView) {
 			// simple linear fill of rulers
@@ -503,8 +484,8 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		const {xNearest: oldXnearest, xError: oldXerror, yNearest: oldYnearest, yNearest: oldYerror, pixelWidth: oldPixelWidth, pixelHeight: oldPixelHeight, pixels: oldPixels} = previousView;
 
 		// setup new rulers
-		const exactX = this.makeRuler(centerX - this.radiusPixelHor, centerX + this.radiusPixelHor, xCoord, xNearest, xError, xFrom, previousView.xNearest, previousView.xError);
-		const exactY = this.makeRuler(centerY - this.radiusPixelVer, centerY + this.radiusPixelVer, yCoord, yNearest, yError, yFrom, previousView.yNearest, previousView.yError);
+		const exactX = this.makeRuler(centerX - radiusPixelHor, centerX + radiusPixelHor, xCoord, xNearest, xError, xFrom, previousView.xNearest, previousView.xError);
+		const exactY = this.makeRuler(centerY - radiusPixelVer, centerY + radiusPixelVer, yCoord, yNearest, yError, yFrom, previousView.yNearest, previousView.yError);
 
 		frame.cntPixels += exactX * exactY;
 		frame.cntHLines += exactX;
@@ -764,203 +745,6 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		// update quality
 		this.frame.quality = 1;
 	};
-
-	/*
-	 * Conversion routines:
-	 * R = rotate
-	 * U = un-rotate
-	 *
-	 *  Pixel -U-> Screen -R-> Coord -U-> Screen -R-> Pixel
-	 *  Pixel ---------------> Coord ---------------> Pixel
-	 */
-
-	/**
-	 * Convert pixel I/J (int) to screen U/V (int) coordinate
-	 *
-	 * @param {int} pixelI
-	 * @param {int} pixelJ
-	 * @param {float} [angle]
-	 * @return {Object} - {u,v}
-	 */
-	this.pixelIJtoScreenUV = (pixelI, pixelJ, angle) => {
-
-		if (!angle) {
-			// fast convert
-			const u = pixelI - ((this.pixelWidth - this.viewWidth) >> 1);
-			const v = pixelJ - ((this.pixelHeight - this.viewHeight) >> 1);
-
-			return {u: u, v: v};
-		} else {
-			// move to center
-			let i = pixelI - (this.pixelWidth / 2);
-			let j = pixelJ - (this.pixelHeight / 2);
-
-			// sin/cos for angle
-			const rsin = Math.sin(angle * Math.PI / 180);
-			const rcos = Math.cos(angle * Math.PI / 180);
-
-			// undo rotation
-			const _i = i;
-			i = _i * rcos - j * rsin;
-			j = _i * rsin + j * rcos;
-
-			// scale and shift to screen
-			const u = i + (this.viewWidth / 2);
-			const v = j + (this.viewHeight / 2);
-
-			return {u: Math.round(u), v: Math.round(v)};
-		}
-	};
-
-	/**
-	 * Convert pixel I/J (int) to center relative coordinate dX/dY (float)  coordinate
-	 *
-	 * @param {int} pixelI
-	 * @param {int} pixelJ
-	 * @return {Object} - {dx,dy}
-	 */
-	this.pixelIJtoCoordDXY = (pixelI, pixelJ) => {
-
-		// move to center
-		let i = pixelI - (this.pixelWidth >> 1);
-		let j = pixelJ - (this.pixelHeight >> 1);
-
-		// scale and shift to coord
-		const dx = i * this.radiusViewHor / (this.viewWidth >> 1);
-		const dy = j * this.radiusViewVer / (this.viewHeight >> 1);
-
-		return {dx: dx, dy: dy};
-	};
-
-	/**
-	 * Convert screen U/V (int) to center relative coordinate dX/dY (float)  coordinate
-	 *
-	 * @param {int} screenU
-	 * @param {int} screenV
-	 * @param {float} [angle]
-	 * @return {Object} - {x,y}
-	 */
-	this.screenUVtoCoordDXY = (screenU, screenV, angle) => {
-
-		// move to center
-		let u = screenU - (this.viewWidth >> 1);
-		let v = screenV - (this.viewHeight >> 1);
-
-		if (angle) {
-			// sin/cos for angle
-			const rsin = Math.sin(angle * Math.PI / 180);
-			const rcos = Math.cos(angle * Math.PI / 180);
-
-			// apply rotation
-			const _u = u;
-			u = v * rsin + _u * rcos;
-			v = v * rcos - _u * rsin;
-		}
-
-		// scale and shift to coord
-		const dx = u * this.radiusViewHor / (this.viewWidth >> 1);
-		const dy = v * this.radiusViewVer / (this.viewHeight >> 1);
-
-		return {dx: dx, dy: dy};
-	};
-
-	/**
-	 * Convert center relative coordinate dX/dY (float) to screen U/V (int) coordinate
-	 *
-	 * @param {float} coordDX
-	 * @param {float} coordDY
-	 * @param {float} [angle]
-	 * @return {Object} - {u,v}
-	 */
-	this.coordDXYtoScreenUV = (coordDX, coordDY, angle) => {
-
-		// move to center
-		let dx = coordDX;
-		let dy = coordDY;
-
-		if (angle) {
-			// sin/cos for angle
-			const rsin = Math.sin(angle * Math.PI / 180);
-			const rcos = Math.cos(angle * Math.PI / 180);
-
-			/*
-			 * @date 2020-10-23 02:46:46
-			 * The next two instructions are intended to be performed in parallel.
-			 * It ensures that the `x` in the bottom instruction is the original and not the outcome of the top.
-			 */
-			// undo rotation
-			const _dx = dx;
-			dx = _dx * rcos - dy * rsin;
-			dy = _dx * rsin + dy * rcos;
-		}
-
-		// scale and shift to screen
-		const u = dx * (this.viewWidth >> 1) / this.radiusViewHor + (this.viewWidth >> 1);
-		const v = dy * (this.viewHeight >> 1) / this.radiusViewVer + (this.viewHeight >> 1);
-
-		return {u: Math.round(u), v: Math.round(v)};
-	};
-
-	/**
-	 * Convert center relative coordinate dX/dY (float) to pixel I/J (int) coordinate
-	 *
-	 * @param {float} coordDX
-	 * @param {float} coordDY
-	 * @return {Object} - {i,j}
-	 */
-	this.coordDXYtoPixelIJ = (coordDX, coordDY) => {
-
-		// move to center
-		let dx = coordDX;
-		let dy = coordDY;
-
-		// scale and shift to pixel
-		const i = dx * (this.viewWidth >> 1) / this.radiusViewHor + (this.pixelWidth >> 1);
-		const j = dy * (this.viewHeight >> 1) / this.radiusViewVer + (this.pixelHeight >> 1);
-
-		return {i: Math.round(i), j: Math.round(j)};
-	};
-
-	/**
-	 * Convert screen U/V (int) to pixel I/J (int) coordinate
-	 *
-	 * @param {int} screenU
-	 * @param {int} screenV
-	 * @param {float} [angle]
-	 * @return {Object} - {i,j}
-	 */
-	this.screenUVtoPixelIJ = (screenU, screenV, angle) => {
-
-		if (!angle) {
-			// fast convert
-			const i = screenU + ((this.pixelWidth - this.viewWidth) >> 1);
-			const j = screenV + ((this.pixelHeight - this.viewHeight) >> 1);
-
-			return {i: i, j: j};
-		} else {
-			// move to center
-			let u = screenU - (this.viewWidth >> 1);
-			let v = screenV - (this.viewHeight >> 1);
-
-			if (angle) {
-				// sin/cos for angle
-				const rsin = Math.sin(angle * Math.PI / 180);
-				const rcos = Math.cos(angle * Math.PI / 180);
-
-				// apply rotation
-				const _u = u;
-				u = v * rsin + _u * rcos;
-				v = v * rcos - _u * rsin;
-
-			}
-
-			// scale and shift to pixel
-			const i = u + (this.pixelWidth >> 1);
-			const j = v + (this.pixelHeight >> 1);
-
-			return {i: Math.round(i), j: Math.round(j)};
-		}
-	};
 }
 
 /**
@@ -1206,6 +990,14 @@ function Zoomer(domZoomer, enableAngle, options = {
 	    @description Current view angle (degrees) */
 	this.angle = 0;
 
+	/** @member {float}
+	    @description radius of horizontal view edges */
+	this.radiusViewHor = 0;
+
+	/** @member {float}
+	    @description radius of vertical view edges */
+	this.radiusViewVer = 0;
+
 	/*
 	 * Display/storage dimensions.
 	 *
@@ -1447,6 +1239,18 @@ function Zoomer(domZoomer, enableAngle, options = {
 		this.centerY = centerY;
 		this.radius = radius;
 		this.angle = angle ? angle : 0;
+
+		// Determine the radius of the borders
+		// NOTE: this determines the aspect ration
+		if (this.viewWidth > this.viewHeight) {
+			// landscape
+			this.radiusViewVer = radius;
+			this.radiusViewHor = radius * this.viewWidth / this.viewHeight;
+		} else {
+			// portrait
+			this.radiusViewHor = radius;
+			this.radiusViewVer = radius * this.viewHeight / this.viewWidth;
+		}
 
 		// optionally inject keyFrame into current view
 		if (keyView) {
@@ -1871,4 +1675,202 @@ function Zoomer(domZoomer, enableAngle, options = {
 			});
 		}
 	}
+
+	/*
+ * Conversion routines:
+ * R = rotate
+ * U = un-rotate
+ *
+ *  Pixel -U-> Screen -R-> Coord -U-> Screen -R-> Pixel
+ *  Pixel ---------------> Coord ---------------> Pixel
+ */
+
+	/**
+	 * Convert pixel I/J (int) to screen U/V (int) coordinate
+	 *
+	 * @param {int} pixelI
+	 * @param {int} pixelJ
+	 * @param {float} [angle]
+	 * @return {Object} - {u,v}
+	 */
+	this.pixelIJtoScreenUV = (pixelI, pixelJ, angle) => {
+
+		if (!angle) {
+			// fast convert
+			const u = pixelI - ((this.pixelWidth - this.viewWidth) >> 1);
+			const v = pixelJ - ((this.pixelHeight - this.viewHeight) >> 1);
+
+			return {u: u, v: v};
+		} else {
+			// move to center
+			let i = pixelI - (this.pixelWidth / 2);
+			let j = pixelJ - (this.pixelHeight / 2);
+
+			// sin/cos for angle
+			const rsin = Math.sin(angle * Math.PI / 180);
+			const rcos = Math.cos(angle * Math.PI / 180);
+
+			// undo rotation
+			const _i = i;
+			i = _i * rcos - j * rsin;
+			j = _i * rsin + j * rcos;
+
+			// scale and shift to screen
+			const u = i + (this.viewWidth / 2);
+			const v = j + (this.viewHeight / 2);
+
+			return {u: Math.round(u), v: Math.round(v)};
+		}
+	};
+
+	/**
+	 * Convert pixel I/J (int) to center relative coordinate dX/dY (float)  coordinate
+	 *
+	 * @param {int} pixelI
+	 * @param {int} pixelJ
+	 * @return {Object} - {dx,dy}
+	 */
+	this.pixelIJtoCoordDXY = (pixelI, pixelJ) => {
+
+		// move to center
+		let i = pixelI - (this.pixelWidth >> 1);
+		let j = pixelJ - (this.pixelHeight >> 1);
+
+		// scale and shift to coord
+		const dx = i * this.radiusViewHor / (this.viewWidth >> 1);
+		const dy = j * this.radiusViewVer / (this.viewHeight >> 1);
+
+		return {dx: dx, dy: dy};
+	};
+
+	/**
+	 * Convert screen U/V (int) to center relative coordinate dX/dY (float)  coordinate
+	 *
+	 * @param {int} screenU
+	 * @param {int} screenV
+	 * @param {float} [angle]
+	 * @return {Object} - {x,y}
+	 */
+	this.screenUVtoCoordDXY = (screenU, screenV, angle) => {
+
+		// move to center
+		let u = screenU - (this.viewWidth >> 1);
+		let v = screenV - (this.viewHeight >> 1);
+
+		if (angle) {
+			// sin/cos for angle
+			const rsin = Math.sin(angle * Math.PI / 180);
+			const rcos = Math.cos(angle * Math.PI / 180);
+
+			// apply rotation
+			const _u = u;
+			u = v * rsin + _u * rcos;
+			v = v * rcos - _u * rsin;
+		}
+
+		// scale and shift to coord
+		const dx = u * this.radiusViewHor / (this.viewWidth >> 1);
+		const dy = v * this.radiusViewVer / (this.viewHeight >> 1);
+
+		return {dx: dx, dy: dy};
+	};
+
+	/**
+	 * Convert center relative coordinate dX/dY (float) to screen U/V (int) coordinate
+	 *
+	 * @param {float} coordDX
+	 * @param {float} coordDY
+	 * @param {float} [angle]
+	 * @return {Object} - {u,v}
+	 */
+	this.coordDXYtoScreenUV = (coordDX, coordDY, angle) => {
+
+		// move to center
+		let dx = coordDX;
+		let dy = coordDY;
+
+		if (angle) {
+			// sin/cos for angle
+			const rsin = Math.sin(angle * Math.PI / 180);
+			const rcos = Math.cos(angle * Math.PI / 180);
+
+			/*
+			 * @date 2020-10-23 02:46:46
+			 * The next two instructions are intended to be performed in parallel.
+			 * It ensures that the `x` in the bottom instruction is the original and not the outcome of the top.
+			 */
+			// undo rotation
+			const _dx = dx;
+			dx = _dx * rcos - dy * rsin;
+			dy = _dx * rsin + dy * rcos;
+		}
+
+		// scale and shift to screen
+		const u = dx * (this.viewWidth >> 1) / this.radiusViewHor + (this.viewWidth >> 1);
+		const v = dy * (this.viewHeight >> 1) / this.radiusViewVer + (this.viewHeight >> 1);
+
+		return {u: Math.round(u), v: Math.round(v)};
+	};
+
+	/**
+	 * Convert center relative coordinate dX/dY (float) to pixel I/J (int) coordinate
+	 *
+	 * @param {float} coordDX
+	 * @param {float} coordDY
+	 * @return {Object} - {i,j}
+	 */
+	this.coordDXYtoPixelIJ = (coordDX, coordDY) => {
+
+		// move to center
+		let dx = coordDX;
+		let dy = coordDY;
+
+		// scale and shift to pixel
+		const i = dx * (this.viewWidth >> 1) / this.radiusViewHor + (this.pixelWidth >> 1);
+		const j = dy * (this.viewHeight >> 1) / this.radiusViewVer + (this.pixelHeight >> 1);
+
+		return {i: Math.round(i), j: Math.round(j)};
+	};
+
+	/**
+	 * Convert screen U/V (int) to pixel I/J (int) coordinate
+	 *
+	 * @param {int} screenU
+	 * @param {int} screenV
+	 * @param {float} [angle]
+	 * @return {Object} - {i,j}
+	 */
+	this.screenUVtoPixelIJ = (screenU, screenV, angle) => {
+
+		if (!angle) {
+			// fast convert
+			const i = screenU + ((this.pixelWidth - this.viewWidth) >> 1);
+			const j = screenV + ((this.pixelHeight - this.viewHeight) >> 1);
+
+			return {i: i, j: j};
+		} else {
+			// move to center
+			let u = screenU - (this.viewWidth >> 1);
+			let v = screenV - (this.viewHeight >> 1);
+
+			if (angle) {
+				// sin/cos for angle
+				const rsin = Math.sin(angle * Math.PI / 180);
+				const rcos = Math.cos(angle * Math.PI / 180);
+
+				// apply rotation
+				const _u = u;
+				u = v * rsin + _u * rcos;
+				v = v * rcos - _u * rsin;
+
+			}
+
+			// scale and shift to pixel
+			const i = u + (this.pixelWidth >> 1);
+			const j = v + (this.pixelHeight >> 1);
+
+			return {i: Math.round(i), j: Math.round(j)};
+		}
+	};
+
 }
