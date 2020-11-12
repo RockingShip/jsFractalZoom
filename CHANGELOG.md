@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-11 23:58:24 Added menu and fullscreen buttons.
 2020-11-11 21:33:02 Improved hiding autopilot marker.
 2020-11-10 14:22:43 Redraw sliders on layout changes.
 2020-11-10 12:50:20 Added frame numbers for syncing.

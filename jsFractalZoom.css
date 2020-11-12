@@ -115,11 +115,12 @@ body {
 	top: 0;
 	left: 0;
 	right: 0;
+	display: none; /* initially hidden */
 }
 
 #idNavWrapper {
 	position: absolute;
-	top: 7em;
+	top: 7.5em; /* 1 edge + 6 idTop + 0.5 separator */
 	left: 1em;
 	right: 1em;
 	bottom: 1em;
@@ -137,6 +138,7 @@ body {
 	right: 0;
 	bottom: auto;
 	pointer-events: auto;
+	display: none; /* initially hidden */
 }
 
 #idProjectPage {
@@ -151,6 +153,38 @@ body {
 	bottom: 0;
 	left: 0;
 	height: 1.2em;
+}
+
+#idFullscreen, #idMenu {
+	position: absolute;
+	top: 2em;
+	right: 2em;
+	width: 3em;
+	height: 3em;
+	border: .2em solid #000;
+	background-color: #fff;
+	opacity: .5;
+}
+
+#idFullscreen:hover, #idMenu:hover {
+	opacity: 1;
+}
+
+#idFullscreen[aria-pressed="true"] > #idExpand {
+	display: none;
+}
+#idFullscreen[aria-pressed="false"] > #idShrink {
+	display: none;
+}
+
+#idMenu {
+	right: 6em; /* expand/shrink is 1em + 3em + 1em + 1em */
+	stroke: #000;
+}
+#idMenu[aria-pressed="true"] {
+	stroke: #fff;
+	fill: #fff;
+	background-color: #000;
 }
 
 /*

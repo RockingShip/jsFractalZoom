@@ -607,6 +607,8 @@ function GUI() {
 	this.domWxH = "WxH";
 	this.domAutopilot = "idAutopilot";
 	this.domResize = "idResize";
+	this.domFullscreen = "idFullscreen";
+	this.domMenu = "idMenu";
 
 	/** @member {number} - view mouse X coordinate */
 	this.mouseU = 0;
@@ -684,6 +686,17 @@ function GUI() {
 		this.Framerate.moveSliderTo(this.Framerate.valueNow);
 	}
 
+	/** @member {float} - scaling of `idNav` within `idNavWrapper` */
+	this.idNavScale = 1;
+	/** @member {float} - scaling of `idNavWrapper` within `body` *. This is needed to scale mouse coordinates when resizing nav */
+	this.idNavWrapScale = 1;
+	/** @member {float} - height of top. 5 lines at 1.2em per line */
+	this.topHeightEm = 6.0;
+	/** @member {float} - height of `idNav`. 15*2 + 6@0.6em + 2*0.4 (padding) */
+	this.navHeightEm = 34.4;
+	/** @member {float} - width of `idNav`. 32 + 2*0.4 (padding) */
+	this.navWidthEm = 32.8;
+
 	/*
 	 * Set fontsize
 	 */
@@ -692,71 +705,65 @@ function GUI() {
 		const viewHeight = document.body.clientHeight;
 
 		/*
-		 * @date 2020-11-10 00:49:49
-		 * `idTop` depends on body.fontSize
-		 * `idNav` depends on `idTop`
-		 * body.fontSize depends on `idNav`
+		 * @date 2020-11-11 16:42:19
 		 *
-		 * Perform a couple of iterations to create a stable situation.
-		 * This only happens during resize events, so the overhead should not be a big problem.
+		 * `idTop` is full width and is 1/12th of clientHeight.
+		 * It contains 5 lines of text (mixed font sizes), and with lineHeight of 1.2, totals to 6em high
+		 * However, if screen is too narrow (the width is estimated 16em), reduce fontSize even more.
+		 *
+		 * `idTop` has a 1em top/right/left margin, and a 0.5em margin between `idNav`.
+		 *
+		 * `idNav` is spans upto 1em from `clientHeight`.
+		 * `idResize` is used to scale accordingly.
+		 *
+		 * `idNav` contains a number of lines, set `fontSize` to scale contents to fit.
+		 *
+		 * set `body.fontSize` to scale `idTop`
+		 * set `idNav.fontSize` to scale `idNav`
+		 *
+		 * status line is generally 150 characters long. Verdana has an aspect ratio of about 0.55, making it ~82em
+		 * Extra space for left/right margin and room for the menu/expand buttons set it to ~95em
 		 */
-		for (let iRound=0; iRound<10; iRound++) {
-			{
-				// `top` box is 5em high, and takes 10% of screen height
-				// zoomer is 100% wide, 100% high and a 1em border
-				let numLines = 5;
-				let lineHeight;
 
-				if (viewWidth > viewHeight) {
-					// landscape, top box is 1/10th total available height and contains 5 lines
-					lineHeight = viewHeight / 10 / numLines;
+		/*
+		 * determine body fontSize
+		 */
+		let topPxHeight = viewHeight / 10;
+		let fontSize = topPxHeight / this.topHeightEm;
 
-					// shrink font if current size would exceed 16:1 aspect ratio
-					if (lineHeight > viewWidth / 16 / numLines)
-						lineHeight = viewWidth / 16 / numLines;
-				} else {
-					// portrait
-					// set lineHeight that it spans full width
-					lineHeight = viewWidth / 16 / numLines;
+		if (viewWidth < fontSize * 95)
+			fontSize *= viewWidth / (fontSize * 95); // scale down to fit
 
-					// shrink if exceeds 1/10th available height
-					if (lineHeight > viewHeight / 10 / numLines)
-						lineHeight = viewHeight / 10 / numLines;
-				}
+		// set fontsize of `body` so it scales `idTop`
+		document.body.style.fontSize = fontSize + "px";
 
-				// assume fontSize = lineheight / 1.2
-				let fontSize = lineHeight / 1.2;
+		/*
+		 * determine `navWrapper` fontsize and position
+		 */
+		let navPxHeight = viewHeight - (1 + this.topHeightEm + 0.5 + 1) * fontSize;
+		let navFontSize = navPxHeight / this.navHeightEm;
+		this.idNavWrapScale = navFontSize;
 
-				// set fontsize (em)
-				this.domTop.style.fontSize = fontSize + "px";
-			}
+		// scale down when portrait to fit width
+		if (this.navWidthEm * navFontSize + 2 * fontSize > document.body.clientWidth)
+			navFontSize = (document.body.clientWidth - 2 * fontSize) / this.navWidthEm;
 
-			/*
-			 * If `idTop` top margin is "1em", determine height of "idTop" in em
-			 */
-			let topEm;
-			{
-				const rect = this.domTop.getBoundingClientRect();
+		// in case the above was activated, remember the scale to adjust mouse coordinates on resize
+		this.idNavWrapScale /= navFontSize;
 
-				topEm = 1 + ((rect.bottom - rect.top) / rect.top) + 0.5;
-				this.domNavWrapper.style.top = topEm + "em";
-			}
+		this.domNavWrapper.style.fontSize = (navFontSize / fontSize) + "em";
+		this.domNavWrapper.style.top = ((1 + this.topHeightEm + 0.5) * fontSize / navFontSize) + "em";
+		this.domNavWrapper.style.right = (1 * fontSize / navFontSize) + "em";
 
-			{
-				const rect = this.domNavWrapper.getBoundingClientRect();
+		/*
+		 * Vertical align expand/shrink icon relative to top. Icons are 3em high
+		 */
 
-				// fontSize for landscape
-				let fontSize = document.body.clientHeight / (topEm + 34.4 + 1); // `idNav` has a top/bottom of 7em/1em
+		let emTop = 1 + 6 + 0.5; // edgeMargin + idTop + separator
+		this.domFullscreen.style.top = ((emTop - 3) / 2) + "em";
+		this.domMenu.style.top = ((emTop - 3) / 2) + "em";
 
-				// scale down when portrait to fit width
-				if ((1 + 32.8 + 1) * fontSize > document.body.clientWidth)
-					fontSize = fontSize * document.body.clientWidth / ((1 + 32.8 + 1) * fontSize);
-
-				document.body.style.fontSize = fontSize + "px";
-			}
-
-			this.redrawSliders();
-		}
+		this.redrawSliders();
 	};
 
 	/*
@@ -824,7 +831,10 @@ function GUI() {
 			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
 			// maxIter for embedded calc(), maxDepth for formula.js
-			this.domStatusTitle.innerHTML = JSON.stringify({x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, density: Config.density, iter: Config.maxIter, quality: dispFrame.quality});
+			this.domStatusTitle.innerHTML = JSON.stringify({
+				x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, density: Config.density, iter: Config.maxIter,
+				quality: Math.round(dispFrame.quality * 100000) / 100000
+			});
 		},
 
 		/**
@@ -1187,6 +1197,7 @@ function GUI() {
 	this.domZoomer.addEventListener("contextmenu", this.handleMouse);
 	document.addEventListener("keydown", this.handleKeyDown);
 	document.addEventListener("keyup", this.handleKeyUp);
+
 	document.addEventListener("wheel", (e) => {
 		e.preventDefault();
 
@@ -1222,26 +1233,35 @@ function GUI() {
 
 		this.density.moveSliderTo(Config.densityNow);
 	}, {passive: false});
+
 	this.domResize.addEventListener("mousedown", (e0) => {
 		e0.preventDefault();
 
 		// where (procent-wise) in the parent element did the click occur
-		const navRect = this.domNavWrapper.getBoundingClientRect();
+		const fontSize = parseInt(document.body.style.fontSize);
+		const navRectTop = 7.5 * fontSize;
+		const navRectRight = document.body.clientWidth - fontSize;
+		const navRectBottom = document.body.clientHeight - fontSize;
+		const navRectLeft = fontSize;
 
 		const mouseMove = (e) => {
 			e0.preventDefault();
 
 			/*
 			 * Calculate point on line that is closest to mouse
-			 * line: y = (34.4 / 32) * x
+			 * line: y = (height / width) * x
 			 */
 			// mouse position relative to top-right `idNav`.
 			// where 0<=y<=1, scale x accordingly
-			let mouseX = (navRect.right - e.clientX) / (navRect.bottom - navRect.top);
-			let mouseY = (e.clientY - navRect.top) / (navRect.bottom - navRect.top);
+			let mouseX = (navRectRight - e.clientX) / (navRectBottom - navRectTop);
+			let mouseY = (e.clientY - navRectTop) / (navRectBottom - navRectTop);
+
+			// compensate is `idNavWrapper was downscaled
+			mouseX *= this.idNavWrapScale;
+			mouseY *= this.idNavWrapScale;
 
 			// determine point on line (allowed positions of the resizer)
-			let a = -(34.4 / 32);
+			let a = -(this.navHeightEm / this.navWidthEm);
 			let b = 1;
 			let c = 0;
 			let x = (b*(b*mouseX-a*mouseY)-a*c) / (a*a+b*b);
@@ -1249,24 +1269,84 @@ function GUI() {
 
 			// limits
 			if (y > 1)
-				y = 1;
+				this.idNavScale = 1;
 			else if (y < 0.2)
-				y = 0.2;
+				this.idNavScale = 0.2;
+			else
+				this.idNavScale = y;
 
-				// set relative fontsize
-			this.domNav.style.fontSize = y + "em";
+			// set relative fontsize
+			this.domNav.style.fontSize = this.idNavScale + "em";
 
 			this.redrawSliders();
 		};
 		const mouseUp = (e) => {
 			e0.preventDefault();
 
-			document.body.removeEventListener("mousemove", mouseMove);
-			document.body.removeEventListener("mouseup", mouseUp);
+			document.removeEventListener("mousemove", mouseMove);
+			document.removeEventListener("mouseup", mouseUp);
 		};
 
-		document.body.addEventListener("mousemove", mouseMove);
-		document.body.addEventListener("mouseup", mouseUp);
+		document.addEventListener("mousemove", mouseMove);
+		document.addEventListener("mouseup", mouseUp);
+	});
+
+	this.domFullscreen.addEventListener("mousedown", (e0) => {
+		e0.preventDefault();
+
+		let currentState = this.domFullscreen.getAttribute('aria-pressed');
+
+		if (currentState === 'true') {
+			currentState = 'false';
+
+			// exit fullscreen
+			if (document.exitFullscreen)
+				document.exitFullscreen();
+			else if (document.webkitExitFullscreen) /* Safari */
+				document.webkitExitFullscreen();
+			else if (document.msExitFullscreen) /* IE11 */
+				document.msExitFullscreen();
+			else
+				return;
+		} else {
+			currentState = 'true';
+
+			// enter fullscreen
+			let elem = document.documentElement;
+
+			if (elem.requestFullscreen)
+				elem.requestFullscreen();
+			else if (elem.webkitRequestFullscreen) /* Safari */
+				elem.webkitRequestFullscreen();
+			else if (elem.msRequestFullscreen) /* IE11 */
+				elem.msRequestFullscreen();
+			else return;
+		}
+
+		this.domFullscreen.setAttribute('aria-pressed', currentState);
+	});
+
+	this.domMenu.addEventListener("mousedown", (e0) => {
+		e0.preventDefault();
+
+		let currentState = this.domMenu.getAttribute('aria-pressed');
+
+		if (currentState === 'true') {
+			currentState = 'false';
+
+			this.domTop.style.display = "none";
+			this.domNav.style.display = "none";
+		} else {
+			currentState = 'true';
+
+			this.domTop.style.display = "block";
+			this.domNav.style.display = "block";
+
+			// now sliders are visable, set their positions
+			this.redrawSliders();
+		}
+
+		this.domMenu.setAttribute('aria-pressed', currentState);
 	});
 
 	setInterval((e) => {
