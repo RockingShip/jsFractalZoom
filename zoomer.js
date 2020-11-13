@@ -1154,6 +1154,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 	    @description Number of dropped frames */
 	this.cntDropped = 0;
 
+	/** @member {int}
+	    @description Number of lost frames, out-of-order */
+	this.cntLost = 0;
+
 	/**
 	 * Allocate a new frame, reuse if same size otherwise let it garbage collect
 	 *
@@ -1626,7 +1630,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 				if (frame.frameNr < this.recvFrameNr) {
 					// highly delayed frame, skip
-					this.cntDropped++;
+					this.cntLost++;
 				} else if (frame.durationRENDER === 0) {
 					// throttled/dropped
 					this.cntDropped++;

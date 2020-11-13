@@ -919,7 +919,8 @@ function GUI() {
 					RT: Math.round(zoomer.avgRoundTrip),
 					reqFPS: Math.round(zoomer.frameRate * 10) / 10,
 					actFPS: Math.round(zoomer.avgFrameRate * 10) / 10,
-					drop: zoomer.cntDropped
+					drop: zoomer.cntDropped,
+					lost: zoomer.cntLost,
 				});
 
 				this.lastNow = now;
