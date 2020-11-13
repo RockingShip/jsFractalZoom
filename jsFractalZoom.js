@@ -1657,6 +1657,10 @@ function GUI() {
  * @param {KeyboardEvent} event
  */
 GUI.prototype.handleKeyDown = function (event) {
+	// ignore ctrl/alt keys
+	if (event.altKey || event.ctrlKey || event.metaKey)
+		return;
+
 	// Grab the keydown and click events
 	switch (event.key) {
 	case "A":
@@ -1686,6 +1690,10 @@ GUI.prototype.handleKeyDown = function (event) {
 	case "i":
 		if (!this.incolour.toggleListbox(event))
 			this.domZoomer.focus();
+		break;
+	case "M":
+	case "m":
+		this.domMenu.dispatchEvent(new MouseEvent('mousedown'));
 		break;
 	case "O":
 	case "o":
@@ -1752,6 +1760,10 @@ GUI.prototype.handleKeyDown = function (event) {
  * @param {KeyboardEvent} event
  */
 GUI.prototype.handleKeyUp = function (event) {
+	// ignore ctrl/alt keys
+	if (event.altKey || event.ctrlKey || event.metaKey)
+		return;
+
 	// Grab the keydown and click events
 	switch (event.key) {
 	case "A":
@@ -1767,6 +1779,9 @@ GUI.prototype.handleKeyUp = function (event) {
 	case "d":
 		this.paletteGroup.radioButtons[1].buttonUp();
 		this.domZoomer.focus();
+		break;
+	case "M":
+	case "m":
 		break;
 	case "Q":
 	case "q":
