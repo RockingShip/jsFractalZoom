@@ -1375,11 +1375,12 @@ function Zoomer(domZoomer, enableAngle, options = {
 			// COPY (performance hit)
 			this.calcFrame = frame;
 			this.calcView = (this.frameNr & 1) ? this.view1 : this.view0;
-			this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, this.dispView);
 
 			now = performance.now();
 			frame.durationCOPY = now - frame.timeStart;
 			if (this.onBeginFrame) this.onBeginFrame(this, this.calcView, this.calcView.frame, this.dispView, previousFrame);
+
+			this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, this.dispView);
 
 			if (!this.disableWW) {
 				// RENDER `Worker` context

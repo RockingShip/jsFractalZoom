@@ -828,6 +828,25 @@ function GUI() {
 			// const diffSec = (currentFrame.timeStart - displayFrame.timeStart) / 1000;
 			const diffSec = (1000 / zoomer.avgFrameRate) / 1000;
 
+			/*
+			 * @date 2020-10-26 12:42:18
+			 * Use the view angle as that is what you see when clicking. `Config.angle` lags behind.
+			 */
+			let {dx, dy} = zoomer.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
+			this.mouseX = Config.centerX + dx;
+			this.mouseY = Config.centerY + dy;
+
+			// zoom-in/out gesture
+			if (Config.zoomSpeed) {
+				// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
+				const magnify = Math.pow(Config.autoPilot ? Config.zoomAccelAuto : Config.zoomAccelManual, Config.zoomSpeed * diffSec);
+
+				// zoom, The mouse pointer coordinate should not change
+				Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
+				Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
+				Config.radius = Config.radius / magnify;
+			}
+
 			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
 			// maxIter for embedded calc(), maxDepth for formula.js
@@ -1443,17 +1462,6 @@ function GUI() {
 			gui.domAutopilot.style.display = "none";
 		}
 
-		// zoom-in/out gesture
-		if (Config.zoomSpeed) {
-			// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
-			const magnify = Math.pow(Config.autoPilot ? Config.zoomAccelAuto : Config.zoomAccelManual, Config.zoomSpeed * diffSec);
-
-			// zoom, The mouse pointer coordinate should not change
-			Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
-			Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
-			Config.radius = Config.radius / magnify;
-		}
-
 		// if anything is changing/moving, disable idling
 		// NOTE: expect for zoomspeed which is handled by the mouseHandler
 		if (Config.autoPilot || this.mouseButtons || Config.rotateSpeedNow || Config.paletteSpeedNow)
@@ -1677,16 +1685,6 @@ GUI.prototype.handleMouse = function (event) {
 	// determine mouse screen position
 	this.mouseU = event.pageX - rect.left;
 	this.mouseV = event.pageY - rect.top;
-
-	/*
-	 * @date 2020-10-26 12:42:18
-	 * Use the view angle as that is what you see when clicking. `Config.angle` lags behind.
-	 */
-	const view = (zoomer.frameNr & 1) ? zoomer.view1 : zoomer.view0;
-	let {dx, dy} = zoomer.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
-
-	this.mouseX = Config.centerX + dx;
-	this.mouseY = Config.centerY + dy;
 
 	/*
 	 * Encountered a Hydra bug.
