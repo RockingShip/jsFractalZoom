@@ -407,7 +407,7 @@ M 26.727 32.727   a 2 2 0 0 1 -4  0   l  0 -8   a 2 2 0 0 1  2 -2   l  8  0   a 
 <script type="text/javascript">
 
 	/*
-	 * attack the situation that whitespace between tags upsets layout
+	 * Handle the situation that whitespace between tags upsets layout
 	 * https://blog.nightly.mozilla.org/2016/10/17/devtools-now-display-white-space-text-nodes-in-the-dom-inspector
 	 */
 	function cleanNode(node) {
@@ -438,15 +438,13 @@ M 26.727 32.727   a 2 2 0 0 1 -4  0   l  0 -8   a 2 2 0 0 1  2 -2   l  8  0   a 
 
 		// override config/formula
 		const query = location.search.substring(1);
-		if (query) {
+		if (query)
 			Config.load(query);
-			palette.loadTheme();
-		}
 
 		window.gui = new GUI();
 
 		// setup palette
-		palette.loadTheme(Config.theme, Config.seed);
+		palette.loadTheme();
 
 		// setup initial frame
 		gui.reload();

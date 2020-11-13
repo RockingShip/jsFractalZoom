@@ -55,7 +55,7 @@ loadImage(process.argv[2]).catch(e => {
 		let code = 0;
 		for (let i = 0; i < 8; i++) {
 			// pixel must not be transparent
-			while (!(rgba[k] & 0xff000000))
+			while (!(rgba[k] & 0xff000000) && k < image.width * image.height)
 				k++;
 
 			code |= (rgba[k++] & 1) << i;
@@ -80,6 +80,11 @@ loadImage(process.argv[2]).catch(e => {
 			// add character
 			json += String.fromCharCode(code);
 		}
+	}
+
+	if (!json) {
+		console.log("No json found");
+		process.exit();
 	}
 
 	console.log(json);

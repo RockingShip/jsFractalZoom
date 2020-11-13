@@ -75,7 +75,7 @@ function Config() {
 	/** @member {float} - zoom magnification */
 	Config.zoomAccelAuto = 2;
 	/** @member {float} - zoom magnification slider Min */
-	Config.zoomAccelMin = Math.log(1.01);
+	Config.zoomAccelMin = Math.log(1.1);
 	/** @member {float} - zoom magnification slider Max */
 	Config.zoomAccelMax = Math.log(25.0);
 	/** @member {float} - zoom magnification slider Now */
@@ -981,6 +981,7 @@ function GUI() {
 				y: Config.centerY,
 				r: Config.radius,
 				a: Config.angle,
+				density: Config.density,
 				iter: Config.maxIter,
 				theme: Config.theme,
 				seed: Config.seed,
@@ -1249,8 +1250,8 @@ function GUI() {
 	document.addEventListener("keydown", this.handleKeyDown);
 	document.addEventListener("keyup", this.handleKeyUp);
 
-	document.addEventListener("wheel", (e) => {
-		e.preventDefault();
+	document.addEventListener("wheel", (ev) => {
+		ev.preventDefault();
 
 		/*
 		 * Node: the slider has logarithmic values. "Times N" is "add log(N)"
@@ -1262,7 +1263,7 @@ function GUI() {
 		 * Do simple, and move slide 1 position per event
 		 */
 
-		let delta = e.deltaY;
+		let delta = ev.deltaY;
 		if (delta >= 1) {
 			let newValue = Config.densityNow + Math.log(1.05);
 			if (newValue > Config.densityMax)
@@ -1285,8 +1286,8 @@ function GUI() {
 		this.density.moveSliderTo(Config.densityNow);
 	}, {passive: false});
 
-	this.domResize.addEventListener("mousedown", (e0) => {
-		e0.preventDefault();
+	this.domResize.addEventListener("mousedown", (ev0) => {
+		ev0.preventDefault();
 
 		// where (procent-wise) in the parent element did the click occur
 		const fontSize = parseInt(document.body.style.fontSize);
@@ -1295,8 +1296,8 @@ function GUI() {
 		const navRectBottom = document.body.clientHeight - fontSize;
 		const navRectLeft = fontSize;
 
-		const mouseMove = (e) => {
-			e0.preventDefault();
+		const mouseMove = (ev) => {
+			ev0.preventDefault();
 
 			/*
 			 * Calculate point on line that is closest to mouse
@@ -1304,8 +1305,8 @@ function GUI() {
 			 */
 			// mouse position relative to top-right `idNav`.
 			// where 0<=y<=1, scale x accordingly
-			let mouseX = (navRectRight - e.clientX) / (navRectBottom - navRectTop);
-			let mouseY = (e.clientY - navRectTop) / (navRectBottom - navRectTop);
+			let mouseX = (navRectRight - ev.clientX) / (navRectBottom - navRectTop);
+			let mouseY = (ev.clientY - navRectTop) / (navRectBottom - navRectTop);
 
 			// compensate is `idNavWrapper was downscaled
 			mouseX *= this.idNavWrapScale;
@@ -1315,8 +1316,8 @@ function GUI() {
 			let a = -(this.navHeightEm / this.navWidthEm);
 			let b = 1;
 			let c = 0;
-			let x = (b*(b*mouseX-a*mouseY)-a*c) / (a*a+b*b);
-			let y = (a*(a*mouseY-b*mouseX)-b*c) / (a*a+b*b);
+			let x = (b * (b * mouseX - a * mouseY) - a * c) / (a * a + b * b);
+			let y = (a * (a * mouseY - b * mouseX) - b * c) / (a * a + b * b);
 
 			// limits
 			if (y > 1)
@@ -1331,8 +1332,8 @@ function GUI() {
 
 			this.redrawSliders();
 		};
-		const mouseUp = (e) => {
-			e0.preventDefault();
+		const mouseUp = (ev) => {
+			ev0.preventDefault();
 
 			document.removeEventListener("mousemove", mouseMove);
 			document.removeEventListener("mouseup", mouseUp);
@@ -1342,8 +1343,8 @@ function GUI() {
 		document.addEventListener("mouseup", mouseUp);
 	});
 
-	this.domFullscreen.addEventListener("mousedown", (e0) => {
-		e0.preventDefault();
+	this.domFullscreen.addEventListener("mousedown", (ev) => {
+		ev.preventDefault();
 
 		let currentState = this.domFullscreen.getAttribute('aria-pressed');
 
@@ -1377,8 +1378,8 @@ function GUI() {
 		this.domFullscreen.setAttribute('aria-pressed', currentState);
 	});
 
-	this.domMenu.addEventListener("mousedown", (e0) => {
-		e0.preventDefault();
+	this.domMenu.addEventListener("mousedown", (ev) => {
+		ev.preventDefault();
 
 		let currentState = this.domMenu.getAttribute('aria-pressed');
 
@@ -1404,7 +1405,7 @@ function GUI() {
 		this.domMenu.setAttribute('aria-pressed', currentState);
 	});
 
-	setInterval((e) => {
+	setInterval((ev) => {
 		// seconds since last cycle
 		const now = performance.now();
 		const diffSec = this.directionalInterval / 1000;
@@ -1504,6 +1505,133 @@ function GUI() {
 			this.zoomer.timeLastWake = 0;
 
 	}, this.directionalInterval);
+
+	/*
+	 *
+	 */
+	this.extractJson = (image) => {
+		// create local canvas
+		const canvas = document.createElement("canvas");
+		canvas.width = image.width;
+		canvas.height = image.height;
+		const ctx = canvas.getContext('2d');
+
+		// set background background colour
+		ctx.strokeStyle = "#000";
+		ctx.fillStyle = "#000";
+		ctx.fillRect(0, 0, image.width, image.height);
+
+		// draw image (with transparancy) on canvas
+		ctx.drawImage(image, 0, 0, image.width, image.height);
+
+		// get pixel data
+		const rgba = new Uint32Array(ctx.getImageData(0, 0, image.width, image.height).data.buffer);
+
+		// scan for json data
+		let json = "";
+
+		// skip first line and column
+		let k = image.width + 1;
+		const kmax = image.width * image.height;
+		while (k < kmax) {
+			let code = 0;
+			for (let i = 0; i < 8; i++) {
+				// pixel must not be transparent
+				while (!(rgba[k] & 0xff000000)) {
+					if (++k >= kmax)
+						return null;
+				}
+				code |= (rgba[k++] & 1) << i;
+			}
+
+			if (code < 32 || code >= 128) {
+				// invalid code
+				json = "";
+			} else if (json.length === 0) {
+				if (code === 123 /* '{' */) {
+					// sequence starter
+					json = "{";
+				}
+			} else if (code === 125 /* '}' */) {
+				// string complete
+				json += '}';
+
+				// test that it has a bit of body
+				if (json.length > 16) {
+					try {
+						json = JSON.parse(json);
+						return json;
+					} catch (e) {
+						return null;
+					}
+				}
+			} else {
+				// add character
+				json += String.fromCharCode(code);
+			}
+		}
+
+		// nothing found
+		return null;
+	};
+
+	/*
+	 * File drop handler
+	 */
+	document.addEventListener("dragover", (ev) => {
+		// Prevent default behavior (Prevent file from being opened)
+		ev.preventDefault();
+	});
+	document.addEventListener("drop", (ev) => {
+		ev.preventDefault();
+
+		const file = ev.dataTransfer.files[0];
+
+		// Create reader.
+		const reader = new FileReader();
+		reader.onload = () => {
+			const image = new Image();
+
+			image.onload = () => {
+				const json = this.extractJson(image);
+				if (!json) {
+					// image does not contain json
+					this.domPopup.innerText = "Image does not contain navigation data";
+					this.activatePopup();
+				} else {
+					// convert json to query string
+					let qarr = [];
+					for (let k in json) {
+						qarr.push(k + '=' + json[k]);
+					}
+					let qstr = qarr.join("&");
+
+					// load config
+					Config.load(qstr);
+					palette.loadTheme();
+
+					// activate
+					this.reload();
+				}
+			};
+			image.onerror = () => {
+				this.domPopup.innerText = "Failed to decode file";
+				this.activatePopup();
+			}
+
+			image.src = reader.result;
+		};
+		reader.onabort = () => {
+			this.domPopup.innerText = "Drop canceled";
+			this.activatePopup();
+		}
+		reader.onerror = () => {
+			this.domPopup.innerText = "Drop error";
+			this.activatePopup();
+		}
+
+		reader.readAsDataURL(file);
+	});
 
 	/*
 	 * Constructor
