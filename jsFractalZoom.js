@@ -630,6 +630,9 @@ function GUI() {
 	this.lastNow = 0;
 	this.directionalInterval = 100; // Interval timer for directional movement corrections
 
+	// center popup sequence number so only last call to activate it will hide it
+	this.popupSeqnr = 0;
+
 	/*
 	 * Find the elements and replace the string names for DOM references
 	 */
@@ -766,6 +769,37 @@ function GUI() {
 		this.redrawSliders();
 	};
 
+
+	/*
+	 * Activate center popup contents was preloaded
+	 */
+	this.activatePopup = () => {
+		const popup = this.domPopup;
+
+		// get new sequence number
+		const seqnr = ++this.popupSeqnr;
+
+		// set to determine width
+		popup.style.right = "auto";
+		popup.style.width = "auto";
+
+		// let event queue redraw
+		setTimeout(() => {
+			// set actual size so popup centers (remove 2x .5em padding at 2em fontSize
+			const fontSize = parseInt(document.body.style.fontSize);
+			popup.style.width = (popup.clientWidth - 2 * .5 * 2 * fontSize) + "px";
+			popup.style.right = "0";
+
+			// set timer to remove
+			popup.className = "active";
+			setTimeout(() => {
+				// only remove popup if sequence number matches
+				if (seqnr === this.popupSeqnr)
+					popup.className = "";
+			}, 2000)
+		}, 1)
+	};
+
 	/*
 	 * Create the zoomer
 	 */
@@ -792,6 +826,9 @@ function GUI() {
 			this.domWxH.innerHTML = "[" + viewWidth + "x" + viewHeight + "]";
 
 			this.setFontSize();
+
+			this.domPopup.innerText = viewWidth + "x" + viewHeight;
+			this.activatePopup();
 		},
 
 		/**
@@ -1130,11 +1167,8 @@ function GUI() {
 		/*
 		 * Popup
 		 */
-		this.domPopup.innerText = "saving";
-		this.domPopup.className = "active";
-		setTimeout(() => {
-			this.domPopup.className = "";
-		}, 2000)
+		this.domPopup.innerText = "Saving...";
+		this.activatePopup();
 
 		// save image through clicking hidden <a href="blob"/>
 		const link = document.createElement("a");
@@ -1185,11 +1219,8 @@ function GUI() {
 		/*
 		 * Popup
 		 */
-		this.domPopup.innerText = "copied to clipboard";
-		this.domPopup.className = "active";
-		setTimeout(() => {
-			this.domPopup.className = "";
-		}, 2000)
+		this.domPopup.innerText = "Copied to clipboard";
+		this.activatePopup();
 	});
 	this.theme.setCallbackValueChange(() => {
 		palette.mkrandom();
@@ -1354,13 +1385,17 @@ function GUI() {
 		if (currentState === 'true') {
 			currentState = 'false';
 
-			this.domTop.style.display = "none";
-			this.domNav.style.display = "none";
+			this.domTop.style.visibility = "hidden";
+			this.domNav.style.visibility = "hidden";
+			this.domTop.style.pointerEvents = "none";
+			this.domNav.style.pointerEvents = "none";
 		} else {
 			currentState = 'true';
 
-			this.domTop.style.display = "block";
-			this.domNav.style.display = "block";
+			this.domTop.style.visibility = "visible";
+			this.domNav.style.visibility = "visible";
+			this.domTop.style.pointerEvents = "auto";
+			this.domNav.style.pointerEvents = "auto";
 
 			// now sliders are visable, set their positions
 			this.redrawSliders();
@@ -1456,11 +1491,11 @@ function GUI() {
 			gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
 			gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
 			gui.domAutopilot.style.border = "4px solid green";
-			gui.domAutopilot.style.display = "block";
+			gui.domAutopilot.style.visibility = "visible";
 
 		} else if (this.dragActive) {
 			this.dragActive = false;
-			gui.domAutopilot.style.display = "none";
+			gui.domAutopilot.style.visibility = "hidden";
 		}
 
 		// if anything is changing/moving, disable idling
@@ -1912,7 +1947,7 @@ GUI.prototype.autopilotOn = function () {
 	Config.autopilotX = Config.centerX;
 	Config.autopilotY = Config.centerY;
 
-	this.domAutopilot.style.display = "block";
+	this.domAutopilot.style.visibility = "visible";
 
 	const diameter = Math.min(view.pixelWidth, view.pixelHeight);
 	let lookPixelRadius = Math.min(16, diameter >> 1);
@@ -1926,5 +1961,5 @@ GUI.prototype.autopilotOn = function () {
 
 GUI.prototype.autopilotOff = function () {
 	this.mouseButtons = 0;
-	this.domAutopilot.style.display = "none";
+	this.domAutopilot.style.visibility = "hidden";
 };

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-13 23:05:24 Added center popup.
 2020-11-12 18:19:38 Count lost frames.
 2020-11-12 18:15:44 Fixed navigation drift.
 2020-11-12 17:12:32 Moved conversion routines to `Zoomer`.

@@ -73,6 +73,8 @@ body {
 
 #idAutopilot {
 	position: absolute;
+	pointer-events: none;
+	visibility: hidden;
 }
 
 #idCopyText {
@@ -85,15 +87,29 @@ body {
 	padding: 0;
 }
 
+/*
+ * top=0,bottom=0,margin=auto to vertically align
+ * left=0,right=auto,margin=auto,width=auto to determine width. then
+ * left=0,right=0,margin=auto,width=<width> to horizontally align
+ */
 #idPopup {
-	position: fixed;
-	background-color: #ccc;
 	opacity: 0;
-	transition: 0.6s;
-	margin-top: -5em;
-	margin-left: -7em;
-	padding: .5em;
+	position: absolute;
+	margin: auto;
+	top: 0;
+	right: auto;
+	bottom: 0;
+	left: 0;
+	width: auto;
+	height: 1.2em;
+	padding: 0.5em;
+	border: .1em solid #fff;
 	border-radius: .5em;
+	background-color: #000;
+	font-size: 2em;
+	color: #fff;
+	transition: opacity 0.6s;
+	pointer-events: none;
 }
 
 #idPopup.active {
@@ -115,7 +131,7 @@ body {
 	top: 0;
 	left: 0;
 	right: 0;
-	display: none; /* initially hidden */
+	visibility: hidden; /* initially hidden */
 }
 
 #idNavWrapper {
@@ -138,7 +154,7 @@ body {
 	right: 0;
 	bottom: auto;
 	pointer-events: auto;
-	display: none; /* initially hidden */
+	visibility: hidden; /* initially hidden */
 }
 
 #idProjectPage {
