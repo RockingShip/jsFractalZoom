@@ -296,6 +296,7 @@ Aria.Slider = function (domThumb, domRail, valueMin, valueMax, valueNow) {
 	/*
 	 * Register event listeners
 	 */
+	this.domThumb.addEventListener('touchstart', this.handleTouchStartThumb.bind(this));
 	this.domThumb.addEventListener('mousedown', this.handleMouseDownThumb.bind(this));
 	this.domThumb.addEventListener('focus', this.handleFocus.bind(this));
 	this.domThumb.addEventListener('blur', this.handleBlur.bind(this));
@@ -444,6 +445,53 @@ Aria.Slider.prototype.handleKeyUp = function (event) {
 };
 
 /**
+ * Handle touch down event (on thumb)
+ *
+ * @param {TouchEvent} event0
+ */
+Aria.Slider.prototype.handleTouchStartThumb = function (event0) {
+
+	const handleTouchMove = (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+
+		const touch = event.targetTouches[0];
+		const rect = this.domRail.getBoundingClientRect();
+		const diffX = touch.pageX - rect.left;
+
+		const newValue = this.valueMin + ((this.valueMax - this.valueMin) * diffX) / this.domRail.clientWidth;
+		this.moveSliderTo(newValue);
+
+		// Ensure thumb has focus
+		this.domThumb.focus();
+	};
+
+	const handleTouchEnd = function (event) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		document.removeEventListener('touchmove', handleTouchMove);
+		document.removeEventListener('touchend', handleTouchEnd);
+		document.removeEventListener('touchcancel', handleTouchEnd);
+		this.domRail.focus();
+	};
+
+	// bind a mousemove event handler to move pointer
+	document.addEventListener('touchmove', handleTouchMove);
+
+	// bind a mouseup event handler to stop tracking mouse movements
+	document.addEventListener('touchend', handleTouchEnd);
+	document.addEventListener('touchcancel', handleTouchEnd);
+
+	event0.preventDefault();
+	event0.stopPropagation();
+
+	// Ensure thumb has focus
+	this.domThumb.focus();
+
+};
+
+/**
  * Handle mouse down event (on thumb)
  *
  * @param {MouseEvent} event
@@ -485,7 +533,6 @@ Aria.Slider.prototype.handleMouseDownThumb = function (event) {
 
 	// Ensure thumb has focus
 	self.domThumb.focus();
-
 };
 
 /**

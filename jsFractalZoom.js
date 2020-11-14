@@ -701,6 +701,22 @@ function GUI() {
 	this.navWidthEm = 32.8;
 
 	/*
+	 * Get position of (absolute) elements relative to page
+	 */
+	this.getRect = (el) => {
+		let left = 0;
+		let top = 0;
+		let width = el.offsetWidth;
+		let height = el.offsetHeight;
+		while (el) {
+			left += el.offsetLeft;
+			top += el.offsetTop;
+			el = el.offsetParent;
+		}
+		return {left: left, width: width, top: top, height: height};
+	}
+
+	/*
 	 * Set fontsize
 	 */
 	this.setFontSize = () => {
@@ -827,7 +843,7 @@ function GUI() {
 		 * @param {int}    viewWidth   - Screen width (pixels)
 		 * @param {int}    viewHeight  - Screen height (pixels)
 		 * @param {int}    pixelWidth  - Storage width (pixels)
-		 * @param {int}    pixelHeight - Storage Heignt (pixels)
+		 * @param {int}    pixelHeight - Storage Height (pixels)
 		 */
 		onResize: (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
 			this.domWxH.innerHTML = "[" + viewWidth + "x" + viewHeight + "]";
@@ -1293,10 +1309,86 @@ function GUI() {
 		this.density.moveSliderTo(Config.densityNow);
 	}, {passive: false});
 
+	/*
+	 * Core handler for resizing `idNav`
+	 */
+	this.domResize.moveXY = (mouseX, mouseY) => {
+		/*
+		 * Calculate point on line that is closest to mouse
+		 * line: y = (height / width) * x
+		 */
+
+		// compensate is `idNavWrapper was downscaled
+		mouseX *= this.idNavWrapScale;
+		mouseY *= this.idNavWrapScale;
+
+		// determine point on line (allowed positions of the resizer)
+		let a = -(this.navHeightEm / this.navWidthEm);
+		let b = 1;
+		let c = 0;
+		let x = (b * (b * mouseX - a * mouseY) - a * c) / (a * a + b * b);
+		let y = (a * (a * mouseY - b * mouseX) - b * c) / (a * a + b * b);
+
+		// limits
+		if (y > 1)
+			this.idNavScale = 1;
+		else if (y < 0.2)
+			this.idNavScale = 0.2;
+		else
+			this.idNavScale = y;
+
+		// set relative fontsize
+		this.domNav.style.fontSize = this.idNavScale + "em";
+
+		this.redrawSliders();
+
+	};
+
+	/*
+	 * Touch handler for resizing `idNav`
+	 */
+	this.domResize.addEventListener("touchstart", (ev0) => {
+		ev0.preventDefault();
+		ev0.stopPropagation();
+
+		// where (percent-wise) in the parent element did the click occur
+		const fontSize = parseInt(document.body.style.fontSize);
+		const navRectTop = 7.5 * fontSize;
+		const navRectRight = document.body.clientWidth - fontSize;
+		const navRectBottom = document.body.clientHeight - fontSize;
+		const navRectLeft = fontSize;
+
+		const handleTouchMove = (ev) => {
+			ev.preventDefault();
+			ev.stopPropagation();
+
+			const touch = ev.targetTouches[0];
+			const mouseX = (navRectRight - touch.pageX) / (navRectBottom - navRectTop);
+			const mouseY = (touch.pageY - navRectTop) / (navRectBottom - navRectTop);
+
+			this.domResize.moveXY(mouseX, mouseY);
+		};
+
+		const handleTouchEnd = function (ev) {
+			ev.preventDefault();
+			ev.stopPropagation();
+
+			document.removeEventListener('touchmove', handleTouchMove);
+			document.removeEventListener('touchend', handleTouchEnd);
+			document.removeEventListener('touchcancel', handleTouchEnd);
+		};
+
+		// bind a mousemove event handler to move pointer
+		document.addEventListener('touchmove', handleTouchMove);
+		document.addEventListener('touchend', handleTouchEnd);
+		document.addEventListener('touchcancel', handleTouchEnd);
+	});
+
 	this.domResize.addEventListener("mousedown", (ev0) => {
 		ev0.preventDefault();
+		ev0.stopPropagation();
 
-		// where (procent-wise) in the parent element did the click occur
+		// where (percent-wise) in the parent element did the click occur
 		const fontSize = parseInt(document.body.style.fontSize);
 		const navRectTop = 7.5 * fontSize;
 		const navRectRight = document.body.clientWidth - fontSize;
@@ -1304,43 +1396,17 @@ function GUI() {
 		const navRectLeft = fontSize;
 
 		const mouseMove = (ev) => {
-			ev0.preventDefault();
+			ev.preventDefault();
+			ev.stopPropagation();
 
-			/*
-			 * Calculate point on line that is closest to mouse
-			 * line: y = (height / width) * x
-			 */
-			// mouse position relative to top-right `idNav`.
-			// where 0<=y<=1, scale x accordingly
-			let mouseX = (navRectRight - ev.clientX) / (navRectBottom - navRectTop);
-			let mouseY = (ev.clientY - navRectTop) / (navRectBottom - navRectTop);
+			const mouseX = (navRectRight - ev.pageX) / (navRectBottom - navRectTop);
+			const mouseY = (ev.pageY - navRectTop) / (navRectBottom - navRectTop);
 
-			// compensate is `idNavWrapper was downscaled
-			mouseX *= this.idNavWrapScale;
-			mouseY *= this.idNavWrapScale;
-
-			// determine point on line (allowed positions of the resizer)
-			let a = -(this.navHeightEm / this.navWidthEm);
-			let b = 1;
-			let c = 0;
-			let x = (b * (b * mouseX - a * mouseY) - a * c) / (a * a + b * b);
-			let y = (a * (a * mouseY - b * mouseX) - b * c) / (a * a + b * b);
-
-			// limits
-			if (y > 1)
-				this.idNavScale = 1;
-			else if (y < 0.2)
-				this.idNavScale = 0.2;
-			else
-				this.idNavScale = y;
-
-			// set relative fontsize
-			this.domNav.style.fontSize = this.idNavScale + "em";
-
-			this.redrawSliders();
+			this.domResize.moveXY(mouseX, mouseY);
 		};
 		const mouseUp = (ev) => {
-			ev0.preventDefault();
+			ev.preventDefault();
+			ev.stopPropagation();
 
 			document.removeEventListener("mousemove", mouseMove);
 			document.removeEventListener("mouseup", mouseUp);
@@ -1352,6 +1418,7 @@ function GUI() {
 
 	this.domFullscreen.addEventListener("mousedown", (ev) => {
 		ev.preventDefault();
+		ev.stopPropagation();
 
 		let currentState = this.domFullscreen.getAttribute('aria-pressed');
 
@@ -1410,6 +1477,69 @@ function GUI() {
 		}
 
 		this.domMenu.setAttribute('aria-pressed', currentState);
+	});
+
+	/*
+	 * If a touchstart reaches navPane, then the touch missed the target, find nearest and delegate
+	 */
+	this.domNav.addEventListener("touchstart", (ev) => {
+		// touch event target
+		const touchEvent = ev.targetTouches[0];
+		if (!touchEvent)
+			return; // no event;
+
+		// list of targets as there is no `getEventListeners()`
+		const targets = [
+			this.domPowerButton,
+			this.domAutoPilotButton,
+			this.domHomeButton,
+			this.domSaveButton,
+			this.domUrlButton,
+			this.domFormulaButton,
+			this.domIncolourButton,
+			this.domOutcolourButton,
+			this.domPlaneButton,
+			this.domZoomSpeedThumb,
+			this.domRotateThumb,
+			this.domDensityThumb,
+			this.domPaletteSpeedThumb,
+			this.domThemeButton,
+			this.domFramerateThumb];
+
+		// get rectangle within page
+		const navRect = this.getRect(this.domNav);
+
+		// which target is closest.
+		// NOTE: `domResize` is an SVG and apparently has no `offsetLeft/Top`. Use lower/left `idNav`.
+		let bestElem = this.domResize;
+		let bestDistX = touchEvent.pageX - navRect.left;
+		let bestDistY = touchEvent.pageY - (navRect.top + navRect.height);
+
+		for (let t = 0; t < targets.length; t++) {
+			const target = targets[t];
+			const rect = this.getRect(target);
+
+			// get target center
+			const tX = touchEvent.pageX - (rect.left + rect.width / 2);
+			const tY = touchEvent.pageY - (rect.top + rect.height / 2);
+			if (tX * tX + tY * tY < bestDistX * bestDistX + bestDistY * bestDistY) {
+				bestElem = target;
+				bestDistX = tX;
+				bestDistY = tY;
+			}
+		}
+
+		/*
+		 * Taking the size of the menu/expand as reference (1/20th of width/height)
+		 * Forward is distance to target is about the size of those icons.
+		 */
+		const maxDist = Math.min(document.body.clientWidth, document.body.clientHeight) / 20;
+
+		if (bestDistX * bestDistX + bestDistY * bestDistY > 2 * maxDist * maxDist)
+			return; // out of range
+
+		// forward event
+		bestElem.dispatchEvent(new ev.constructor(ev.type, ev));
 	});
 
 	setInterval(() => {
@@ -1592,7 +1722,10 @@ function GUI() {
 	document.addEventListener("drop", (ev) => {
 		ev.preventDefault();
 
+		// get dropped file
 		const file = ev.dataTransfer.files[0];
+		if (!file)
+			return; // not a file drop event
 
 		// Create reader.
 		const reader = new FileReader();

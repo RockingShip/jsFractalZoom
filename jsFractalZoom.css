@@ -194,7 +194,7 @@ body {
 }
 
 #idMenu {
-	right: 6em; /* expand/shrink is 1em + 3em + 1em + 1em */
+	right: 7em; /* 2em + 3em + 1em + 1em */
 	stroke: #000;
 }
 #idMenu[aria-pressed="true"] {
