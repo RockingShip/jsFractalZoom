@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-14 23:36:01 Disable shrink wrap when popup visible.
 2020-11-14 13:58:08 Fixed autopilot.
 2020-11-13 23:57:41 Project URL.
 2020-11-13 23:47:50 Keyboard bindings.

@@ -776,19 +776,26 @@ function GUI() {
 	this.activatePopup = () => {
 		const popup = this.domPopup;
 
+		// is popup still active. Dont change layout if visible
+		const active = popup.className;
+
 		// get new sequence number
 		const seqnr = ++this.popupSeqnr;
 
-		// set to determine width
-		popup.style.right = "auto";
-		popup.style.width = "auto";
+		if (!active) {
+			// set to determine width
+			popup.style.right = "auto";
+			popup.style.width = "auto";
+		}
 
 		// let event queue redraw
 		setTimeout(() => {
-			// set actual size so popup centers (remove 2x .5em padding at 2em fontSize
-			const fontSize = parseInt(document.body.style.fontSize);
-			popup.style.width = (popup.clientWidth - 2 * .5 * 2 * fontSize) + "px";
-			popup.style.right = "0";
+			if (!active) {
+				// set actual size so popup centers (remove 2x .5em padding at 2em fontSize
+				const fontSize = parseInt(document.body.style.fontSize);
+				popup.style.width = (popup.clientWidth - 2 * .5 * 2 * fontSize) + "px";
+				popup.style.right = "0";
+			}
 
 			// set timer to remove
 			popup.className = "active";
