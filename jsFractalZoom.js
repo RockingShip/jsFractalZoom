@@ -142,10 +142,10 @@ function Config() {
 	/** @member {float} - After 1sec, get 80% closer to target speed */
 	Config.zoomSpeedCoef = 0.80;
 
-	/** @member {float} - center X coordinate - autopilot updated */
-	Config.autopilotX = 0;
-	/** @member {float} - center Y coordinate - autopilot updated */
-	Config.autopilotY = 0;
+	/** @member {float} - screen U coordinate - autopilot updated */
+	Config.autopilotU = 0;
+	/** @member {float} - screen V coordinate - autopilot updated */
+	Config.autopilotV = 0;
 	/** @member {float} - Dampen sharp autopilot direction changed */
 	Config.autopilotCoef = 0.3;
 	/** @member {number} - HighestIter/LowestIter contrast threshold */
@@ -206,8 +206,8 @@ Config.home = function () {
 	Config.maxIter = 300;
 
 	// reset autopilot
-	Config.autopilotX = 0;
-	Config.autopilotY = 0;
+	Config.autopilotU = 0;
+	Config.autopilotV = 0;
 
 	// reset palette density
 	Config.density = 1;
@@ -1398,14 +1398,14 @@ function GUI() {
 			this.domTop.style.pointerEvents = "auto";
 			this.domNav.style.pointerEvents = "auto";
 
-			// now sliders are visable, set their positions
+			// now sliders are visible, set their positions
 			this.redrawSliders();
 		}
 
 		this.domMenu.setAttribute('aria-pressed', currentState);
 	});
 
-	setInterval((ev) => {
+	setInterval(() => {
 		// seconds since last cycle
 		const now = performance.now();
 		const diffSec = this.directionalInterval / 1000;
@@ -1424,8 +1424,8 @@ function GUI() {
 							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 			}
 
-			this.mouseX = Config.autopilotX;
-			this.mouseY = Config.autopilotY;
+			this.mouseU = Config.autopilotU;
+			this.mouseV = Config.autopilotV;
 			this.mouseButtons = Config.autopilotButtons;
 		}
 
@@ -1983,7 +1983,7 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 	const maxCnt = minCnt * 3;
 
 	// coordinate within pixel data pointed to by mouse
-	let {i: apI, j: apJ} = zoomer.coordDXYtoPixelIJ(Config.autopilotX - view.centerX, Config.autopilotY - view.centerY);
+	let {i: apI, j: apJ} = zoomer.screenUVtoPixelIJ(Config.autopilotU, Config.autopilotV, Config.angle);
 
 	/*
 	 * @date 2020-10-24 23:59:53
@@ -2013,7 +2013,7 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 		const testI = apI + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
 		const testJ = apJ + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
 
-		// must be visable
+		// must be visible
 		if (testI < minI || testJ < minJ || testI >= maxI || testJ >= maxJ)
 			continue;
 
@@ -2035,16 +2035,14 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 
 		// go for horizon first
 		if (cnt >= minCnt && cnt <= maxCnt) {
-			let {dx, dy} = zoomer.pixelIJtoCoordDXY(testI, testJ);
-
-			// dampen sharp autopilot direction changes
-			Config.autopilotX += (Config.centerX + dx - Config.autopilotX) * Config.autopilotCoef;
-			Config.autopilotY += (Config.centerY + dy - Config.autopilotY) * Config.autopilotCoef;
-
-			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
-
 			// get screen location
 			let {u, v} = zoomer.pixelIJtoScreenUV(testI, testJ, Config.angle);
+
+			// dampen sharp autopilot direction changes
+			Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
+			Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
+
+			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
 			// and position autopilot mark
 			gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
@@ -2059,16 +2057,14 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 	// go for high contrast
 	// Something "hangs ". This needs extra working on.
 	if (0 && bestIterHigh > iterLow * Config.autopilotContrast) {
-		let {dx, dy} = zoomer.pixelIJtoCoordDXY(bestI, bestJ);
-
-		// dampen sharp autopilot direction changes
-		Config.autopilotX += (Config.centerX + dx - Config.autopilotX) * Config.autopilotCoef;
-		Config.autopilotY += (Config.centerY + dy - Config.autopilotY) * Config.autopilotCoef;
-
-		Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
-
 		// get screen location
 		let {u, v} = zoomer.pixelIJtoScreenUV(bestI, bestJ, Config.angle);
+
+		// dampen sharp autopilot direction changes
+		Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
+		Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
+
+		Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
 		// and position autopilot mark
 		gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
@@ -2087,8 +2083,8 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 GUI.prototype.autopilotOn = function () {
 
 	const view = this.zoomer.calcView;
-	Config.autopilotX = Config.centerX;
-	Config.autopilotY = Config.centerY;
+	Config.autopilotU = this.zoomer.viewWidth >> 1;
+	Config.autopilotV = this.zoomer.viewHeight >> 1;
 
 	this.domAutopilot.style.visibility = "visible";
 
