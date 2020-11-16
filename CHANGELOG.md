@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-16 19:42:18 Move zoomer conversion routines before constructor. No code change.
 2020-11-14 23:37:49 Touch events for `idNav`.
 2020-11-14 23:36:01 Disable shrink wrap when popup visible.
 2020-11-14 13:58:08 Fixed autopilot.

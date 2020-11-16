@@ -1579,116 +1579,14 @@ function Zoomer(domZoomer, enableAngle, options = {
 		}
 	};
 
-	/**
-	 * Global constructor
-	 */
-	{
-		// set DOM size property
-		domZoomer.width = this.viewWidth;
-		domZoomer.height = this.viewHeight;
-
-		if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
-
-		/*
-		 * Message queue listener for time-slicing.
-		 */
-		addEventListener("message", this.handleMessage);
-	}
-
 	/*
-	 * create 2 workers
+	 * Conversion routines:
+	 * R = rotate
+	 * U = un-rotate
+	 *
+	 *  Pixel -U-> Screen -R-> Coord -U-> Screen -R-> Pixel
+	 *  Pixel ---------------> Coord ---------------> Pixel
 	 */
-
-	if (!this.disableWW) {
-		let dataObj = "( function () { \n";
-		dataObj += zoomerMemcpy;
-		dataObj += "\n";
-		dataObj += zoomerRenderFrame;
-		dataObj += "\n";
-		dataObj += "addEventListener(\"message\", (e) => { \n";
-		dataObj += "const frame = e.data;\n";
-		dataObj += "zoomerRenderFrame(frame);\n";
-		dataObj += "if (frame.palette)\n";
-		dataObj += "  postMessage(frame, [frame.rgba.buffer, frame.pixels.buffer, frame.palette.buffer]);\n";
-		dataObj += "else\n";
-		dataObj += "  postMessage(frame, [frame.rgba.buffer, frame.pixels.buffer]);\n";
-		dataObj += "})})()\n";
-
-		const blob = new Blob([dataObj]);
-		const blobURL = (URL ? URL : webkitURL).createObjectURL(blob);
-
-		// create workers
-		for (let i = 0; i < 2; i++) {
-			this.WWorkers[i] = new Worker(blobURL);
-
-			this.WWorkers[i].addEventListener("message", (e) => {
-				/** @var {ZoomerFrame} */
-				const frame = e.data;
-
-				let now = performance.now();
-				frame.durationRoundTrip = now - frame.durationRoundTrip;
-
-				if (frame.frameNr < this.recvFrameNr) {
-					// highly delayed frame, skip
-					this.cntLost++;
-				} else if (frame.durationRENDER === 0) {
-					// throttled/dropped
-					this.cntDropped++;
-					if (now - this.timeLastDrop > 2000) {
-						// after 2 second adaptation, if dropped lower FPS by 5%
-						this.frameRate -= this.frameRate * 0.05;
-						this.timeLastDrop = now;
-					}
-				} else {
-					// update RENDER statistics (as-if state change)
-					this.avgStateDuration[RENDER] += (frame.durationRENDER - this.avgStateDuration[RENDER]) * this.coef;
-					this.stateStart[PAINT] = now;
-
-					/*
-					 * perform PAINT
-					 */
-
-					const stime = now;
-
-					if (this.onPutImageData) this.onPutImageData(this, frame);
-
-					now = performance.now();
-
-					// update statistics
-					frame.timeEnd = now;
-					frame.durationPAINT = now - stime;
-					this.updateStatistics(frame);
-				}
-
-				// update frame number
-				this.recvFrameNr = frame.frameNr;
-
-				// update actual framerate
-				if (this.timeLastFrame)
-					this.avgFrameRate += (1000 / (now - this.timeLastFrame) - this.avgFrameRate) * this.coef;
-				this.timeLastFrame = now;
-
-				// frame end-of-life
-				if (this.onEndFrame) this.onEndFrame(this, frame);
-
-				// return frame to free pool
-				this.frames.push(frame);
-
-				// update PAINT statistics (as-if state change)
-				this.avgStateDuration[PAINT] += ((now - this.stateStart[PAINT]) - this.avgStateDuration[PAINT]) * this.coef;
-
-			});
-		}
-	}
-
-	/*
- * Conversion routines:
- * R = rotate
- * U = un-rotate
- *
- *  Pixel -U-> Screen -R-> Coord -U-> Screen -R-> Pixel
- *  Pixel ---------------> Coord ---------------> Pixel
- */
 
 	/**
 	 * Convert pixel I/J (int) to screen U/V (int) coordinate
@@ -1877,5 +1775,107 @@ function Zoomer(domZoomer, enableAngle, options = {
 			return {i: Math.round(i), j: Math.round(j)};
 		}
 	};
+
+	/**
+	 * Global constructor
+	 */
+	{
+		// set DOM size property
+		domZoomer.width = this.viewWidth;
+		domZoomer.height = this.viewHeight;
+
+		if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+
+		/*
+		 * Message queue listener for time-slicing.
+		 */
+		addEventListener("message", this.handleMessage);
+
+		/*
+		 * create 2 workers
+		 */
+
+		if (!this.disableWW) {
+			let dataObj = "( function () { \n";
+			dataObj += zoomerMemcpy;
+			dataObj += "\n";
+			dataObj += zoomerRenderFrame;
+			dataObj += "\n";
+			dataObj += "addEventListener(\"message\", (e) => { \n";
+			dataObj += "const frame = e.data;\n";
+			dataObj += "zoomerRenderFrame(frame);\n";
+			dataObj += "if (frame.palette)\n";
+			dataObj += "  postMessage(frame, [frame.rgba.buffer, frame.pixels.buffer, frame.palette.buffer]);\n";
+			dataObj += "else\n";
+			dataObj += "  postMessage(frame, [frame.rgba.buffer, frame.pixels.buffer]);\n";
+			dataObj += "})})()\n";
+
+			const blob = new Blob([dataObj]);
+			const blobURL = (URL ? URL : webkitURL).createObjectURL(blob);
+
+			// create workers
+			for (let i = 0; i < 2; i++) {
+				this.WWorkers[i] = new Worker(blobURL);
+
+				this.WWorkers[i].addEventListener("message", (e) => {
+					/** @var {ZoomerFrame} */
+					const frame = e.data;
+
+					let now = performance.now();
+					frame.durationRoundTrip = now - frame.durationRoundTrip;
+
+					if (frame.frameNr < this.recvFrameNr) {
+						// highly delayed frame, skip
+						this.cntLost++;
+					} else if (frame.durationRENDER === 0) {
+						// throttled/dropped
+						this.cntDropped++;
+						if (now - this.timeLastDrop > 2000) {
+							// after 2 second adaptation, if dropped lower FPS by 5%
+							this.frameRate -= this.frameRate * 0.05;
+							this.timeLastDrop = now;
+						}
+					} else {
+						// update RENDER statistics (as-if state change)
+						this.avgStateDuration[RENDER] += (frame.durationRENDER - this.avgStateDuration[RENDER]) * this.coef;
+						this.stateStart[PAINT] = now;
+
+						/*
+						 * perform PAINT
+						 */
+
+						const stime = now;
+
+						if (this.onPutImageData) this.onPutImageData(this, frame);
+
+						now = performance.now();
+
+						// update statistics
+						frame.timeEnd = now;
+						frame.durationPAINT = now - stime;
+						this.updateStatistics(frame);
+					}
+
+					// update frame number
+					this.recvFrameNr = frame.frameNr;
+
+					// update actual framerate
+					if (this.timeLastFrame)
+						this.avgFrameRate += (1000 / (now - this.timeLastFrame) - this.avgFrameRate) * this.coef;
+					this.timeLastFrame = now;
+
+					// frame end-of-life
+					if (this.onEndFrame) this.onEndFrame(this, frame);
+
+					// return frame to free pool
+					this.frames.push(frame);
+
+					// update PAINT statistics (as-if state change)
+					this.avgStateDuration[PAINT] += ((now - this.stateStart[PAINT]) - this.avgStateDuration[PAINT]) * this.coef;
+
+				});
+			}
+		}
+	}
 
 }
