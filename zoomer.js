@@ -34,6 +34,8 @@ function zoomerMemcpy(dst, dstOffset, src, srcOffset, length) {
 }
 
 /*
+ * todo: this needs updating
+ *  
  * Timing considerations
  *
  * Constructing a frame is a time consuming process that would severely impair the event/messaging queues and vsync.
@@ -789,21 +791,12 @@ function Zoomer(domZoomer, enableAngle, options = {
 	updateSlice: 2,
 
 	/**
-	 * When idle, spend this amount time for calculations before rendering.
-	 * This will lower fps, which won't be noticable because nothing is moving.
+	 * Turbo mode is when there is no visible movement. Lower FPS to (drastically) reduce render overhead.
+	 * Calls to `setPosition()` disable turbo mode.
 	 *
-	 * @member {float} - When idle, spend this amount time for calculations before rendering.
+	 * @member {float} - Framerate when in turbo mode
 	 */
-	updateIdleBurst: 500,
-
-	/**
-	 * UPDATE has two modes,wake and idle.
-	 * When wake, the direction vector is moving. Attention is to fast screen updates.
-	 * When idle, filling in detail is key. Attention is to maximize calculations.
-	 *
-	 * @member {float} - Timeout to change wake into idle.
-	 */
-	wakeTimeout: 500,
+	turboFrameRate: 2,
 
 	/**
 	 * Low-pass coefficient to dampen spikes for averages
@@ -923,16 +916,13 @@ function Zoomer(domZoomer, enableAngle, options = {
 	this.frameRate = options.frameRate ? options.frameRate : 20;
 
 	/** @member {float}
+	    @description When in turbo, spend this amount time for calculations before rendering. */
+	this.turboFrameRate = options.turboFrameRate ? options.turboFrameRate : 2;
+
+
+	/** @member {float}
 	    @description UPDATE get sliced in smaller time chucks */
 	this.updateSlice = options.updateSlice ? options.updateSlice : 5;
-
-	/** @member {float}
-	    @description When idle, spend this amount time for calculations before rendering. */
-	this.updateIdleBurst = options.updateIdleBurst ? options.updateIdleBurst : 500;
-
-	/** @member {float}
-	    @description Timeout to change wake into idle */
-	this.wakeTimeout = options.wakeTimeout ? options.wakeTimeout : 500;
 
 	/** @member {float}
 	    @description Damping coefficient low-pass filter for following fields */
@@ -1082,6 +1072,18 @@ function Zoomer(domZoomer, enableAngle, options = {
 	    @description Web workers */
 	this.WWorkers = [];
 
+	/**
+	 * @member {boolean}
+	 * @property {number}  0 NORMAL
+	 * @property {number}  1 PENDING
+	 * @property {number}  2 TURBO
+	 * @description Turbo mode active (lower framerate) */
+	this.turboActive = false;
+
+	const NORMAL = 0;
+	const PENDING = 1; // will promote to turbo on next frame
+	const TURBO = 2;
+
 	/*
 	 * Timestamps
 	 */
@@ -1093,10 +1095,6 @@ function Zoomer(domZoomer, enableAngle, options = {
 	/** @member {int}
 	    @description Timestamp of last PAINT (for fps calculation) */
 	this.timeLastFrame = 0;
-
-	/** @member {int}
-	    @description Timestamp of last wake (setPosition) */
-	this.timeLastWake = 0;
 
 	/** @member {int}
 	    @description Timestamp of last dropped frame */
@@ -1147,7 +1145,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	this.avgQuality = 0;
 
 	/** @member {float}
-	    @description Total number of milli seconds UPDATE was prolonged. calculate() takes too long, increase msBeforeIdle. */
+	    @description Total number of milli seconds UPDATE was prolonged. calculate() takes too long. */
 	this.timeOvershoot = 0;
 
 	/** @member {int}
@@ -1232,12 +1230,8 @@ function Zoomer(domZoomer, enableAngle, options = {
 	this.setPosition = (centerX, centerY, radius, angle, keyView) => {
 		angle = angle && this.enableAngle ? angle : 0;
 
-		if (this.centerX !== centerX || this.centerY !== centerY || this.radius !== radius) {
-			// waking idle, mark last change.
-			// NOTE: angle does not wake, is part of `Frame`
-			if (this.timeLastWake)
-				this.timeLastWake = performance.now();
-		}
+		// exit turbo mode
+		this.turboActive = NORMAL;
 
 		this.centerX = centerX;
 		this.centerY = centerY;
@@ -1380,6 +1374,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 			this.calcFrame = frame;
 			this.calcView = (this.frameNr & 1) ? this.view1 : this.view0;
 
+			// promote to turbo when pending. can be canceled by `onBeginFrame()` calling `setPosition()`.
+			if (this.turboActive === PENDING)
+				this.turboActive = TURBO;
+
 			now = performance.now();
 			frame.durationCOPY = now - frame.timeStart;
 			if (this.onBeginFrame) this.onBeginFrame(this, this.calcView, this.calcView.frame, this.dispView, previousFrame);
@@ -1496,20 +1494,25 @@ function Zoomer(domZoomer, enableAngle, options = {
 			 */
 			const frame = this.calcView.frame;
 
-			// when would the next frame syncpoint be
+			// when would the next frame sync point be
 			let nextsync;
-			if (this.timeLastWake && now - this.timeLastWake >= 1000) {
-				// idle mode
-				nextsync = this.stateStart[COPY] + this.updateIdleBurst;
+			if (this.turboActive === TURBO) {
+				// turbo mode
+				nextsync = this.stateStart[COPY] + 1000 / this.turboFrameRate - this.avgStateDuration[COPY] - this.avgStateDuration[PAINT];
 			} else {
+				// normal mode
 				nextsync = this.stateStart[COPY] + 1000 / this.frameRate - this.avgStateDuration[COPY] - this.avgStateDuration[PAINT];
-				if (this.disableWW)
-					nextsync -= this.avgStateDuration[RENDER];
 			}
+			// reduce time rendering in foreground
+			if (this.disableWW)
+				nextsync -= this.avgStateDuration[RENDER];
 
 			// let it run for at least one slice
 			if (nextsync < now + this.updateSlice)
 				nextsync = now + this.updateSlice;
+
+			// promote to turbo on next frame
+			this.turboActive = PENDING;
 
 			// time of next frame
 			let etime = nextsync;

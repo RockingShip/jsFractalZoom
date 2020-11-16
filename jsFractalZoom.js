@@ -17,44 +17,6 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/*
- * Timing considerations
- *
- * Constructing a frame is a time consuming process that would severely impair the event/messaging queues and vsync.
- * To make the code more responsive, frame constructing is split into 3 phases:
- * - COPY, pre-fill a frame with data from a previous frame.
- * 	The time required depends on window size and magnification factor (zoom speed).
- * 	Times are unstable and can vary between 1 and 15mSec, typically 15mSec
- * - PAINT, Create RGBA imagedata ready to be written to DOM canvas
- * 	The time required depends on window size and rotation angle.
- * 	Times are fairly stable and can vary between 5 and 15mSec, typically 12mSec.
- * - UPDATE, improve quality by recalculating inaccurate pixels
- * 	The time required depends on window size and magnification factor.
- * 	Times are fairly short, typically well under 1mSec.
- * 	In contrast to COPY/PAINT which are called once and take long
- * 	UPDATES are many and take as short as possible to keep the system responsive.
- *
- * There is also an optional embedded IDLE state. No calculations are performed 2mSec before a vsync,
- * so that the event/message queues are highly responsive to the handling of requestAnimationFrame()
- * for worst case situations that a long UPDATE will miss the vsync.
- *
- * IDLEs may be omitted if updates are fast enough.
- *
- * There are also 2 sets of 2 alternating buffers, internal pixel data and context2D RGBA data.
- *
- * Read/write time diagram: R=Read, W=write, I=idle, rAF=requestAnimationFrame, AF=animationFrameCallback
- *
- *               COPY0  UPDATE0     COPY1  UPDATE1     COPY2  UPDATE2     COPY0  UPDATE0     COPY1  UPDATE1
- * pixel0:      <--W--> WWWWIIWWWW <--R-->                               <--W--> WWWWIIWWWW <--R-->
- * worker0                                <----paint---->                                          <----paint---->
- * pixel1:                         <--W--> WWWWIIWWWW <--R-->                               <--W--> WWWWIIWWWW
- * worker1                                                   <----paint---->
- * pixel2:      <--R-->                               <--W--> WWWWIIWWWW <--R-->
- * worker2             <----paint---->                                          <----paint---->
- *                 ^rAF               ^rAF               ^rAF               ^rAF               ^rAF
- *                    ^AF imagedata2     ^AF imagedata0      ^AF imagedata1     ^AF imagedata2     ^AF imagedata0
- */
-
 "use strict";
 
 /**
@@ -823,8 +785,10 @@ function GUI() {
 		}, 1)
 	};
 
-	/*
+	/**
 	 * Create the zoomer
+	 *
+	 * @member {Zoomer} - Zoomer instance
 	 */
 	this.zoomer = new Zoomer(this.domZoomer, false, {
 
@@ -896,7 +860,6 @@ function GUI() {
 			this.mouseX = Config.centerX + dx;
 			this.mouseY = Config.centerY + dy;
 
-			// zoom-in/out gesture
 			if (Config.zoomSpeed) {
 				// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
 				const magnify = Math.pow(Config.autoPilot ? Config.zoomAccelAuto : Config.zoomAccelManual, Config.zoomSpeed * diffSec);
@@ -905,9 +868,16 @@ function GUI() {
 				Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
 				Config.centerY = (Config.centerY - this.mouseY) / magnify + this.mouseY;
 				Config.radius = Config.radius / magnify;
-			}
 
-			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
+				// navigation change
+				this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
+			} else if (this.mouseButtons) {
+				// mouse buttons pressed always sets navigation
+				this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
+			} else if (Config.rotateSpeedNow || Config.paletteSpeedNow) {
+				// don't enter turbo if something passive is moving
+				this.zoomer.turboActive = 0;
+			}
 
 			// maxIter for embedded calc(), maxDepth for formula.js
 			this.domStatusTitle.innerHTML = JSON.stringify({
@@ -1094,12 +1064,18 @@ function GUI() {
 			if (this.zoomer.enableAngle)
 				this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, false);
 		}
+
+		// make zoomer responsive to change
+		this.zoomer.turboActive = 0;
 	});
 	this.paletteSpeed.setCallbackValueChange((newValue) => {
 		if (newValue > -1 && newValue < +1)
 			newValue = 0; // snap to center
 		Config.paletteSpeedNow = newValue;
 		this.domPaletteSpeedLeft.innerHTML = newValue.toFixed(0);
+
+		// make zoomer responsive to change
+		this.zoomer.turboActive = 0;
 	});
 	this.density.setCallbackValueChange((newValue) => {
 		Config.densityNow = newValue;
@@ -1107,6 +1083,9 @@ function GUI() {
 		// round
 		Config.density = Math.round(Config.density * 10000) / 10000;
 		this.domDensityLeft.innerHTML = Config.density;
+
+		// make zoomer responsive to change
+		this.zoomer.turboActive = 0;
 	});
 	this.Framerate.setCallbackValueChange((newValue) => {
 		newValue = Math.round(newValue);
@@ -1603,6 +1582,9 @@ function GUI() {
 
 			// round
 			Config.angle = Math.round(Config.angle * 100) / 100;
+
+			// navigation/angle change
+			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 		}
 
 		// drag gesture
@@ -1635,11 +1617,6 @@ function GUI() {
 			this.dragActive = false;
 			gui.domAutopilot.style.visibility = "hidden";
 		}
-
-		// if anything is changing/moving, disable idling
-		// NOTE: expect for zoomspeed which is handled by the mouseHandler
-		if (Config.autoPilot || this.mouseButtons || Config.rotateSpeedNow || Config.paletteSpeedNow)
-			this.zoomer.timeLastWake = 0;
 
 	}, this.directionalInterval);
 
@@ -2054,18 +2031,6 @@ GUI.prototype.handleMouse = function (event) {
 		document.removeEventListener("contextmenu", this.handleMouse);
 	}
 
-	/*
-	 * @date 2020-10-16 19:36:53
-	 * Pressing mouse buttons is a gesture to wake.
-	 * `setPosition()` wakes from idle state.
-	 * Setting x,y,radius,angle happens withing the `onBeginFrame()` callback.
-	 * Don't wait and wake immediately
-	 */
-	if (!event.buttons && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
-		zoomer.timeLastWake = performance.now(); // safe to idle
-	else
-		zoomer.timeLastWake = 0; // something is moving, don't idle
-
 	event.preventDefault();
 	event.stopPropagation();
 };
@@ -2079,18 +2044,11 @@ GUI.prototype.reload = function () {
 	// Create a small key frame (mandatory)
 	const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
 
-	// set all pixels of thumbnail with latest set `calculate`
+	// set all pixels of thumbnail
 	keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, zoomer, zoomer.onUpdatePixel);
-
-	// if nothing moving, enable idling
-	if (!Config.zoomSpeed && !this.mouseButtons && !Config.autoPilot && !Config.rotateSpeedNow && !Config.paletteSpeedNow)
-		zoomer.timeLastWake = performance.now(); // safe to idle
 
 	// inject into current view
 	zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView);
-
-	// slider value might have changed
-	this.density.moveSliderTo(Config.densityNow);
 };
 
 /**
