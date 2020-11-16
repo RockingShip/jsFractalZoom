@@ -35,7 +35,7 @@ function zoomerMemcpy(dst, dstOffset, src, srcOffset, length) {
 
 /*
  * todo: this needs updating
- *  
+ *
  * Timing considerations
  *
  * Constructing a frame is a time consuming process that would severely impair the event/messaging queues and vsync.
@@ -475,7 +475,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 				xFrom[i] = -1;
 			}
 			for (let j = 0; j < yCoord.length; j++) {
-				yNearest[i] = yCoord[i] = i * (pixelMaxY - pixelMinY) / yCoord.length + pixelMinY;
+				yNearest[j] = yCoord[j] = j * (pixelMaxY - pixelMinY) / yCoord.length + pixelMinY;
 				yError[j] = 0;
 				yFrom[j] = -1;
 			}
@@ -1228,7 +1228,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {ZoomerView} [keyView] - Previous view to inherit keyFrame rulers/pixels
 	 */
 	this.setPosition = (centerX, centerY, radius, angle, keyView) => {
-		angle = angle && this.enableAngle ? angle : 0;
+		angle = this.enableAngle ? angle : 0;
 
 		// exit turbo mode
 		this.turboActive = NORMAL;
@@ -1302,7 +1302,12 @@ function Zoomer(domZoomer, enableAngle, options = {
 		this.pixelWidth = !this.enableAngle ? this.viewWidth : Math.ceil(Math.sqrt(this.viewWidth * this.viewWidth + this.viewHeight * this.viewHeight)) & ~1;
 		this.pixelHeight = !this.enableAngle ? this.viewHeight : this.pixelWidth;
 
-		// set DOM size property
+		/*
+		 * set DOM size property
+
+		 * @date 2020-11-16 00:32:31
+		 * NOTE: this will erase the canvas contents
+		 */
 		domZoomer.width = this.viewWidth;
 		domZoomer.height = this.viewHeight;
 
@@ -1321,8 +1326,15 @@ function Zoomer(domZoomer, enableAngle, options = {
 		this.calcFrame = this.allocFrame(this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight, this.angle);
 		this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, oldCalcView);
 
-		// invoke initial callback
-		if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+		// set palette
+		if (this.onRenderFrame) this.onRenderFrame(this, this.calcFrame);
+
+		// render frame
+		this.calcFrame.timeExpire = 0; // disable expiration
+		zoomerRenderFrame(this.calcFrame);
+
+		// push frame into canvas
+		if (this.onPutImageData) this.onPutImageData(this, this.calcFrame);
 	}
 
 	/**
@@ -1353,8 +1365,12 @@ function Zoomer(domZoomer, enableAngle, options = {
 			/*
 			 * Test for DOM resize
 			 */
-			if ((domZoomer.parentElement.clientWidth & ~1) !== this.viewWidth || (domZoomer.parentElement.clientHeight & ~1) !== this.viewHeight)
+			if ((domZoomer.parentElement.clientWidth & ~1) !== this.viewWidth || (domZoomer.parentElement.clientHeight & ~1) !== this.viewHeight) {
+				// upgrade views
 				this.resize(domZoomer.parentElement.clientWidth, domZoomer.parentElement.clientHeight, this.enableAngle);
+				// invoke callback
+				if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+			}
 
 			/*
 			 * allocate new frame
@@ -1786,6 +1802,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 		// set DOM size property
 		domZoomer.width = this.viewWidth;
 		domZoomer.height = this.viewHeight;
+
+		// set initial dummy frame
+		this.calcFrame = this.allocFrame(1, 1, 1, 1, 0);
+		this.calcView.setPosition(this.calcFrame, 0, 0, 0, null);
 
 		if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 

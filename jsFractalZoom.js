@@ -99,7 +99,7 @@ function Config() {
 	/** @member {int} - Starting seed for palette  */
 	Config.seed = Math.round(Math.random() * 2147483647);
 
-	/** @member {float} - current view zoomSpeed - timer updated */
+	/** @member {float} - current view zoomSpeed. -1 <= speed <= +1, - timer updated, speedup/slowdown modifier for zoomAccel  */
 	Config.zoomSpeed = 0;
 	/** @member {float} - After 1sec, get 80% closer to target speed */
 	Config.zoomSpeedCoef = 0.80;
@@ -790,7 +790,7 @@ function GUI() {
 	 *
 	 * @member {Zoomer} - Zoomer instance
 	 */
-	this.zoomer = new Zoomer(this.domZoomer, false, {
+	this.zoomer = new Zoomer(this.domZoomer, (Config.angle !== 0), {
 
 		/**
 		 * Disable web-workers.
@@ -1018,6 +1018,9 @@ function GUI() {
 			this.ctx.putImageData(imageData, 0, 0);
 		}
 	});
+
+	// set initial position. Do it now for UI control consistency (read: angle)
+	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 
 	/*
 	 * @date 2020-10-15 13:08:13
@@ -1546,7 +1549,7 @@ function GUI() {
 		}
 
 		/*
-		 * Update zoom (de-)acceleration. -1 <= zoomSpeed <= +1
+		 * Update zoom (de-)acceleration. 1(standstill) < zoomSpeed < Movement
 		 */
 		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
 			// zoom-in only
@@ -1575,9 +1578,9 @@ function GUI() {
 			Config.angle += diffSec * Config.rotateSpeedNow * 360;
 
 			// fold range
-			if (Config.angle < 0)
+			if (Config.angle < -180)
 				Config.angle += 360;
-			else if (Config.angle >= 360)
+			else if (Config.angle > 180)
 				Config.angle -= 360;
 
 			// round
