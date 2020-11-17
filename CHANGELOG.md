@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-17 11:38:19 Don't start with monochrome theme.
 2020-11-17 11:37:11 Popup shrink to fit while active.
 2020-11-17 01:39:24 Added `gebi()` as short for `gelElementById()`.
 2020-11-17 01:32:55 Added `showPilot()/hidePilot()`.

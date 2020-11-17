@@ -450,7 +450,10 @@ M 26.727 32.727   a 2 2 0 0 1 -4  0   l  0 -8   a 2 2 0 0 1  2 -2   l  8  0   a 
 
 		// set initial defaults
 		Config.home();
+		// set random palette, except for monochrome
+		do {
 		palette.mkrandom();
+		} while (Config.theme === 7);
 
 		// override config/formula
 		const query = location.search.substring(1);
