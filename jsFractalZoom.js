@@ -525,52 +525,60 @@ function Palette() {
  * @class
  */
 function GUI() {
+	/**
+	 *
+	 * @param {string} id
+	 * @returns {HTMLElement}
+	 */
+	function gebi(id) {
+		return document.getElementById(id);
+	}
 	/*
 	 * DOM elements and their matching id's
 	 */
-	this.domZoomer = "idZoomer";
-	this.domStatusTitle = "idStatusTitle";
-	this.domStatusPosition = "idStatusPosition";
-	this.domStatusLoad = "idStatusLoad";
-	this.domStatusRect = "idStatusRect";
-	this.domNavWrapper = "idNavWrapper";
-	this.domNav = "idNav";
-	this.domTop = "idTop";
-	this.domPowerButton = "idPowerButton";
-	this.domAutoPilotButton = "idAutoPilotButton";
-	this.domHomeButton = "idHomeButton";
-	this.domSaveButton = "idSaveButton";
-	this.domUrlButton = "idUrlButton";
-	this.domPopup = "idPopup";
-	this.domFormulaButton = "idFormulaButton";
-	this.domFormulaList = "idFormulaList";
-	this.domIncolourButton = "idIncolourButton";
-	this.domIncolourList = "idIncolourList";
-	this.domOutcolourButton = "idOutcolourButton";
-	this.domOutcolourList = "idOutcolourList";
-	this.domPlaneButton = "idPlaneButton";
-	this.domPlaneList = "idPlaneList";
-	this.domZoomSpeedLeft = "idZoomSpeedLeft";
-	this.domZoomSpeedRail = "idZoomSpeedRail";
-	this.domZoomSpeedThumb = "idZoomSpeedThumb";
-	this.domRotateLeft = "idRotateLeft";
-	this.domRotateRail = "idRotateRail";
-	this.domRotateThumb = "idRotateThumb";
-	this.domPaletteSpeedLeft = "idPaletteSpeedLeft";
-	this.domPaletteSpeedRail = "idPaletteSpeedRail";
-	this.domPaletteSpeedThumb = "idPaletteSpeedThumb";
-	this.domThemeButton = "idThemeButton";
-	this.domDensityLeft = "idDensityLeft";
-	this.domDensityRail = "idDensityRail";
-	this.domDensityThumb = "idDensityThumb";
-	this.domFramerateLeft = "idFramerateLeft";
-	this.domFramerateRail = "idFramerateRail";
-	this.domFramerateThumb = "idFramerateThumb";
-	this.domWxH = "WxH";
-	this.domPilot = "idPilot";
-	this.domResize = "idResize";
-	this.domFullscreen = "idFullscreen";
-	this.domMenu = "idMenu";
+	this.domZoomer = gebi("idZoomer");
+	this.domStatusTitle = gebi("idStatusTitle");
+	this.domStatusPosition = gebi("idStatusPosition");
+	this.domStatusLoad = gebi("idStatusLoad");
+	this.domStatusRect = gebi("idStatusRect");
+	this.domNavWrapper = gebi("idNavWrapper");
+	this.domNav = gebi("idNav");
+	this.domTop = gebi("idTop");
+	this.domPowerButton = gebi("idPowerButton");
+	this.domAutoPilotButton = gebi("idAutoPilotButton");
+	this.domHomeButton = gebi("idHomeButton");
+	this.domSaveButton = gebi("idSaveButton");
+	this.domUrlButton = gebi("idUrlButton");
+	this.domPopup = gebi("idPopup");
+	this.domFormulaButton = gebi("idFormulaButton");
+	this.domFormulaList = gebi("idFormulaList");
+	this.domIncolourButton = gebi("idIncolourButton");
+	this.domIncolourList = gebi("idIncolourList");
+	this.domOutcolourButton = gebi("idOutcolourButton");
+	this.domOutcolourList = gebi("idOutcolourList");
+	this.domPlaneButton = gebi("idPlaneButton");
+	this.domPlaneList = gebi("idPlaneList");
+	this.domZoomSpeedLeft = gebi("idZoomSpeedLeft");
+	this.domZoomSpeedRail = gebi("idZoomSpeedRail");
+	this.domZoomSpeedThumb = gebi("idZoomSpeedThumb");
+	this.domRotateLeft = gebi("idRotateLeft");
+	this.domRotateRail = gebi("idRotateRail");
+	this.domRotateThumb = gebi("idRotateThumb");
+	this.domPaletteSpeedLeft = gebi("idPaletteSpeedLeft");
+	this.domPaletteSpeedRail = gebi("idPaletteSpeedRail");
+	this.domPaletteSpeedThumb = gebi("idPaletteSpeedThumb");
+	this.domThemeButton = gebi("idThemeButton");
+	this.domDensityLeft = gebi("idDensityLeft");
+	this.domDensityRail = gebi("idDensityRail");
+	this.domDensityThumb = gebi("idDensityThumb");
+	this.domFramerateLeft = gebi("idFramerateLeft");
+	this.domFramerateRail = gebi("idFramerateRail");
+	this.domFramerateThumb = gebi("idFramerateThumb");
+	this.domWxH = gebi("WxH");
+	this.domPilot = gebi("idPilot");
+	this.domResize = gebi("idResize");
+	this.domFullscreen = gebi("idFullscreen");
+	this.domMenu = gebi("idMenu");
 
 	/** @member {number} - view mouse X coordinate */
 	this.mouseU = 0;
@@ -596,15 +604,6 @@ function GUI() {
 	this.popupSeqnr = 0;
 
 	/*
-	 * Find the elements and replace the string names for DOM references
-	 */
-	for (let property in this) {
-		if (this.hasOwnProperty(property) && property.substr(0, 3) === "dom") {
-			this[property] = document.getElementById(this[property]);
-		}
-	}
-
-	/*
 	 * Construct UI components
 	 */
 
@@ -627,10 +626,10 @@ function GUI() {
 	this.plane = new Aria.ListboxButton(this.domPlaneButton, this.domPlaneList);
 
 	// set lists
-	this.formula.listbox.focusItem(document.getElementById("formula_" + Formula.formula));
-	this.incolour.listbox.focusItem(document.getElementById("incolour_" + Formula.incolour));
-	this.outcolour.listbox.focusItem(document.getElementById("outcolour_" + Formula.outcolour));
-	this.plane.listbox.focusItem(document.getElementById("plane_" + Formula.plane));
+	this.formula.listbox.focusItem(gebi("formula_" + Formula.formula));
+	this.incolour.listbox.focusItem(gebi("incolour_" + Formula.incolour));
+	this.outcolour.listbox.focusItem(gebi("outcolour_" + Formula.outcolour));
+	this.plane.listbox.focusItem(gebi("plane_" + Formula.plane));
 
 	// construct buttons
 	this.power = new Aria.Button(this.domPowerButton, false);
@@ -1214,7 +1213,7 @@ function GUI() {
 		 * Copy to clipboard
 		 * NOTE: the following only works when called from a "click" event.
 		 */
-		const copyText = document.getElementById("idCopyText");
+		const copyText = gebi("idCopyText");
 		copyText.style.display = "block";
 		copyText.value = location.origin + location.pathname + '?' + qstr;
 
