@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-17 01:32:55 Added `showPilot()/hidePilot()`.
 2020-11-17 01:08:53 Touch gestures navigation.
 2020-11-16 23:15:36 Unglitch initial frame and angle.
 2020-11-16 21:45:17 Rename `idle` to `turbo` and improved.

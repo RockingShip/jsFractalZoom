@@ -567,7 +567,7 @@ function GUI() {
 	this.domFramerateRail = "idFramerateRail";
 	this.domFramerateThumb = "idFramerateThumb";
 	this.domWxH = "WxH";
-	this.domAutopilot = "idAutopilot";
+	this.domPilot = "idPilot";
 	this.domResize = "idResize";
 	this.domFullscreen = "idFullscreen";
 	this.domMenu = "idMenu";
@@ -1626,17 +1626,11 @@ function GUI() {
 			/*
 			 * Direction is midpoint between touch points
 			 */
-			this.mouseU = (touchAu+touchBu)>>1;
-			this.mouseV = (touchAv+touchBv)>>1;
+			this.mouseU = (touchAu + touchBu) >> 1;
+			this.mouseV = (touchAv + touchBv) >> 1;
 
 			// and position autopilot mark
-			const borderPixelRadius = 4;
-			gui.domAutopilot.style.top = (this.mouseV - borderPixelRadius) + "px";
-			gui.domAutopilot.style.left = (this.mouseU - borderPixelRadius) + "px";
-			gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
-			gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
-			gui.domAutopilot.style.border = "4px solid green";
-			gui.domAutopilot.style.visibility = "visible";
+			this.showPilot(this.mouseU, this.mouseV, 4);
 
 			// make speedup/slowdown more responsive
 			// todo: hardcoded, awaiting a more configurable solution
@@ -1659,7 +1653,7 @@ function GUI() {
 		this.mouseButtons = 0;
 		this.touchActive = false;
 		// remove mark
-		gui.domAutopilot.style.visibility = "hidden";
+		gui.domPilot.style.visibility = "hidden";
 	});
 
 	setInterval(() => {
@@ -1671,7 +1665,7 @@ function GUI() {
 		if (Config.autoPilot) {
 			if (calcView.reachedLimits()) {
 				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-				gui.domAutopilot.style.border = "4px solid orange";
+				gui.domPilot.style.border = "4px solid orange";
 			} else {
 				this.domStatusPosition.innerHTML = "";
 
@@ -1746,17 +1740,11 @@ function GUI() {
 			Config.centerY = this.dragCenterY - dy;
 
 			// mark visual center
-			const borderPixelRadius = 4;
-			gui.domAutopilot.style.top = ((this.zoomer.viewHeight >> 1) - borderPixelRadius) + "px";
-			gui.domAutopilot.style.left = ((this.zoomer.viewWidth >> 1) - borderPixelRadius) + "px";
-			gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
-			gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
-			gui.domAutopilot.style.border = "4px solid green";
-			gui.domAutopilot.style.visibility = "visible";
+			this.showPilot((this.zoomer.viewWidth >> 1), (this.zoomer.viewHeight >> 1), 4);
 
 		} else if (this.dragActive) {
 			this.dragActive = false;
-			gui.domAutopilot.style.visibility = "hidden";
+			this.hidePilot();
 		}
 
 	}, this.directionalInterval);
@@ -2284,11 +2272,7 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
 			// and position autopilot mark
-			gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
-			gui.domAutopilot.style.left = (u - borderPixelRadius) + "px";
-			gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
-			gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
-			gui.domAutopilot.style.border = "4px solid green";
+			this.showPilot(u, v, borderPixelRadius);
 			return true;
 		}
 	}
@@ -2306,16 +2290,12 @@ GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadi
 		Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
 
 		// and position autopilot mark
-		gui.domAutopilot.style.top = (v - borderPixelRadius) + "px";
-		gui.domAutopilot.style.left = (u - borderPixelRadius) + "px";
-		gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
-		gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
-		gui.domAutopilot.style.border = "4px solid green";
+		this.showPilot(u, v, borderPixelRadius);
 		return true;
 	}
 
 	Config.autopilotButtons = 0;
-	gui.domAutopilot.style.border = "4px solid red";
+	gui.domPilot.style.border = "4px solid red";
 	return false;
 };
 
@@ -2325,7 +2305,7 @@ GUI.prototype.autopilotOn = function () {
 	Config.autopilotU = this.zoomer.viewWidth >> 1;
 	Config.autopilotV = this.zoomer.viewHeight >> 1;
 
-	this.domAutopilot.style.visibility = "visible";
+	this.domPilot.style.visibility = "visible";
 
 	const diameter = Math.min(view.pixelWidth, view.pixelHeight);
 	let lookPixelRadius = Math.min(16, diameter >> 1);
@@ -2339,5 +2319,18 @@ GUI.prototype.autopilotOn = function () {
 
 GUI.prototype.autopilotOff = function () {
 	this.mouseButtons = 0;
-	this.domAutopilot.style.visibility = "hidden";
+	this.domPilot.style.visibility = "hidden";
 };
+
+GUI.prototype.showPilot = function (u, v, borderPixelRadius) {
+	this.domPilot.style.top = (v - borderPixelRadius) + "px";
+	this.domPilot.style.left = (u - borderPixelRadius) + "px";
+	this.domPilot.style.width = (borderPixelRadius * 2) + "px";
+	this.domPilot.style.height = (borderPixelRadius * 2) + "px";
+	this.domPilot.style.border = "4px solid green";
+	this.domPilot.style.visibility = "visible";
+}
+
+GUI.prototype.hidePilot = function () {
+	this.domPilot.style.visibility = "hidden";
+}

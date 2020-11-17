@@ -71,7 +71,7 @@ body {
 	right: 0;
 }
 
-#idAutopilot {
+#idPilot {
 	position: absolute;
 	pointer-events: none;
 	visibility: hidden;
