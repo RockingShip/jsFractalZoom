@@ -753,28 +753,26 @@ function GUI() {
 	this.activatePopup = () => {
 		const popup = this.domPopup;
 
-		// is popup still active. Dont change layout if visible
-		const active = popup.className;
+		// hide popup
+		popup.style.visibility = "hidden";
 
 		// get new sequence number
 		const seqnr = ++this.popupSeqnr;
 
-		if (!active) {
 			// set to determine width
 			popup.style.right = "auto";
 			popup.style.width = "auto";
-		}
 
 		// let event queue redraw
 		setTimeout(() => {
-			if (!active) {
 				// set actual size so popup centers (remove 2x .5em padding at 2em fontSize
 				const fontSize = parseInt(document.body.style.fontSize);
 				popup.style.width = (popup.clientWidth - 2 * .5 * 2 * fontSize) + "px";
 				popup.style.right = "0";
-			}
 
-			// set timer to remove
+			// show popup
+			popup.style.visibility = "visible";
+
 			popup.className = "active";
 			setTimeout(() => {
 				// only remove popup if sequence number matches
@@ -2093,6 +2091,9 @@ GUI.prototype.handleBlur = function (event) {
  */
 GUI.prototype.handleMouse = function (event) {
 
+	event.preventDefault();
+	event.stopPropagation();
+
 	const zoomer = this.zoomer;
 	const rect = this.domZoomer.getBoundingClientRect();
 
@@ -2158,9 +2159,6 @@ GUI.prototype.handleMouse = function (event) {
 		document.removeEventListener("mouseup", this.handleMouse);
 		document.removeEventListener("contextmenu", this.handleMouse);
 	}
-
-	event.preventDefault();
-	event.stopPropagation();
 };
 
 /**

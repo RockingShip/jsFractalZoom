@@ -110,6 +110,7 @@ body {
 	color: #fff;
 	transition: opacity 0.6s;
 	pointer-events: none;
+	white-space: nowrap;
 }
 
 #idPopup.active {
