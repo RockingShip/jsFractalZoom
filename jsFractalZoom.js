@@ -1255,8 +1255,8 @@ function GUI() {
 	document.addEventListener("keydown", this.handleKeyDown);
 	document.addEventListener("keyup", this.handleKeyUp);
 
-	document.addEventListener("wheel", (ev) => {
-		ev.preventDefault();
+	document.addEventListener("wheel", (event) => {
+		event.preventDefault();
 
 		/*
 		 * Node: the slider has logarithmic values. "Times N" is "add log(N)"
@@ -1268,7 +1268,7 @@ function GUI() {
 		 * Do simple, and move slide 1 position per event
 		 */
 
-		let delta = ev.deltaY;
+		let delta = event.deltaY;
 		if (delta >= 1) {
 			let newValue = Config.densityNow + Math.log(1.05);
 			if (newValue > Config.densityMax)
@@ -1329,9 +1329,9 @@ function GUI() {
 	/*
 	 * Touch handler for resizing `idNav`
 	 */
-	this.domResize.addEventListener("touchstart", (ev0) => {
-		ev0.preventDefault();
-		ev0.stopPropagation();
+	this.domResize.addEventListener("touchstart", (event0) => {
+		event0.preventDefault();
+		event0.stopPropagation();
 
 		// where (percent-wise) in the parent element did the click occur
 		const fontSize = parseInt(document.body.style.fontSize);
@@ -1340,20 +1340,20 @@ function GUI() {
 		const navRectBottom = document.body.clientHeight - fontSize;
 		const navRectLeft = fontSize;
 
-		const handleTouchMove = (ev) => {
-			ev.preventDefault();
-			ev.stopPropagation();
+		const handleTouchMove = (event) => {
+			event.preventDefault();
+			event.stopPropagation();
 
-			const touch = ev.targetTouches[0];
+			const touch = event.targetTouches[0];
 			const mouseX = (navRectRight - touch.pageX) / (navRectBottom - navRectTop);
 			const mouseY = (touch.pageY - navRectTop) / (navRectBottom - navRectTop);
 
 			this.domResize.moveXY(mouseX, mouseY);
 		};
 
-		const handleTouchEnd = function (ev) {
-			ev.preventDefault();
-			ev.stopPropagation();
+		const handleTouchEnd = function (event) {
+			event.preventDefault();
+			event.stopPropagation();
 
 			document.removeEventListener('touchmove', handleTouchMove);
 			document.removeEventListener('touchend', handleTouchEnd);
@@ -1366,9 +1366,9 @@ function GUI() {
 		document.addEventListener('touchcancel', handleTouchEnd);
 	});
 
-	this.domResize.addEventListener("mousedown", (ev0) => {
-		ev0.preventDefault();
-		ev0.stopPropagation();
+	this.domResize.addEventListener("mousedown", (event0) => {
+		event0.preventDefault();
+		event0.stopPropagation();
 
 		// where (percent-wise) in the parent element did the click occur
 		const fontSize = parseInt(document.body.style.fontSize);
@@ -1377,18 +1377,18 @@ function GUI() {
 		const navRectBottom = document.body.clientHeight - fontSize;
 		const navRectLeft = fontSize;
 
-		const mouseMove = (ev) => {
-			ev.preventDefault();
-			ev.stopPropagation();
+		const mouseMove = (event) => {
+			event.preventDefault();
+			event.stopPropagation();
 
-			const mouseX = (navRectRight - ev.pageX) / (navRectBottom - navRectTop);
-			const mouseY = (ev.pageY - navRectTop) / (navRectBottom - navRectTop);
+			const mouseX = (navRectRight - event.pageX) / (navRectBottom - navRectTop);
+			const mouseY = (event.pageY - navRectTop) / (navRectBottom - navRectTop);
 
 			this.domResize.moveXY(mouseX, mouseY);
 		};
-		const mouseUp = (ev) => {
-			ev.preventDefault();
-			ev.stopPropagation();
+		const mouseUp = (event) => {
+			event.preventDefault();
+			event.stopPropagation();
 
 			document.removeEventListener("mousemove", mouseMove);
 			document.removeEventListener("mouseup", mouseUp);
@@ -1398,9 +1398,9 @@ function GUI() {
 		document.addEventListener("mouseup", mouseUp);
 	});
 
-	this.domFullscreen.addEventListener("mousedown", (ev) => {
-		ev.preventDefault();
-		ev.stopPropagation();
+	this.domFullscreen.addEventListener("mousedown", (event) => {
+		event.preventDefault();
+		event.stopPropagation();
 
 		let currentState = this.domFullscreen.getAttribute('aria-pressed');
 
@@ -1434,8 +1434,8 @@ function GUI() {
 		this.domFullscreen.setAttribute('aria-pressed', currentState);
 	});
 
-	this.domMenu.addEventListener("mousedown", (ev) => {
-		ev.preventDefault();
+	this.domMenu.addEventListener("mousedown", (event) => {
+		event.preventDefault();
 
 		let currentState = this.domMenu.getAttribute('aria-pressed');
 
@@ -1464,9 +1464,9 @@ function GUI() {
 	/*
 	 * If a touchstart reaches navPane, then the touch missed the target, find nearest and delegate
 	 */
-	this.domNav.addEventListener("touchstart", (ev) => {
+	this.domNav.addEventListener("touchstart", (event) => {
 		// touch event target
-		const touchEvent = ev.targetTouches[0];
+		const touchEvent = event.targetTouches[0];
 		if (!touchEvent)
 			return; // no event;
 
@@ -1521,7 +1521,145 @@ function GUI() {
 			return; // out of range
 
 		// forward event
-		bestElem.dispatchEvent(new ev.constructor(ev.type, ev));
+		bestElem.dispatchEvent(new event.constructor(event.type, event));
+	});
+
+	/*
+	 * Touching the screen has no effect
+	 */
+	this.domZoomer.addEventListener("touchstart", (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+	});
+
+	/*
+	 * fingers moving over the screen
+	 */
+	this.domZoomer.addEventListener("touchmove", (ev) => {
+		ev.preventDefault();
+		ev.stopPropagation();
+
+		if (ev.touches.length === 1) {
+			// single-touch is drag
+
+			// get zoomer rectangle (might have a margin)
+			const touchEvent = ev.touches[0];
+			const zoomerRect = this.getRect(this.domZoomer);
+
+			// simulate a drage gesture
+			this.mouseU = touchEvent.pageX - zoomerRect.left;
+			this.mouseV = touchEvent.pageY - zoomerRect.top;
+			this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_WHEEL);
+			return;
+
+		} else if (ev.touches.length > 1) {
+			// when adding a finger, switch from drag to zoom
+			this.mouseButtons = 0;
+
+			// get zoomer rectangle (might have a margin)
+			const touchA = ev.touches[0];
+			const touchB = ev.touches[1];
+			const zoomerRect = this.getRect(this.domZoomer);
+
+			// simulate a drage gesture
+			const touchAu = touchA.pageX - zoomerRect.left;
+			const touchAv = touchA.pageY - zoomerRect.top;
+			const touchBu = touchB.pageX - zoomerRect.left;
+			const touchBv = touchB.pageY - zoomerRect.top;
+			const du = touchBu - touchAu; // atan2 left to right
+			const dv = touchAv - touchBv; // atan2 bottom to top
+
+			// get angle and distance
+			let touchAngle = Math.atan2(du, dv) * 180 / Math.PI + 180;
+			let touchDistance = Math.sqrt(du * du + dv * dv);
+
+			if (touchDistance === 0) {
+				// duplicate touch,merge to a drag
+				this.mouseU = touchAu;
+				this.mouseV = touchAv;
+				this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_WHEEL);
+				return;
+			}
+
+			// save initial angle and distance
+			if (!this.touchActive) {
+				this.touchAngle0 = Config.angle;
+				this.touchAngle = touchAngle;
+				this.touchDistance = touchDistance;
+				this.touchActive = 1;
+			} else {
+				this.touchActive++;
+			}
+
+			// determine difference with initial
+			touchAngle -= this.touchAngle;
+			touchDistance /= this.touchDistance;
+			const a0 = touchAngle;
+			while (touchAngle > 180)
+				touchAngle -= 360;
+			while (touchAngle < -180)
+				touchAngle += 360;
+
+			/*
+			 * set angle
+			 */
+			Config.angle = this.touchAngle0 + touchAngle;
+
+			// enable rotation
+			if (!this.zoomer.enableAngle)
+				this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, true);
+
+			/*
+			 * Set zoom speed.
+			 * Config.zoomSpeed is -1..+1, set by the interval timer, i=used for speedup/slowdown
+			 * Config.zoomAccelManual is zoom speed, set by `onBeginFrame()`
+			 */
+
+			if (touchDistance > 1) {
+				Config.zoomAccelManual = 3 * touchDistance;
+				this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_LEFT);
+			} else {
+				Config.zoomAccelManual = 3 * (1 / touchDistance);
+				this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_RIGHT);
+			}
+
+			/*
+			 * Direction is midpoint between touch points
+			 */
+			this.mouseU = (touchAu+touchBu)>>1;
+			this.mouseV = (touchAv+touchBv)>>1;
+
+			// and position autopilot mark
+			const borderPixelRadius = 4;
+			gui.domAutopilot.style.top = (this.mouseV - borderPixelRadius) + "px";
+			gui.domAutopilot.style.left = (this.mouseU - borderPixelRadius) + "px";
+			gui.domAutopilot.style.width = (borderPixelRadius * 2) + "px";
+			gui.domAutopilot.style.height = (borderPixelRadius * 2) + "px";
+			gui.domAutopilot.style.border = "4px solid green";
+			gui.domAutopilot.style.visibility = "visible";
+
+			// make speedup/slowdown more responsive
+			// todo: hardcoded, awaiting a more configurable solution
+			Config.zoomSpeedCoef = 0.95;
+
+			// make zoomer responsive to change
+			this.zoomer.turboActive = 0;
+		}
+
+	});
+
+	/*
+	 * Release screen
+	 */
+	this.domZoomer.addEventListener("touchend", (ev) => {
+		ev.preventDefault();
+		ev.stopPropagation();
+
+		// mouse release
+		this.mouseButtons = 0;
+		this.touchActive = false;
+		// remove mark
+		gui.domAutopilot.style.visibility = "hidden";
 	});
 
 	setInterval(() => {
@@ -1695,15 +1833,15 @@ function GUI() {
 	/*
 	 * File drop handler
 	 */
-	document.addEventListener("dragover", (ev) => {
+	document.addEventListener("dragover", (event) => {
 		// Prevent default behavior (Prevent file from being opened)
-		ev.preventDefault();
+		event.preventDefault();
 	});
-	document.addEventListener("drop", (ev) => {
-		ev.preventDefault();
+	document.addEventListener("drop", (event) => {
+		event.preventDefault();
 
 		// get dropped file
-		const file = ev.dataTransfer.files[0];
+		const file = event.dataTransfer.files[0];
 		if (!file)
 			return; // not a file drop event
 
