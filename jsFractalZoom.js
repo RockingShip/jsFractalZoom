@@ -527,6 +527,7 @@ function GUI() {
 	function gebi(id) {
 		return document.getElementById(id);
 	}
+
 	/*
 	 * DOM elements and their matching id's
 	 */
@@ -1231,61 +1232,252 @@ function GUI() {
 		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 	});
 
-	// replace event handlers with a bound instance
-	this.handleMouse = this.handleMouse.bind(this);
-	this.handleFocus = this.handleFocus.bind(this);
-	this.handleBlur = this.handleBlur.bind(this);
-	this.handleKeyDown = this.handleKeyDown.bind(this);
-	this.handleKeyUp = this.handleKeyUp.bind(this);
+	/*
+	 *
+	 */
+	this.extractJson = (image) => {
+		// create local canvas
+		const canvas = document.createElement("canvas");
+		canvas.width = image.width;
+		canvas.height = image.height;
+		const ctx = canvas.getContext('2d');
 
-	// register global key bindings before widgets overrides
-	this.domZoomer.addEventListener("focus", this.handleFocus);
-	this.domZoomer.addEventListener("blur", this.handleBlur);
-	this.domZoomer.addEventListener("mousedown", this.handleMouse);
-	this.domZoomer.addEventListener("contextmenu", this.handleMouse);
-	document.addEventListener("keydown", this.handleKeyDown);
-	document.addEventListener("keyup", this.handleKeyUp);
+		// set background background colour
+		ctx.strokeStyle = "#000";
+		ctx.fillStyle = "#000";
+		ctx.fillRect(0, 0, image.width, image.height);
 
-	document.addEventListener("wheel", (event) => {
-		event.preventDefault();
+		// draw image (with transparancy) on canvas
+		ctx.drawImage(image, 0, 0, image.width, image.height);
+
+		// get pixel data
+		const rgba = new Uint32Array(ctx.getImageData(0, 0, image.width, image.height).data.buffer);
+
+		// scan for json data
+		let json = "";
+
+		// skip first line and column
+		let k = image.width + 1;
+		const kmax = image.width * image.height;
+		while (k < kmax) {
+			let code = 0;
+			for (let i = 0; i < 8; i++) {
+				// pixel must not be transparent
+				while (!(rgba[k] & 0xff000000)) {
+					if (++k >= kmax)
+						return null;
+				}
+				code |= (rgba[k++] & 1) << i;
+			}
+
+			if (code < 32 || code >= 128) {
+				// invalid code
+				json = "";
+			} else if (json.length === 0) {
+				if (code === 123 /* '{' */) {
+					// sequence starter
+					json = "{";
+				}
+			} else if (code === 125 /* '}' */) {
+				// string complete
+				json += '}';
+
+				// test that it has a bit of body
+				if (json.length > 16) {
+					try {
+						json = JSON.parse(json);
+						return json;
+					} catch (e) {
+						return null;
+					}
+				}
+			} else {
+				// add character
+				json += String.fromCharCode(code);
+			}
+		}
+
+		// nothing found
+		return null;
+	};
+
+	/**
+	 * (re)load initial frame
+	 */
+	this.reload = () => {
+		const zoomer = this.zoomer;
+
+		// Create a small key frame (mandatory)
+		const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
+
+		// set all pixels of thumbnail
+		keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, zoomer, zoomer.onUpdatePixel);
+
+		// inject into current view
+		zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView);
+	};
+
+	this.autopilotOn = () => {
+
+		const view = this.zoomer.calcView;
+		Config.autopilotU = this.zoomer.viewWidth >> 1;
+		Config.autopilotV = this.zoomer.viewHeight >> 1;
+
+		this.domPilot.style.visibility = "visible";
+
+		const diameter = Math.min(view.pixelWidth, view.pixelHeight);
+		let lookPixelRadius = Math.min(16, diameter >> 1);
+		const borderPixelRadius = Math.min(16, diameter >> 5);
+		do {
+			if (!this.updateAutopilot(view, lookPixelRadius, borderPixelRadius))
+				break;
+			lookPixelRadius >>= 1;
+		} while (lookPixelRadius > 2);
+	};
+
+	this.autopilotOff = () => {
+		this.mouseButtons = 0;
+
+		// remove pilot marker
+		this.pilotOff();
+	};
+
+	this.showPilot = (u, v, borderPixelRadius) => {
+		this.domPilot.style.top = (v - borderPixelRadius) + "px";
+		this.domPilot.style.left = (u - borderPixelRadius) + "px";
+		this.domPilot.style.width = (borderPixelRadius * 2) + "px";
+		this.domPilot.style.height = (borderPixelRadius * 2) + "px";
+		this.domPilot.style.border = "4px solid green";
+		this.domPilot.style.visibility = "visible";
+	}
+
+	this.hidePilot = () => {
+		this.domPilot.style.visibility = "hidden";
+	}
+
+	/**
+	 * @param {ZoomerView} view
+	 * @param {number}   lookPixelRadius
+	 * @param {number}   borderPixelRadius
+	 * @returns {boolean}
+	 */
+	this.updateAutopilot = (view, lookPixelRadius, borderPixelRadius) => {
+
+		const {pixelWidth, pixelHeight, viewWidth, viewHeight, pixels} = view;
+		const zoomer = this.zoomer;
+
+		// use '>>1' as integer '/2'
+
+		// Get view bounding box
+		let minI = (pixelWidth - viewWidth) >> 1;
+		let maxI = pixelWidth - minI;
+		let minJ = (pixelHeight - viewHeight) >> 1;
+		let maxJ = pixelHeight - minJ;
+
+		// subtract border
+		minI += borderPixelRadius;
+		maxI -= borderPixelRadius;
+		minJ += borderPixelRadius;
+		maxJ -= borderPixelRadius;
+
+		// `cnt`
+		const minCnt = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
+		const maxCnt = minCnt * 3;
+
+		// coordinate within pixel data pointed to by mouse
+		let {i: apI, j: apJ} = zoomer.screenUVtoPixelIJ(Config.autopilotU, Config.autopilotV, Config.angle);
 
 		/*
-		 * Node: the slider has logarithmic values. "Times N" is "add log(N)"
-		 *
-		 * @date 2020-11-08 01:50:53
-		 * Chrome does WheelEvent.DOM_DELTA_PIXEL with +/- 150
-		 * Firefox does WheelEvent.DOM_DELTA_LINE with +/- 3
-		 *
-		 * Do simple, and move slide 1 position per event
+		 * @date 2020-10-24 23:59:53
+		 * Old code only focused to in/out set horizons.
+		 * Add moving to areas of high contrast.
 		 */
 
-		let delta = event.deltaY;
-		if (delta >= 1) {
-			let newValue = Config.densityNow + Math.log(1.05);
-			if (newValue > Config.densityMax)
-				newValue = Config.densityMax;
+		/** @var {ZoomerFrame}
+		   @description Bounding box center location */
+		let bestI = 0;
 
-			Config.densityNow = newValue;
-			Config.density = Math.exp(newValue);
-			Config.density = Math.round(Config.density * 10000) / 10000; // round
+		/** @var {ZoomerFrame}
+		   @description Bounding box center location */
+		let bestJ = 0;
+
+		/** @var {ZoomerFrame}
+		   @description Bounding box contains the highest `iter` */
+		let bestIterHigh = 0; // highest iter found within bounding box
+
+		/** @var {ZoomerFrame}
+		   @description Overall lowest iter found. Start with corner pixel */
+		let iterLow = 1 + Math.min(pixels[0], pixels[pixelWidth - 1], pixels[(pixelHeight - 1) * pixelWidth], pixels[pixelHeight * pixelWidth - 1]);
+
+		// outside center rectangle, adjust autopilot heading
+		for (let k = 0; k < 450; k++) {
+			// head to a nearby location
+			const testI = apI + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+			const testJ = apJ + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
+
+			// must be visible
+			if (testI < minI || testJ < minJ || testI >= maxI || testJ >= maxJ)
+				continue;
+
+			let cnt = 0;
+			for (let j = testJ - borderPixelRadius; j <= testJ + borderPixelRadius; j++) {
+				for (let i = testI - borderPixelRadius; i <= testI + borderPixelRadius; i++) {
+					const iter = pixels[j * pixelWidth + i]
+					if (iter === 65535) {
+						cnt++;
+					} else if (iterLow > iter) {
+						iterLow = iter;
+					} else if (bestIterHigh < iter) {
+						bestI = testI;
+						bestJ = testJ;
+						bestIterHigh = iter;
+					}
+				}
+			}
+
+			// go for horizon first
+			if (cnt >= minCnt && cnt <= maxCnt) {
+				// get screen location
+				let {u, v} = zoomer.pixelIJtoScreenUV(testI, testJ, Config.angle);
+
+				// dampen sharp autopilot direction changes
+				Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
+				Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
+
+				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
+
+				// and position autopilot mark
+				this.showPilot(u, v, borderPixelRadius);
+				return true;
+			}
 		}
-		if (delta <= -1) {
-			let newValue = Config.densityNow - Math.log(1.05);
-			if (newValue < Config.densityMin)
-				newValue = Config.densityMin;
 
-			Config.densityNow = newValue;
-			Config.density = Math.exp(newValue);
-			Config.density = Math.round(Config.density * 10000) / 10000; // round
+		// go for high contrast
+		// Something "hangs ". This needs extra working on.
+		if (0 && bestIterHigh > iterLow * Config.autopilotContrast) {
+			// get screen location
+			let {u, v} = zoomer.pixelIJtoScreenUV(bestI, bestJ, Config.angle);
+
+			// dampen sharp autopilot direction changes
+			Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
+			Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
+
+			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
+
+			// and position autopilot mark
+			this.showPilot(u, v, borderPixelRadius);
+			return true;
 		}
 
-		this.density.moveSliderTo(Config.densityNow);
-	}, {passive: false});
+		Config.autopilotButtons = 0;
+		gui.domPilot.style.border = "4px solid red";
+		return false;
+	};
 
 	/*
 	 * Core handler for resizing `idNav`
 	 */
-	this.domResize.moveXY = (mouseX, mouseY) => {
+	this.moveXY = (mouseX, mouseY) => {
 		/*
 		 * Calculate point on line that is closest to mouse
 		 * line: y = (height / width) * x
@@ -1318,6 +1510,10 @@ function GUI() {
 	};
 
 	/*
+	 * Register event listeners
+	 */
+
+	/*
 	 * Touch handler for resizing `idNav`
 	 */
 	this.domResize.addEventListener("touchstart", (event0) => {
@@ -1339,7 +1535,7 @@ function GUI() {
 			const mouseX = (navRectRight - touch.pageX) / (navRectBottom - navRectTop);
 			const mouseY = (touch.pageY - navRectTop) / (navRectBottom - navRectTop);
 
-			this.domResize.moveXY(mouseX, mouseY);
+			this.moveXY(mouseX, mouseY);
 		};
 
 		const handleTouchEnd = function (event) {
@@ -1375,7 +1571,7 @@ function GUI() {
 			const mouseX = (navRectRight - event.pageX) / (navRectBottom - navRectTop);
 			const mouseY = (event.pageY - navRectTop) / (navRectBottom - navRectTop);
 
-			this.domResize.moveXY(mouseX, mouseY);
+			this.moveXY(mouseX, mouseY);
 		};
 		const mouseUp = (event) => {
 			event.preventDefault();
@@ -1516,40 +1712,386 @@ function GUI() {
 	});
 
 	/*
-	 * Touching the screen has no effect
+	 * Handle focus event
 	 */
-	this.domZoomer.addEventListener("touchstart", (event) => {
+	this.domZoomer.addEventListener("focus", (event) => {
+		this.domZoomer.classList.add("focus");
+	});
+
+	/*
+	 * Handle blur event
+	 */
+	this.domZoomer.addEventListener("blur", (event) => {
+		this.domZoomer.classList.remove("focus");
+	});
+
+	/*
+	 * Pressing keys
+	 */
+	document.addEventListener("keydown", (event) => {
+		// ignore ctrl/alt keys
+		if (event.altKey || event.ctrlKey || event.metaKey)
+			return;
+
+		// Grab the keydown and click events
+		switch (event.key) {
+		case "A":
+		case "a":
+			this.autoPilot.buttonDown();
+			this.domAutoPilotButton.focus();
+			break;
+		case "C":
+			this.paletteSpeed.moveSliderTo(this.paletteSpeed.valueNow + 1);
+			this.domPaletteSpeedThumb.focus();
+			break;
+		case "c":
+			this.paletteSpeed.moveSliderTo(this.paletteSpeed.valueNow - 1);
+			this.domPaletteSpeedThumb.focus();
+			break;
+		case "D":
+		case "d":
+			this.paletteGroup.radioButtons[1].buttonDown();
+			this.domDefaultPaletteButton.focus();
+			break;
+		case "F":
+		case "f":
+			if (!this.formula.toggleListbox(event))
+				this.domZoomer.focus();
+			break;
+		case "H":
+		case "h":
+			this.home.buttonDown();
+			this.domHomeButton.focus();
+			break;
+		case "I":
+		case "i":
+			if (!this.incolour.toggleListbox(event))
+				this.domZoomer.focus();
+			break;
+		case "M":
+		case "m":
+			this.domMenu.dispatchEvent(new MouseEvent('mousedown'));
+			break;
+		case "O":
+		case "o":
+			if (!this.outcolour.toggleListbox(event))
+				this.domZoomer.focus();
+			break;
+		case "P":
+		case "p":
+			if (!this.plane.toggleListbox(event))
+				this.domZoomer.focus();
+			break;
+		case "Q":
+		case "q":
+			this.power.buttonDown();
+			this.domPowerButton.focus();
+			break;
+		case "R":
+			this.rotateSpeed.moveSliderTo(Config.rotateSpeedNow + (this.rotateSpeed.valueMax - this.rotateSpeed.valueMin) / 100);
+			this.domRotateThumb.focus();
+			break;
+		case "r":
+			this.rotateSpeed.moveSliderTo(Config.rotateSpeedNow - (this.rotateSpeed.valueMax - this.rotateSpeed.valueMin) / 100);
+			this.domRotateThumb.focus();
+			break;
+		case "S":
+		case "s":
+			this.save.buttonDown();
+			this.domZoomer.focus();
+			break;
+		case "T":
+		case "t":
+			this.theme.buttonDown();
+			this.domZoomer.focus();
+			break;
+		case "U":
+		case "u":
+			this.url.buttonDown();
+			this.domZoomer.focus();
+			break;
+		case "Z":
+			this.speed.moveSliderTo(this.speed.valueNow + Math.log(1.05)); // raise 5%
+			this.domZoomSpeedThumb.focus();
+			break;
+		case "z":
+			this.speed.moveSliderTo(this.speed.valueNow - Math.log(1.05)); // lower 5%
+			this.domZoomSpeedThumb.focus();
+			break;
+		default:
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+
+	});
+
+	/**
+	 * Releasing keys
+	 *
+	 * @param {KeyboardEvent} event
+	 */
+	document.addEventListener("keyup", (event) => {
+		// ignore ctrl/alt keys
+		if (event.altKey || event.ctrlKey || event.metaKey)
+			return;
+
+		// Grab the keydown and click events
+		switch (event.key) {
+		case "A":
+		case "a":
+			this.autoPilot.buttonUp();
+			this.domZoomer.focus();
+			break;
+		case "C":
+		case "c":
+			this.domZoomer.focus();
+			break;
+		case "D":
+		case "d":
+			this.paletteGroup.radioButtons[1].buttonUp();
+			this.domZoomer.focus();
+			break;
+		case "H":
+		case "h":
+			this.home.buttonUp();
+			this.domZoomer.focus();
+			break;
+		case "M":
+		case "m":
+			break;
+		case "Q":
+		case "q":
+			this.power.buttonUp();
+			this.domZoomer.focus();
+			break;
+		case "R":
+		case "r":
+			this.domZoomer.focus();
+			break;
+		case "S":
+		case "s":
+			this.save.buttonUp();
+			this.domZoomer.focus();
+			break;
+		case "T":
+		case "t":
+			this.theme.buttonUp();
+			this.domZoomer.focus();
+			break;
+		case "U":
+		case "u":
+			this.url.buttonUp();
+			this.domZoomer.focus();
+			break;
+		case "Z":
+		case "z":
+			this.domZoomer.focus();
+			break;
+		default:
+			return;
+		}
+
 		event.preventDefault();
 		event.stopPropagation();
 	});
 
 	/*
-	 * fingers moving over the screen
+	 * Turning wheel
 	 */
-	this.domZoomer.addEventListener("touchmove", (ev) => {
-		ev.preventDefault();
-		ev.stopPropagation();
+	document.addEventListener("wheel", (event) => {
+		event.preventDefault();
 
-		if (ev.touches.length === 1) {
-			// single-touch is drag
+		/*
+		 * Node: the slider has logarithmic values. "Times N" is "add log(N)"
+		 *
+		 * @date 2020-11-08 01:50:53
+		 * Chrome does WheelEvent.DOM_DELTA_PIXEL with +/- 150
+		 * Firefox does WheelEvent.DOM_DELTA_LINE with +/- 3
+		 *
+		 * Do simple, and move slide 1 position per event
+		 */
 
-			// get zoomer rectangle (might have a margin)
-			const touchEvent = ev.touches[0];
-			const zoomerRect = this.getRect(this.domZoomer);
+		let delta = event.deltaY;
+		if (delta >= 1) {
+			let newValue = Config.densityNow + Math.log(1.05);
+			if (newValue > Config.densityMax)
+				newValue = Config.densityMax;
 
-			// simulate a drage gesture
-			this.mouseU = touchEvent.pageX - zoomerRect.left;
-			this.mouseV = touchEvent.pageY - zoomerRect.top;
-			this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_WHEEL);
-			return;
+			Config.densityNow = newValue;
+			Config.density = Math.exp(newValue);
+			Config.density = Math.round(Config.density * 10000) / 10000; // round
+		}
+		if (delta <= -1) {
+			let newValue = Config.densityNow - Math.log(1.05);
+			if (newValue < Config.densityMin)
+				newValue = Config.densityMin;
 
-		} else if (ev.touches.length > 1) {
+			Config.densityNow = newValue;
+			Config.density = Math.exp(newValue);
+			Config.density = Math.round(Config.density * 10000) / 10000; // round
+		}
+
+		this.density.moveSliderTo(Config.densityNow);
+	});
+
+
+	/*
+	 * Dropping files
+	 */
+	document.addEventListener("dragover", (event) => {
+		// Prevent default behavior (Prevent file from being opened)
+		event.preventDefault();
+	});
+	document.addEventListener("drop", (event) => {
+		event.preventDefault();
+
+		// get dropped file
+		const file = event.dataTransfer.files[0];
+		if (!file)
+			return; // not a file drop event
+
+		// Create reader.
+		const reader = new FileReader();
+		reader.onload = () => {
+			const image = new Image();
+
+			image.onload = () => {
+				const json = this.extractJson(image);
+				if (!json) {
+					// image does not contain json
+					this.domPopup.innerText = "Image does not contain navigation data";
+					this.activatePopup();
+				} else {
+					// convert json to query string
+					let qarr = [];
+					for (let k in json) {
+						qarr.push(k + '=' + json[k]);
+					}
+					let qstr = qarr.join("&");
+
+					// load config
+					Config.load(qstr);
+					palette.loadTheme();
+
+					// activate
+					this.reload();
+				}
+			};
+			image.onerror = () => {
+				this.domPopup.innerText = "Failed to decode file";
+				this.activatePopup();
+			}
+
+			image.src = reader.result;
+		};
+		reader.onabort = () => {
+			this.domPopup.innerText = "Drop canceled";
+			this.activatePopup();
+		}
+		reader.onerror = () => {
+			this.domPopup.innerText = "Drop error";
+			this.activatePopup();
+		}
+
+		reader.readAsDataURL(file);
+	});
+
+	/**
+	 * Mouse moving over the screen
+	 *
+	 * @param {MouseEvent} event
+	 */
+	this.handleMouse = (event) => {
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		const zoomer = this.zoomer;
+		const rect = this.domZoomer.getBoundingClientRect();
+
+		/*
+		 * On first button press set a document listener to catch releases outside target element
+		 */
+		if (this.mouseButtons === 0 && event.buttons !== 0) {
+			// on first button press set release listeners
+			document.addEventListener("mousemove", this.handleMouse);
+			document.addEventListener("mouseup", this.handleMouse);
+			document.addEventListener("contextmenu", this.handleMouse);
+		}
+
+		// determine mouse screen position
+		this.mouseU = event.pageX - rect.left;
+		this.mouseV = event.pageY - rect.top;
+
+		/*
+		 * Encountered a Hydra bug.
+		 * Keeping test cases here in case its head pops up again
+		 */
+		if (0) {
+
+			let u1 = this.mouseU;
+			let v1 = this.mouseV;
+
+			const {i: i2, j: j2} = zoomer.screenUVtoPixelIJ(u1, v1, Config.angle);
+
+			// visually verify pixel is correct
+			frame.palette[65534] = 0xff0000ff;
+			frame.pixels[j2 * frame.pixelWidth + i2] = 65534;
+
+			const {u: u3, v: v3} = zoomer.pixelIJtoScreenUV(i2, j2, Config.angle);
+			console.log('a', u3 - u1, v3 - v1);
+
+			let {dx: x4, dy: y4} = zoomer.screenUVtoCoordDXY(u3, v3, Config.angle);
+			x4 += Config.centerX;
+			y4 += Config.centerY;
+
+			let {i: i5, j: j5} = zoomer.coordDXYtoPixelIJ(x4 - Config.centerX, y4 - Config.centerY);
+			console.log('b', i5 - i2, j5 - j2);
+
+			// visually verify pixel is correct
+			frame.palette[65533] = 0xff00ff00;
+			frame.pixels[j5 * frame.pixelWidth + i5] = 65533;
+
+			let {dx: x6, dy: y6} = zoomer.pixelIJtoCoordDXY(i5, j5);
+			x6 += Config.centerX;
+			y6 += Config.centerY;
+			console.log('c', x6 - x4, y6 - y4);
+
+			let {u: u7, v: v7} = zoomer.coordDXYtoScreenUV(x6 - Config.centerX, y6 - Config.centerY, Config.angle);
+			console.log('d', u7 - u3, v7 - v3);
+			console.log('e', u7 - u1, v7 - v1);
+
+		}
+
+		this.mouseButtons = event.buttons;
+
+		if (event.buttons === 0) {
+			// remove listeners when last button released
+			document.removeEventListener("mousemove", this.handleMouse);
+			document.removeEventListener("mouseup", this.handleMouse);
+			document.removeEventListener("contextmenu", this.handleMouse);
+		}
+	};
+
+	this.domZoomer.addEventListener("mousedown", this.handleMouse);
+	this.domZoomer.addEventListener("contextmenu", this.handleMouse);
+
+	/*
+	 * Fingers moving over the screen
+	 */
+	this.handleTouch = (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+
+		if (event.touches.length > 1) {
 			// when adding a finger, switch from drag to zoom
 			this.mouseButtons = 0;
 
 			// get zoomer rectangle (might have a margin)
-			const touchA = ev.touches[0];
-			const touchB = ev.touches[1];
+			const touchA = event.touches[0];
+			const touchB = event.touches[1];
 			const zoomerRect = this.getRect(this.domZoomer);
 
 			// simulate a drage gesture
@@ -1629,247 +2171,27 @@ function GUI() {
 
 			// make zoomer responsive to change
 			this.zoomer.turboActive = 0;
+		} else if (event.touches.length === 1) {
+			// single-touch is drag
+
+			// get zoomer rectangle (might have a margin)
+			const touchEvent = event.touches[0];
+			const zoomerRect = this.getRect(this.domZoomer);
+
+			// simulate a drage gesture
+			this.mouseU = touchEvent.pageX - zoomerRect.left;
+			this.mouseV = touchEvent.pageY - zoomerRect.top;
+			this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_WHEEL);
+		} else if (event.touches.length === 0) {
+			// screen released
+			this.mouseButtons = 0;
+			this.touchActive = false;
 		}
-
-	});
-
-	/*
-	 * Release screen
-	 */
-	this.domZoomer.addEventListener("touchend", (ev) => {
-		ev.preventDefault();
-		ev.stopPropagation();
-
-		// mouse release
-		this.mouseButtons = 0;
-		this.touchActive = false;
-
-		// remove pilot marker
-		this.pilotOff();
-	});
-
-	setInterval(() => {
-		// seconds since last cycle
-		const now = performance.now();
-		const diffSec = this.directionalInterval / 1000;
-		const calcView = this.zoomer.calcView;
-
-		if (Config.autoPilot) {
-			if (calcView.reachedLimits()) {
-				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-				gui.domPilot.style.border = "4px solid orange";
-			} else {
-				this.domStatusPosition.innerHTML = "";
-
-				if (!this.updateAutopilot(calcView, 4, 16))
-					if (!this.updateAutopilot(calcView, 60, 16))
-						if (!this.updateAutopilot(calcView, Math.min(calcView.pixelWidth, calcView.pixelHeight) >> 1, 16))
-							Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
-			}
-
-			this.mouseU = Config.autopilotU;
-			this.mouseV = Config.autopilotV;
-			this.mouseButtons = Config.autopilotButtons;
-		}
-
-		/*
-		 * Update zoom (de-)acceleration. 1(standstill) < zoomSpeed < Movement
-		 */
-		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
-			// zoom-in only
-			Config.zoomSpeed = +1 - (+1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-		} else if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
-			// zoom-out only
-			Config.zoomSpeed = -1 - (-1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-		} else if (this.mouseButtons === 0) {
-			// buttons released
-			Config.zoomSpeed = Config.zoomSpeed * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-
-			if (Config.zoomSpeed >= -0.001 && Config.zoomSpeed < +0.001)
-				Config.zoomSpeed = 0; // full stop
-		}
-
-		/*
-		 * Update palette cycle offset
-		 */
-		if (Config.paletteSpeedNow)
-			Config.paletteOffsetFloat -= diffSec * Config.paletteSpeedNow;
-
-		/*
-		 * Update view angle (before zoom gestures)
-		 */
-		if (Config.rotateSpeedNow) {
-			Config.angle += diffSec * Config.rotateSpeedNow * 360;
-
-			// fold range
-			if (Config.angle < -180)
-				Config.angle += 360;
-			else if (Config.angle > 180)
-				Config.angle -= 360;
-
-			// round
-			Config.angle = Math.round(Config.angle * 100) / 100;
-
-			// navigation/angle change
-			this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
-		}
-
-		// drag gesture
-		if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
-			// need screen coordinates to avoid drifting
-			const dispView = this.zoomer.dispView;
-			const {dx, dy} = this.zoomer.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
-
-			if (!this.dragActive) {
-				// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
-				this.dragCenterX = dispView.centerX + dx;
-				this.dragCenterY = dispView.centerY + dy;
-				this.dragActive = true;
-			}
-
-			// update x/y but keep radius
-			Config.centerX = this.dragCenterX - dx;
-			Config.centerY = this.dragCenterY - dy;
-
-			// mark visual center
-			this.showPilot((this.zoomer.viewWidth >> 1), (this.zoomer.viewHeight >> 1), 4);
-
-		} else if (this.dragActive) {
-			this.dragActive = false;
-			this.hidePilot();
-		}
-
-	}, this.directionalInterval);
-
-	/*
-	 *
-	 */
-	this.extractJson = (image) => {
-		// create local canvas
-		const canvas = document.createElement("canvas");
-		canvas.width = image.width;
-		canvas.height = image.height;
-		const ctx = canvas.getContext('2d');
-
-		// set background background colour
-		ctx.strokeStyle = "#000";
-		ctx.fillStyle = "#000";
-		ctx.fillRect(0, 0, image.width, image.height);
-
-		// draw image (with transparancy) on canvas
-		ctx.drawImage(image, 0, 0, image.width, image.height);
-
-		// get pixel data
-		const rgba = new Uint32Array(ctx.getImageData(0, 0, image.width, image.height).data.buffer);
-
-		// scan for json data
-		let json = "";
-
-		// skip first line and column
-		let k = image.width + 1;
-		const kmax = image.width * image.height;
-		while (k < kmax) {
-			let code = 0;
-			for (let i = 0; i < 8; i++) {
-				// pixel must not be transparent
-				while (!(rgba[k] & 0xff000000)) {
-					if (++k >= kmax)
-						return null;
-				}
-				code |= (rgba[k++] & 1) << i;
-			}
-
-			if (code < 32 || code >= 128) {
-				// invalid code
-				json = "";
-			} else if (json.length === 0) {
-				if (code === 123 /* '{' */) {
-					// sequence starter
-					json = "{";
-				}
-			} else if (code === 125 /* '}' */) {
-				// string complete
-				json += '}';
-
-				// test that it has a bit of body
-				if (json.length > 16) {
-					try {
-						json = JSON.parse(json);
-						return json;
-					} catch (e) {
-						return null;
-					}
-				}
-			} else {
-				// add character
-				json += String.fromCharCode(code);
-			}
-		}
-
-		// nothing found
-		return null;
 	};
 
-	/*
-	 * File drop handler
-	 */
-	document.addEventListener("dragover", (event) => {
-		// Prevent default behavior (Prevent file from being opened)
-		event.preventDefault();
-	});
-	document.addEventListener("drop", (event) => {
-		event.preventDefault();
-
-		// get dropped file
-		const file = event.dataTransfer.files[0];
-		if (!file)
-			return; // not a file drop event
-
-		// Create reader.
-		const reader = new FileReader();
-		reader.onload = () => {
-			const image = new Image();
-
-			image.onload = () => {
-				const json = this.extractJson(image);
-				if (!json) {
-					// image does not contain json
-					this.domPopup.innerText = "Image does not contain navigation data";
-					this.activatePopup();
-				} else {
-					// convert json to query string
-					let qarr = [];
-					for (let k in json) {
-						qarr.push(k + '=' + json[k]);
-					}
-					let qstr = qarr.join("&");
-
-					// load config
-					Config.load(qstr);
-					palette.loadTheme();
-
-					// activate
-					this.reload();
-				}
-			};
-			image.onerror = () => {
-				this.domPopup.innerText = "Failed to decode file";
-				this.activatePopup();
-			}
-
-			image.src = reader.result;
-		};
-		reader.onabort = () => {
-			this.domPopup.innerText = "Drop canceled";
-			this.activatePopup();
-		}
-		reader.onerror = () => {
-			this.domPopup.innerText = "Drop error";
-			this.activatePopup();
-		}
-
-		reader.readAsDataURL(file);
-	});
+	this.domZoomer.addEventListener("touchstart", this.handleTouch);
+	this.domZoomer.addEventListener("touchmove", this.handleTouch);
+	this.domZoomer.addEventListener("touchend", this.handleTouch);
 
 	/*
 	 * Constructor
@@ -1886,447 +2208,98 @@ function GUI() {
 
 		// snap to actual dimensions
 		this.setFontSize();
-	}
-}
 
-/**
- * Handle keyboard down event
- *
- * @param {KeyboardEvent} event
- */
-GUI.prototype.handleKeyDown = function (event) {
-	// ignore ctrl/alt keys
-	if (event.altKey || event.ctrlKey || event.metaKey)
-		return;
+		setInterval(() => {
+			// seconds since last cycle
+			const now = performance.now();
+			const diffSec = this.directionalInterval / 1000;
+			const calcView = this.zoomer.calcView;
 
-	// Grab the keydown and click events
-	switch (event.key) {
-	case "A":
-	case "a":
-		this.autoPilot.buttonDown();
-		this.domAutoPilotButton.focus();
-		break;
-	case "C":
-		this.paletteSpeed.moveSliderTo(this.paletteSpeed.valueNow + 1);
-		this.domPaletteSpeedThumb.focus();
-		break;
-	case "c":
-		this.paletteSpeed.moveSliderTo(this.paletteSpeed.valueNow - 1);
-		this.domPaletteSpeedThumb.focus();
-		break;
-	case "D":
-	case "d":
-		this.paletteGroup.radioButtons[1].buttonDown();
-		this.domDefaultPaletteButton.focus();
-		break;
-	case "F":
-	case "f":
-		if (!this.formula.toggleListbox(event))
-			this.domZoomer.focus();
-		break;
-	case "H":
-	case "h":
-		this.home.buttonDown();
-		this.domHomeButton.focus();
-		break;
-	case "I":
-	case "i":
-		if (!this.incolour.toggleListbox(event))
-			this.domZoomer.focus();
-		break;
-	case "M":
-	case "m":
-		this.domMenu.dispatchEvent(new MouseEvent('mousedown'));
-		break;
-	case "O":
-	case "o":
-		if (!this.outcolour.toggleListbox(event))
-			this.domZoomer.focus();
-		break;
-	case "P":
-	case "p":
-		if (!this.plane.toggleListbox(event))
-			this.domZoomer.focus();
-		break;
-	case "Q":
-	case "q":
-		this.power.buttonDown();
-		this.domPowerButton.focus();
-		break;
-	case "R":
-		this.rotateSpeed.moveSliderTo(Config.rotateSpeedNow + (this.rotateSpeed.valueMax - this.rotateSpeed.valueMin) / 100);
-		this.domRotateThumb.focus();
-		break;
-	case "r":
-		this.rotateSpeed.moveSliderTo(Config.rotateSpeedNow - (this.rotateSpeed.valueMax - this.rotateSpeed.valueMin) / 100);
-		this.domRotateThumb.focus();
-		break;
-	case "S":
-	case "s":
-		this.save.buttonDown();
-		this.domZoomer.focus();
-		break;
-	case "T":
-	case "t":
-		this.theme.buttonDown();
-		this.domZoomer.focus();
-		break;
-	case "U":
-	case "u":
-		this.url.buttonDown();
-		this.domZoomer.focus();
-		break;
-	case "Z":
-		this.speed.moveSliderTo(this.speed.valueNow + Math.log(1.05)); // raise 5%
-		this.domZoomSpeedThumb.focus();
-		break;
-	case "z":
-		this.speed.moveSliderTo(this.speed.valueNow - Math.log(1.05)); // lower 5%
-		this.domZoomSpeedThumb.focus();
-		break;
-	default:
-		return;
-	}
+			if (Config.autoPilot) {
+				if (calcView.reachedLimits()) {
+					Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+					gui.domPilot.style.border = "4px solid orange";
+				} else {
+					this.domStatusPosition.innerHTML = "";
 
-	event.preventDefault();
-	event.stopPropagation();
-
-};
-
-/**
- * Handle keyboard up event
- *
- * @param {KeyboardEvent} event
- */
-GUI.prototype.handleKeyUp = function (event) {
-	// ignore ctrl/alt keys
-	if (event.altKey || event.ctrlKey || event.metaKey)
-		return;
-
-	// Grab the keydown and click events
-	switch (event.key) {
-	case "A":
-	case "a":
-		this.autoPilot.buttonUp();
-		this.domZoomer.focus();
-		break;
-	case "C":
-	case "c":
-		this.domZoomer.focus();
-		break;
-	case "D":
-	case "d":
-		this.paletteGroup.radioButtons[1].buttonUp();
-		this.domZoomer.focus();
-		break;
-	case "H":
-	case "h":
-		this.home.buttonUp();
-		this.domZoomer.focus();
-		break;
-	case "M":
-	case "m":
-		break;
-	case "Q":
-	case "q":
-		this.power.buttonUp();
-		this.domZoomer.focus();
-		break;
-	case "R":
-	case "r":
-		this.domZoomer.focus();
-		break;
-	case "S":
-	case "s":
-		this.save.buttonUp();
-		this.domZoomer.focus();
-		break;
-	case "T":
-	case "t":
-		this.theme.buttonUp();
-		this.domZoomer.focus();
-		break;
-	case "U":
-	case "u":
-		this.url.buttonUp();
-		this.domZoomer.focus();
-		break;
-	case "Z":
-	case "z":
-		this.domZoomer.focus();
-		break;
-	default:
-		return;
-	}
-
-	event.preventDefault();
-	event.stopPropagation();
-};
-
-/**
- * Handle focus event
- *
- * @param {FocusEvent} event
- */
-GUI.prototype.handleFocus = function (event) {
-	this.domZoomer.classList.add("focus");
-};
-
-/**
- * Handle blur event
- *
- * @param {FocusEvent} event
- */
-GUI.prototype.handleBlur = function (event) {
-	this.domZoomer.classList.remove("focus");
-};
-
-/**
- * Shared handler for all mouse events
- *
- * @param {MouseEvent} event
- */
-GUI.prototype.handleMouse = function (event) {
-
-	event.preventDefault();
-	event.stopPropagation();
-
-	const zoomer = this.zoomer;
-	const rect = this.domZoomer.getBoundingClientRect();
-
-	/*
-	 * On first button press set a document listener to catch releases outside target element
-	 */
-	if (this.mouseButtons === 0 && event.buttons !== 0) {
-		// on first button press set release listeners
-		document.addEventListener("mousemove", this.handleMouse);
-		document.addEventListener("mouseup", this.handleMouse);
-		document.addEventListener("contextmenu", this.handleMouse);
-	}
-
-	// determine mouse screen position
-	this.mouseU = event.pageX - rect.left;
-	this.mouseV = event.pageY - rect.top;
-
-	/*
-	 * Encountered a Hydra bug.
-	 * Keeping test cases here in case its head pops up again
-	 */
-	if (0) {
-
-		let u1 = this.mouseU;
-		let v1 = this.mouseV;
-
-		const {i: i2, j: j2} = zoomer.screenUVtoPixelIJ(u1, v1, Config.angle);
-
-		// visually verify pixel is correct
-		frame.palette[65534] = 0xff0000ff;
-		frame.pixels[j2 * frame.pixelWidth + i2] = 65534;
-
-		const {u: u3, v: v3} = zoomer.pixelIJtoScreenUV(i2, j2, Config.angle);
-		console.log('a', u3 - u1, v3 - v1);
-
-		let {dx: x4, dy: y4} = zoomer.screenUVtoCoordDXY(u3, v3, Config.angle);
-		x4 += Config.centerX;
-		y4 += Config.centerY;
-
-		let {i: i5, j: j5} = zoomer.coordDXYtoPixelIJ(x4 - Config.centerX, y4 - Config.centerY);
-		console.log('b', i5 - i2, j5 - j2);
-
-		// visually verify pixel is correct
-		frame.palette[65533] = 0xff00ff00;
-		frame.pixels[j5 * frame.pixelWidth + i5] = 65533;
-
-		let {dx: x6, dy: y6} = zoomer.pixelIJtoCoordDXY(i5, j5);
-		x6 += Config.centerX;
-		y6 += Config.centerY;
-		console.log('c', x6 - x4, y6 - y4);
-
-		let {u: u7, v: v7} = zoomer.coordDXYtoScreenUV(x6 - Config.centerX, y6 - Config.centerY, Config.angle);
-		console.log('d', u7 - u3, v7 - v3);
-		console.log('e', u7 - u1, v7 - v1);
-
-	}
-
-	this.mouseButtons = event.buttons;
-
-	if (event.buttons === 0) {
-		// remove listeners when last button released
-		document.removeEventListener("mousemove", this.handleMouse);
-		document.removeEventListener("mouseup", this.handleMouse);
-		document.removeEventListener("contextmenu", this.handleMouse);
-	}
-};
-
-/**
- * (re)load initial frame
- */
-GUI.prototype.reload = function () {
-	const zoomer = this.zoomer;
-
-	// Create a small key frame (mandatory)
-	const keyView = new ZoomerView(64, 64, 64, 64); // Explicitly square
-
-	// set all pixels of thumbnail
-	keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, zoomer, zoomer.onUpdatePixel);
-
-	// inject into current view
-	zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView);
-};
-
-/**
- * @param {ZoomerView} view
- * @param {number}   lookPixelRadius
- * @param {number}   borderPixelRadius
- * @returns {boolean}
- */
-GUI.prototype.updateAutopilot = function (view, lookPixelRadius, borderPixelRadius) {
-
-	const {pixelWidth, pixelHeight, viewWidth, viewHeight, pixels} = view;
-	const zoomer = this.zoomer;
-
-	// use '>>1' as integer '/2'
-
-	// Get view bounding box
-	let minI = (pixelWidth - viewWidth) >> 1;
-	let maxI = pixelWidth - minI;
-	let minJ = (pixelHeight - viewHeight) >> 1;
-	let maxJ = pixelHeight - minJ;
-
-	// subtract border
-	minI += borderPixelRadius;
-	maxI -= borderPixelRadius;
-	minJ += borderPixelRadius;
-	maxJ -= borderPixelRadius;
-
-	// `cnt`
-	const minCnt = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
-	const maxCnt = minCnt * 3;
-
-	// coordinate within pixel data pointed to by mouse
-	let {i: apI, j: apJ} = zoomer.screenUVtoPixelIJ(Config.autopilotU, Config.autopilotV, Config.angle);
-
-	/*
-	 * @date 2020-10-24 23:59:53
-	 * Old code only focused to in/out set horizons.
-	 * Add moving to areas of high contrast.
-	 */
-
-	/** @var {ZoomerFrame}
-	    @description Bounding box center location */
-	let bestI = 0;
-
-	/** @var {ZoomerFrame}
-	    @description Bounding box center location */
-	let bestJ = 0;
-
-	/** @var {ZoomerFrame}
-	    @description Bounding box contains the highest `iter` */
-	let bestIterHigh = 0; // highest iter found within bounding box
-
-	/** @var {ZoomerFrame}
-	    @description Overall lowest iter found. Start with corner pixel */
-	let iterLow = 1 + Math.min(pixels[0], pixels[pixelWidth - 1], pixels[(pixelHeight - 1) * pixelWidth], pixels[pixelHeight * pixelWidth - 1]);
-
-	// outside center rectangle, adjust autopilot heading
-	for (let k = 0; k < 450; k++) {
-		// head to a nearby location
-		const testI = apI + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
-		const testJ = apJ + Math.floor(Math.random() * (2 * lookPixelRadius)) - lookPixelRadius;
-
-		// must be visible
-		if (testI < minI || testJ < minJ || testI >= maxI || testJ >= maxJ)
-			continue;
-
-		let cnt = 0;
-		for (let j = testJ - borderPixelRadius; j <= testJ + borderPixelRadius; j++) {
-			for (let i = testI - borderPixelRadius; i <= testI + borderPixelRadius; i++) {
-				const iter = pixels[j * pixelWidth + i]
-				if (iter === 65535) {
-					cnt++;
-				} else if (iterLow > iter) {
-					iterLow = iter;
-				} else if (bestIterHigh < iter) {
-					bestI = testI;
-					bestJ = testJ;
-					bestIterHigh = iter;
+					if (!this.updateAutopilot(calcView, 4, 16))
+						if (!this.updateAutopilot(calcView, 60, 16))
+							if (!this.updateAutopilot(calcView, Math.min(calcView.pixelWidth, calcView.pixelHeight) >> 1, 16))
+								Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
 				}
+
+				this.mouseU = Config.autopilotU;
+				this.mouseV = Config.autopilotV;
+				this.mouseButtons = Config.autopilotButtons;
 			}
-		}
 
-		// go for horizon first
-		if (cnt >= minCnt && cnt <= maxCnt) {
-			// get screen location
-			let {u, v} = zoomer.pixelIJtoScreenUV(testI, testJ, Config.angle);
+			/*
+			 * Update zoom (de-)acceleration. 1(standstill) < zoomSpeed < Movement
+			 */
+			if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
+				// zoom-in only
+				Config.zoomSpeed = +1 - (+1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+			} else if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
+				// zoom-out only
+				Config.zoomSpeed = -1 - (-1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+			} else if (this.mouseButtons === 0) {
+				// buttons released
+				Config.zoomSpeed = Config.zoomSpeed * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
 
-			// dampen sharp autopilot direction changes
-			Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
-			Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
+				if (Config.zoomSpeed >= -0.001 && Config.zoomSpeed < +0.001)
+					Config.zoomSpeed = 0; // full stop
+			}
 
-			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
+			/*
+			 * Update palette cycle offset
+			 */
+			if (Config.paletteSpeedNow)
+				Config.paletteOffsetFloat -= diffSec * Config.paletteSpeedNow;
 
-			// and position autopilot mark
-			this.showPilot(u, v, borderPixelRadius);
-			return true;
-		}
+			/*
+			 * Update view angle (before zoom gestures)
+			 */
+			if (Config.rotateSpeedNow) {
+				Config.angle += diffSec * Config.rotateSpeedNow * 360;
+
+				// fold range
+				if (Config.angle < -180)
+					Config.angle += 360;
+				else if (Config.angle > 180)
+					Config.angle -= 360;
+
+				// round
+				Config.angle = Math.round(Config.angle * 100) / 100;
+
+				// navigation/angle change
+				this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
+			}
+
+			// drag gesture
+			if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
+				// need screen coordinates to avoid drifting
+				const dispView = this.zoomer.dispView;
+				const {dx, dy} = this.zoomer.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);
+
+				if (!this.dragActive) {
+					// save the fractal coordinate of the mouse position. that stays constant during the drag gesture
+					this.dragCenterX = dispView.centerX + dx;
+					this.dragCenterY = dispView.centerY + dy;
+					this.dragActive = true;
+				}
+
+				// update x/y but keep radius
+				Config.centerX = this.dragCenterX - dx;
+				Config.centerY = this.dragCenterY - dy;
+
+				// mark visual center
+				this.showPilot((this.zoomer.viewWidth >> 1), (this.zoomer.viewHeight >> 1), 4);
+
+			} else if (this.dragActive) {
+				this.dragActive = false;
+				this.hidePilot();
+			}
+
+		}, this.directionalInterval);
 	}
-
-	// go for high contrast
-	// Something "hangs ". This needs extra working on.
-	if (0 && bestIterHigh > iterLow * Config.autopilotContrast) {
-		// get screen location
-		let {u, v} = zoomer.pixelIJtoScreenUV(bestI, bestJ, Config.angle);
-
-		// dampen sharp autopilot direction changes
-		Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
-		Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
-
-		Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
-
-		// and position autopilot mark
-		this.showPilot(u, v, borderPixelRadius);
-		return true;
-	}
-
-	Config.autopilotButtons = 0;
-	gui.domPilot.style.border = "4px solid red";
-	return false;
-};
-
-GUI.prototype.autopilotOn = function () {
-
-	const view = this.zoomer.calcView;
-	Config.autopilotU = this.zoomer.viewWidth >> 1;
-	Config.autopilotV = this.zoomer.viewHeight >> 1;
-
-	this.domPilot.style.visibility = "visible";
-
-	const diameter = Math.min(view.pixelWidth, view.pixelHeight);
-	let lookPixelRadius = Math.min(16, diameter >> 1);
-	const borderPixelRadius = Math.min(16, diameter >> 5);
-	do {
-		if (!this.updateAutopilot(view, lookPixelRadius, borderPixelRadius))
-			break;
-		lookPixelRadius >>= 1;
-	} while (lookPixelRadius > 2);
-};
-
-GUI.prototype.autopilotOff = function () {
-	this.mouseButtons = 0;
-
-	// remove pilot marker
-	this.pilotOff();
-};
-
-GUI.prototype.showPilot = function (u, v, borderPixelRadius) {
-	this.domPilot.style.top = (v - borderPixelRadius) + "px";
-	this.domPilot.style.left = (u - borderPixelRadius) + "px";
-	this.domPilot.style.width = (borderPixelRadius * 2) + "px";
-	this.domPilot.style.height = (borderPixelRadius * 2) + "px";
-	this.domPilot.style.border = "4px solid green";
-	this.domPilot.style.visibility = "visible";
-}
-
-GUI.prototype.hidePilot = function () {
-	this.domPilot.style.visibility = "hidden";
 }
