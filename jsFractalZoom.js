@@ -581,8 +581,6 @@ function GUI() {
 	/** @member {number} - view mouse Y coordinate */
 	this.mouseV = 0;
 	this.mouseY = 0;
-	/** @member {number} - view mouse button state. OR-ed set of Aria.ButtonCode */
-	this.mouseButtons = 0;
 
 	/** @member {boolean} - fractal coordinate of pointer when button first pressed */
 	this.dragActive = false;
@@ -655,6 +653,30 @@ function GUI() {
 	this.navHeightEm = 36.4;
 	/** @member {float} - width of `idNav`. 24.5 (idNav.width) + 2*0.4 (padding) */
 	this.navWidthEm = 25.3;
+
+	/** @member {int} - Maximum number of fingers on screen for touch gestures */
+	this.touchActive = 0;
+	/** @member {float} - Config.angle at start of touch gesture (gesture is offset to this) */
+	this.touchAngle0 = 0;
+	/** @member {float} - Angle at start of touch gesture */
+	this.touchAngle = 0;
+	/** @member {float} - Distance between two fingers at start of touch gesture */
+	this.touchDistance = 0;
+
+	/**
+	 * @member {int}
+	 * @property {int}  1 SPEEDUP
+	 * @property {int}  2 SLOWDOWN
+	 * @property {int}  4 DRAG
+	 * @description Active gesture */
+	this.gesture = 0;
+
+	const SPEEDUP = 1;
+	const SLOWDOWN = 2;
+	const DRAG = 3;
+
+	/** @member {number} - movement gesture - autopilot updated*/
+	this.autopilotGesture = 0;
 
 	/*
 	 * Get position of (absolute) elements relative to page
@@ -863,8 +885,8 @@ function GUI() {
 
 				// navigation change
 				this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
-			} else if (this.mouseButtons) {
-				// mouse buttons pressed always sets navigation
+			} else if (this.gesture) {
+				// Gestures always sets navigation
 				this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
 			} else if (Config.rotateSpeedNow || Config.paletteSpeedNow) {
 				// don't enter turbo if something passive is moving
@@ -1336,7 +1358,7 @@ function GUI() {
 	};
 
 	this.autopilotOff = () => {
-		this.mouseButtons = 0;
+		this.gesture = 0;
 
 		// remove pilot marker
 		this.pilotOff();
@@ -1444,7 +1466,7 @@ function GUI() {
 				Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
 				Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
 
-				Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
+				this.autopilotGesture = SPEEDUP;
 
 				// and position autopilot mark
 				this.showPilot(u, v, borderPixelRadius);
@@ -1462,14 +1484,14 @@ function GUI() {
 			Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
 			Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
 
-			Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_LEFT;
+			this.autopilotGesture = SPEEDUP;
 
 			// and position autopilot mark
 			this.showPilot(u, v, borderPixelRadius);
 			return true;
 		}
 
-		Config.autopilotButtons = 0;
+		this.autopilotGesture = 0;
 		gui.domPilot.style.border = "4px solid red";
 		return false;
 	};
@@ -1936,7 +1958,6 @@ function GUI() {
 		this.density.moveSliderTo(Config.densityNow);
 	});
 
-
 	/*
 	 * Dropping files
 	 */
@@ -2014,7 +2035,7 @@ function GUI() {
 		/*
 		 * On first button press set a document listener to catch releases outside target element
 		 */
-		if (this.mouseButtons === 0 && event.buttons !== 0) {
+		if (this.gesture === 0 && event.buttons !== 0) {
 			// on first button press set release listeners
 			document.addEventListener("mousemove", this.handleMouse);
 			document.addEventListener("mouseup", this.handleMouse);
@@ -2065,7 +2086,14 @@ function GUI() {
 
 		}
 
-		this.mouseButtons = event.buttons;
+		if (event.buttons & (1 << Aria.ButtonCode.BUTTON_LEFT))
+			this.gesture = SPEEDUP;
+		else if (event.buttons & (1 << Aria.ButtonCode.BUTTON_RIGHT))
+			this.gesture = SLOWDOWN;
+		else if (event.buttons & (1 << Aria.ButtonCode.BUTTON_WHEEL))
+			this.gesture = DRAG;
+		else
+			this.gesture = 0;
 
 		if (event.buttons === 0) {
 			// remove listeners when last button released
@@ -2085,9 +2113,14 @@ function GUI() {
 		event.preventDefault();
 		event.stopPropagation();
 
-		if (event.touches.length > 1) {
+		if (event.touches.length >= 2) {
 			// when adding a finger, switch from drag to zoom
-			this.mouseButtons = 0;
+			this.gesture = 0;
+
+			// ignore when releasing the screen
+			const old = this.touchActive;
+			if (this.touchActive > 2)
+				return;
 
 			// get zoomer rectangle (might have a margin)
 			const touchA = event.touches[0];
@@ -2110,18 +2143,16 @@ function GUI() {
 				// duplicate touch,merge to a drag
 				this.mouseU = touchAu;
 				this.mouseV = touchAv;
-				this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_WHEEL);
+				this.gesture = DRAG;
 				return;
 			}
 
 			// save initial angle and distance
-			if (!this.touchActive) {
+			if (this.touchActive !== 2) {
 				this.touchAngle0 = Config.angle;
 				this.touchAngle = touchAngle;
 				this.touchDistance = touchDistance;
-				this.touchActive = 1;
-			} else {
-				this.touchActive++;
+				this.touchActive = 2; // two-finger
 			}
 
 			// determine difference with initial
@@ -2150,10 +2181,10 @@ function GUI() {
 
 			if (touchDistance > 1) {
 				Config.zoomAccelManual = 3 * touchDistance;
-				this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_LEFT);
+				this.gesture = SPEEDUP;
 			} else {
 				Config.zoomAccelManual = 3 * (1 / touchDistance);
-				this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_RIGHT);
+				this.gesture = SLOWDOWN;
 			}
 
 			/*
@@ -2174,6 +2205,11 @@ function GUI() {
 		} else if (event.touches.length === 1) {
 			// single-touch is drag
 
+			// ignore when releasing the screen
+			if (this.touchActive > 1)
+				return;
+			this.touchActive = 1;
+
 			// get zoomer rectangle (might have a margin)
 			const touchEvent = event.touches[0];
 			const zoomerRect = this.getRect(this.domZoomer);
@@ -2181,10 +2217,10 @@ function GUI() {
 			// simulate a drage gesture
 			this.mouseU = touchEvent.pageX - zoomerRect.left;
 			this.mouseV = touchEvent.pageY - zoomerRect.top;
-			this.mouseButtons = (1 << Aria.ButtonCode.BUTTON_WHEEL);
+			this.gesture = DRAG;
 		} else if (event.touches.length === 0) {
 			// screen released
-			this.mouseButtons = 0;
+			this.gesture = 0;
 			this.touchActive = false;
 		}
 	};
@@ -2217,7 +2253,7 @@ function GUI() {
 
 			if (Config.autoPilot) {
 				if (calcView.reachedLimits()) {
-					Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+					this.autopilotGesture = SLOWDOWN;
 					gui.domPilot.style.border = "4px solid orange";
 				} else {
 					this.domStatusPosition.innerHTML = "";
@@ -2225,24 +2261,24 @@ function GUI() {
 					if (!this.updateAutopilot(calcView, 4, 16))
 						if (!this.updateAutopilot(calcView, 60, 16))
 							if (!this.updateAutopilot(calcView, Math.min(calcView.pixelWidth, calcView.pixelHeight) >> 1, 16))
-								Config.autopilotButtons = 1 << Aria.ButtonCode.BUTTON_RIGHT;
+								this.autopilotGesture = SLOWDOWN;
 				}
 
 				this.mouseU = Config.autopilotU;
 				this.mouseV = Config.autopilotV;
-				this.mouseButtons = Config.autopilotButtons;
+				this.gesture = this.autopilotGesture;
 			}
 
 			/*
 			 * Update zoom (de-)acceleration. 1(standstill) < zoomSpeed < Movement
 			 */
-			if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_LEFT)) {
+			if (this.gesture === SPEEDUP) {
 				// zoom-in only
 				Config.zoomSpeed = +1 - (+1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-			} else if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_RIGHT)) {
+			} else if (this.gesture === SLOWDOWN) {
 				// zoom-out only
 				Config.zoomSpeed = -1 - (-1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
-			} else if (this.mouseButtons === 0) {
+			} else if (this.gesture === 0) {
 				// buttons released
 				Config.zoomSpeed = Config.zoomSpeed * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
 
@@ -2276,7 +2312,7 @@ function GUI() {
 			}
 
 			// drag gesture
-			if (this.mouseButtons === (1 << Aria.ButtonCode.BUTTON_WHEEL)) {
+			if (this.gesture === DRAG) {
 				// need screen coordinates to avoid drifting
 				const dispView = this.zoomer.dispView;
 				const {dx, dy} = this.zoomer.screenUVtoCoordDXY(this.mouseU, this.mouseV, Config.angle);

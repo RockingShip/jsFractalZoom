@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-19 22:45:46 Enumerate gestures.
 2020-11-19 21:14:37 Relocate GUI prototypes to function. Only critical code changes.
 2020-11-19 19:13:32 Tweaked autopilot marker and framerate.
 2020-11-19 19:11:58 Updated control panel layout.
