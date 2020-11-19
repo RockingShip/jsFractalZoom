@@ -761,6 +761,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
  * @param {boolean}		enableAngle		 - Enable rotation
  * @param {Object}		[options]   		 - Template values for new frames. These may be changed during runtime.
  * @param {float}		[options.frameRate]	 - Frames per second
+ * @param {float}		[options.turboFrameRate] - Frames per second when no navigational changes
  * @param {float}		[options.updateSlice]	 - UPDATEs get sliced into smaller  chucks to stay responsive and limit overshoot
  * @param {float}		[options.coef]		 - Low-pass filter coefficient to dampen spikes
  * @param {boolean}		[options.disableWW]	 - Disable Web Workers
@@ -772,7 +773,10 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
  * @param {function}		[options.onEndFrame]	 - Called directly after frame complete. Update statistics
  * @param {function}		[options.onPutImageData] - Inject frame into canvas.
  */
-function Zoomer(domZoomer, enableAngle, options = {
+function Zoomer(domZoomer, enableAngle, options) {
+	/*
+	 * defaults. Suggested to review and adapt to your situation
+	 */
 
 	/**
 	 * Frames per second.
@@ -780,15 +784,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 *
 	 * @member {float} - Frames per second
 	 */
-	frameRate: 20,
-
-	/**
-	 * Update rate in milli seconds used to slice UPDATE state.
-	 * Low values keep the event queue responsive.
-	 *
-	 * @member {float} - Frames per second
-	 */
-	updateSlice: 2,
+	this.frameRate = 20;
 
 	/**
 	 * Turbo mode is when there is no visible movement. Lower FPS to (drastically) reduce render overhead.
@@ -796,14 +792,22 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 *
 	 * @member {float} - Framerate when in turbo mode
 	 */
-	turboFrameRate: 2,
+	this.turboFrameRate = 2;
+
+	/**
+	 * Update rate in milli seconds used to slice UPDATE state.
+	 * Low values keep the event queue responsive.
+	 *
+	 * @member {float} - Frames per second
+	 */
+	this.updateSlice = 2;
 
 	/**
 	 * Low-pass coefficient to dampen spikes for averages
 	 *
 	 * @member {float} - Low-pass filter coefficient to dampen spikes
 	 */
-	coef: 0.10,
+	this.coef = 0.10;
 
 	/**
 	 * Disable web-workers.
@@ -811,7 +815,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 *
 	 * @member {boolean} - Frames per second
 	 */
-	disableWW: false,
+	this.disableWW = false;
 
 	/**
 	 * Size change detected for `domZoomer`
@@ -822,9 +826,9 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {int}    pixelWidth  - Storage width (pixels)
 	 * @param {int}    pixelHeight - Storage Heignt (pixels)
 	 */
-	onResize: (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
+	this.onResize = (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
 		// console.log("WxH", viewWidth, viewHeight);
-	},
+	};
 
 	/**
 	 * Additional allocation of a new frame.
@@ -834,23 +838,25 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {Zoomer}   zoomer - This
 	 * @param {ZoomerFrame} frame  - Frame being initialized.
 	 */
-	onInitFrame: (zoomer, frame) => {
+	this.onInitFrame = (zoomer, frame) => {
+		// allocate palette
 		// frame.palette = new Uint32Array(65536);
-	},
+	};
 
 	/**
 	 * Start of a new frame.
 	 * Process timed updates (piloting), set x,y,radius,angle.
 	 *
-	 * @param {Zoomer}   zoomer            - This
+	 * @param {Zoomer}      zoomer    - This
 	 * @param {ZoomerView}  calcView  - View about to be constructed
 	 * @param {ZoomerFrame} calcFrame - Frame about to be constructed
 	 * @param {ZoomerView}  dispView  - View to extract rulers
 	 * @param {ZoomerFrame} dispFrame - Frame to extract pixels
 	 */
-	onBeginFrame: (zoomer, calcView, calcFrame, dispView, dispFrame) => {
+	this.onBeginFrame = (zoomer, calcView, calcFrame, dispView, dispFrame) => {
+		// set navigation direction
 		// zoomer.setPosition(centerX, centerY, radius, angle);
-	},
+	};
 
 	/**
 	 * This is done for every pixel. optimize well!
@@ -860,9 +866,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {float}    x       - X value
 	 * @param {float}    y       - Y value
 	 */
-	onUpdatePixel: (zoomer, frame, x, y) => {
+	this.onUpdatePixel = (zoomer, frame, x, y) => {
+		// calculate pixel
 		// return calculate(x, y);
-	},
+	};
 
 	/**
 	 * Start extracting (rotated) RGBA values from (paletted) pixels.
@@ -873,11 +880,11 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {Zoomer} zoomer - This
 	 * @param {ZoomerFrame} frame  - Frame about to render
 	 */
-	onRenderFrame: (zoomer, frame) => {
+	this.onRenderFrame = (zoomer, frame) => {
 		// update palette
 		// if (frame.palette)
 		// 	frame.palette.set(yourUint32TypedPalette);
-	},
+	};
 
 	/**
 	 * Frame construction complete. Update statistics.
@@ -886,9 +893,10 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {Zoomer} zoomer - This
 	 * @param {ZoomerFrame} frame  - Frame before releasing to pool
 	 */
-	onEndFrame: (zoomer, frame) => {
+	this.onEndFrame = (zoomer, frame) => {
+		// statistics
 		// console.log('fps', zoomer.avgFrameRate);
-	},
+	};
 
 	/**
 	 * Inject frame into canvas.
@@ -897,68 +905,13 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * @param {Zoomer}   zoomer - This
 	 * @param {ZoomerFrame} frame  - Frame to inject
 	 */
-	onPutImageData: (zoomer, frame) => {
-
+	this.onPutImageData = (zoomer, frame) => {
 		// get final buffer
 		const imagedata = new ImageData(new Uint8ClampedArray(frame.rgba.buffer), frame.viewWidth, frame.viewHeight);
 
 		// draw frame onto canvas
 		this.ctx.putImageData(imagedata, 0, 0);
-	}
-
-}) {
-	/*
-	 * defaults
-	 */
-
-	/** @member {float}
-	    @description Number of frames/second */
-	this.frameRate = options.frameRate ? options.frameRate : 20;
-
-	/** @member {float}
-	    @description When in turbo, spend this amount time for calculations before rendering. */
-	this.turboFrameRate = options.turboFrameRate ? options.turboFrameRate : 2;
-
-
-	/** @member {float}
-	    @description UPDATE get sliced in smaller time chucks */
-	this.updateSlice = options.updateSlice ? options.updateSlice : 5;
-
-	/** @member {float}
-	    @description Damping coefficient low-pass filter for following fields */
-	this.coef = options.coef ? options.coef : 0.10;
-
-	/** @member {float}
-	    @description Disable Web Workers and perform COPY from main event queue */
-	this.disableWW = options.disableWW ? options.disableWW : false;
-
-	/** @member {function}
-	    @description `domZoomer` resize detected */
-	this.onResize = options.onResize ? options.onResize : undefined;
-
-	/** @member {function}
-	    @description Additional allocation of a new frame */
-	this.onInitFrame = options.onInitFrame ? options.onInitFrame : undefined;
-
-	/** @member {function}
-	    @description Creation of frame. set x,y,radius,angle */
-	this.onBeginFrame = options.onBeginFrame ? options.onBeginFrame : undefined;
-
-	/** @member {function}
-	    @description Calculate pixels */
-	this.onUpdatePixel = options.onUpdatePixel ? options.onUpdatePixel : undefined;
-
-	/** @member {function}
-	    @description Rendering of frame. set palette. */
-	this.onRenderFrame = options.onRenderFrame ? options.onRenderFrame : undefined;
-
-	/** @member {function}
-	    @description Frame submitted. Statistics. */
-	this.onEndFrame = options.onEndFrame ? options.onEndFrame : undefined;
-
-	/** @member {function}
-	    @description Inject frame into canvas. */
-	this.onPutImageData = options.onPutImageData ? options.onPutImageData : undefined;
+	};
 
 	/*
 	 * Authoritative Visual center
@@ -1194,7 +1147,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 				frame.cntVLines = 0;
 
 				// additional allocation
-				if (this.onInitFrame) this.onInitFrame(this, frame);
+				this.onInitFrame(this, frame);
 
 				return frame;
 			}
@@ -1327,14 +1280,14 @@ function Zoomer(domZoomer, enableAngle, options = {
 		this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, oldCalcView);
 
 		// set palette
-		if (this.onRenderFrame) this.onRenderFrame(this, this.calcFrame);
+		this.onRenderFrame(this, this.calcFrame);
 
 		// render frame
 		this.calcFrame.timeExpire = 0; // disable expiration
 		zoomerRenderFrame(this.calcFrame);
 
 		// push frame into canvas
-		if (this.onPutImageData) this.onPutImageData(this, this.calcFrame);
+		this.onPutImageData(this, this.calcFrame);
 	}
 
 	/**
@@ -1369,7 +1322,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 				// upgrade views
 				this.resize(domZoomer.parentElement.clientWidth, domZoomer.parentElement.clientHeight, this.enableAngle);
 				// invoke callback
-				if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+				this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 			}
 
 			/*
@@ -1396,13 +1349,13 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 			now = performance.now();
 			frame.durationCOPY = now - frame.timeStart;
-			if (this.onBeginFrame) this.onBeginFrame(this, this.calcView, this.calcView.frame, this.dispView, previousFrame);
+			this.onBeginFrame(this, this.calcView, this.calcView.frame, this.dispView, previousFrame);
 
 			this.calcView.setPosition(this.calcFrame, this.centerX, this.centerY, this.radius, this.dispView);
 
 			if (!this.disableWW) {
 				// RENDER `Worker` context
-				if (this.onRenderFrame) this.onRenderFrame(this, previousFrame);
+				this.onRenderFrame(this, previousFrame);
 
 				now = performance.now();
 				this.stateStart[RENDER] = now; // mark activation of worker
@@ -1441,7 +1394,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 			const frame = this.dispView.frame;
 
 			// inform invoker
-			if (this.onRenderFrame) this.onRenderFrame(this, frame);
+			this.onRenderFrame(this, frame);
 
 			// render frame
 			zoomerRenderFrame(frame);
@@ -1472,7 +1425,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 			const stime = now;
 
-			if (this.onPutImageData) this.onPutImageData(this, frame);
+			this.onPutImageData(this, frame);
 
 			now = performance.now();
 
@@ -1487,7 +1440,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 			this.timeLastFrame = now;
 
 			// frame end-of-life
-			if (this.onEndFrame) this.onEndFrame(this, frame);
+			this.onEndFrame(this, frame);
 
 			// return frame to free pool
 			this.frames.push(frame);
@@ -1799,6 +1752,9 @@ function Zoomer(domZoomer, enableAngle, options = {
 	 * Global constructor
 	 */
 	{
+		// import options
+		Object.assign(this, options);
+
 		// set DOM size property
 		domZoomer.width = this.viewWidth;
 		domZoomer.height = this.viewHeight;
@@ -1807,7 +1763,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 		this.calcFrame = this.allocFrame(1, 1, 1, 1, 0);
 		this.calcView.setPosition(this.calcFrame, 0, 0, 0, null);
 
-		if (this.onResize) this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
+		this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 
 		/*
 		 * Message queue listener for time-slicing.
@@ -1869,7 +1825,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 
 						const stime = now;
 
-						if (this.onPutImageData) this.onPutImageData(this, frame);
+						this.onPutImageData(this, frame);
 
 						now = performance.now();
 
@@ -1888,7 +1844,7 @@ function Zoomer(domZoomer, enableAngle, options = {
 					this.timeLastFrame = now;
 
 					// frame end-of-life
-					if (this.onEndFrame) this.onEndFrame(this, frame);
+					this.onEndFrame(this, frame);
 
 					// return frame to free pool
 					this.frames.push(frame);
