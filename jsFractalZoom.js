@@ -90,7 +90,7 @@ function Config() {
 
 	/** @member {float} - current palette offset - timer updated */
 	Config.paletteOffsetFloat = 0;
-	/** @member {int} - Palette size before colours start repeating */
+	/** @member {int} - Number of entries in palette[] for a complete cycle  */
 	Config.paletteSize = 0;
 
 	/** @member {int} - Palette theme  */
@@ -192,15 +192,8 @@ function Palette() {
 	/** @member {Uint8Array} - Blue */
 	this.B = new Uint8Array(65536);
 
-	/** @member {int} - Length of a single "logical" cycle */
-	this.rgbSize = 0;
-
 	/** @member {Uint32Array} - "Physical" palette scaled with `Config.density` to span 65535 entries */
 	this.palette = new Uint32Array(65536);
-
-	/** @member {int} - Number of entries in palette[] for a complete cycle  */
-	this.paletteSize = 0;
-
 
 	/** @member {int} - current PRNG seed  */
 	this.seed = 0;
@@ -225,7 +218,7 @@ function Palette() {
 
 	this.mksmooth = function (nsegments, segmentsize, R, G, B) {
 		// set palette modulo size
-		this.rgbSize = nsegments * segmentsize;
+		Config.paletteSize = nsegments * segmentsize;
 
 		let k = 0;
 		for (let i = 0; i < nsegments; i++) {
@@ -388,11 +381,11 @@ function Palette() {
 			rcycle = this.random(128) + 8;
 			gcycle = this.random(128) + 8;
 			bcycle = this.random(128) + 8;
-			this.rgbSize = Math.round(rcycle * gcycle * bcycle);
-		} while (this.rgbSize < 0xc000 || this.rgbSize >= 0xffff);
+			Config.paletteSize = Math.round(rcycle * gcycle * bcycle);
+		} while (Config.paletteSize < 0xc000 || Config.paletteSize >= 0xffff);
 
 		const t0 = this.random(10000) * 2 * Math.PI / 10000;
-		for (let i = 0; i < this.rgbSize; i++) {
+		for (let i = 0; i < Config.paletteSize; i++) {
 			this.palette[i] =
 				(128.0 + 127 * Math.sin(Math.PI * i / rcycle + t0)) << 0 | // Red
 				(128.0 + 127 * Math.sin(Math.PI * i / gcycle + t0)) << 8 | // Green
@@ -403,9 +396,9 @@ function Palette() {
 
 	this.randomize_segments5 = function (whitemode) {
 
-		this.rgbSize = 1000; // magic number so it looks good with density=1
-		for (let i = 0; i < this.rgbSize; i++) {
-			const g = whitemode ? 255 - Math.round(i * 255 / this.rgbSize) : Math.round(i * 255 / this.rgbSize);
+		Config.paletteSize = 1000; // magic number so it looks good with density=1
+		for (let i = 0; i < Config.paletteSize; i++) {
+			const g = whitemode ? 255 - Math.round(i * 255 / Config.paletteSize) : Math.round(i * 255 / Config.paletteSize);
 
 			this.palette[i] =
 				g << 0 | // Red
@@ -479,30 +472,31 @@ function Palette() {
 	 */
 	this.setPalette = function (out32, offset, maxIter) {
 
-		const {palette, rgbSize} = this;
+		const paletteSize = Config.paletteSize;
 
 		// palette offset may not be negative
 		if (offset < 0)
-			offset = (rgbSize - 1) - (-offset - 1) % rgbSize;
+			offset = (paletteSize - 1) - (-offset - 1) % paletteSize;
 		else
-			offset = offset % rgbSize;
+			offset = offset % paletteSize;
 
 		/*
 		 * @date 2020-11-07 00:27:00
 		 *
-		 * Assume rgbSize > densityNow
+		 * Assume paletteSize > densityNow
 		 * Integer arithmetic to avoid slow floats
 		 * offset is 16 bits, 0..65535
 		 * scale by 15 bits to fit into 31 bits int.
 		 *
-		 * Following is to optimize `palette[Math.round(i * densityNow) % rgbSize];
+		 * Following is to optimize `palette[Math.round(i * densityNow) % paletteSize];
 		 */
 
 		const stepK = Math.round(Config.density * 32768);
-		const maxK = rgbSize * 32768;
+		const maxK = paletteSize * 32768;
 		let k = offset * 32768;
 
 		// copy palette and apply colour cycling
+		const palette = this.palette;
 		for (let i = 0; i < maxIter; i++) {
 
 			// copy pixel
@@ -759,16 +753,16 @@ function GUI() {
 		// get new sequence number
 		const seqnr = ++this.popupSeqnr;
 
-			// set to determine width
-			popup.style.right = "auto";
-			popup.style.width = "auto";
+		// set to determine width
+		popup.style.right = "auto";
+		popup.style.width = "auto";
 
 		// let event queue redraw
 		setTimeout(() => {
-				// set actual size so popup centers (remove 2x .5em padding at 2em fontSize
-				const fontSize = parseInt(document.body.style.fontSize);
-				popup.style.width = (popup.clientWidth - 2 * .5 * 2 * fontSize) + "px";
-				popup.style.right = "0";
+			// set actual size so popup centers (remove 2x .5em padding at 2em fontSize
+			const fontSize = parseInt(document.body.style.fontSize);
+			popup.style.width = (popup.clientWidth - 2 * .5 * 2 * fontSize) + "px";
+			popup.style.right = "0";
 
 			// show popup
 			popup.style.visibility = "visible";
