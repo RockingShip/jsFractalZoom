@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-19 19:11:58 Updated control panel layout.
 2020-11-19 18:58:42 Fixed palette size+outcolour.
 2020-11-19 18:51:57 Simplified `Zoomer.options`.
 2020-11-17 11:38:19 Don't start with monochrome theme.

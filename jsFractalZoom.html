@@ -19,6 +19,8 @@
 -->
 <html lang="en">
 <head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>jsFractalZoom - Navigating and zooming through fractals</title>
 	<meta name="description" content="Navigating and zooming through fractal, make snapshots and save or share with friends">
 	<link rel="shortcut icon" type="image/png" sizes="32x32" href="favicon-32.png">
@@ -36,7 +38,6 @@
 	<meta property="og:image" content="/jsFractalZoom/favimage-480x270.jpg">
 	<meta property="og:type" content="website"/>
 	<meta property="og:locale" content="en_GB"/>
-	<meta charset="UTF-8">
 	<link rel=stylesheet href="jsFractalZoom.css">
 	<script type="text/javascript" src="aria.js"></script>
 	<script type="text/javascript" src="formula.js"></script>
@@ -73,8 +74,8 @@
 				Power
 
 				<div class="light"></div>
+				<div class="navCaption">[Q]</div>
 			</div>
-			<span class="navCaption">[Q]</span>
 
 			<div id="idAutoPilotButton"
 			     class="button"
@@ -84,42 +85,38 @@
 				Autopilot
 
 				<div class="light"></div>
+				<div class="navCaption">[A]</div>
 			</div>
-			<span class="navCaption">[A]</span>
 
 			<div id="idHomeButton"
 			     class="button nolight"
 			     tabindex="0"
 			     role="button">
 				Home
+				<div class="navCaption">[H]</div>
 			</div>
-			<span class="navCaption">[HOME]</span>
 
 			<div id="idSaveButton"
 			     class="button nolight"
 			     tabindex="0"
 			     role="button">
 				Save
+				<div class="navCaption">[S]</div>
 			</div>
-			<span class="navCaption">[S]</span>
 
 			<div id="idUrlButton"
 			     class="button nolight"
 			     tabindex="0"
 			     role="button">
 				URL
+				<div class="navCaption">[U]</div>
 			</div>
-			<span class="navCaption">[U]</span>
 		</div>
 
 		<div class="navSeparator">
-			<div class="navSepLeft">
-				<div class="navLine"></div>
-			</div>
+			<div class="navSepLeft"></div>
 			<div class="navSepName"><strong>Algorithm</strong></div>
-			<div class="navSepRight">
-				<div class="navLine"></div>
-			</div>
+			<div class="navSepRight"></div>
 		</div>
 
 		<div id="idFormula" class="navRow navListbox">
@@ -243,13 +240,9 @@
 		</div>
 
 		<div class="navSeparator">
-			<div class="navSepLeft">
-				<div class="navLine"></div>
-			</div>
+			<div class="navSepLeft"></div>
 			<div class="navSepName"><strong>Movement</strong></div>
-			<div class="navSepRight">
-				<div class="navLine"></div>
-			</div>
+			<div class="navSepRight"></div>
 		</div>
 
 		<div id="idZoomSpeed" class="navRow navSlider">
@@ -285,13 +278,9 @@
 		</div>
 
 		<div class="navSeparator">
-			<div class="navSepLeft">
-				<div class="navLine"></div>
-			</div>
+			<div class="navSepLeft"></div>
 			<div class="navSepName"><strong>Colours</strong></div>
-			<div class="navSepRight">
-				<div class="navLine"></div>
-			</div>
+			<div class="navSepRight"></div>
 		</div>
 
 		<div id="idDensity" class="navRow navSlider">
@@ -344,13 +333,9 @@
 		</div>
 
 		<div class="navSeparator">
-			<div class="navSepLeft">
-				<div class="navLine"></div>
-			</div>
+			<div class="navSepLeft"></div>
 			<div class="navSepName"><strong>Performance</strong></div>
-			<div class="navSepRight">
-				<div class="navLine"></div>
-			</div>
+			<div class="navSepRight"></div>
 		</div>
 
 		<div id="idFramerate" class="navRow navSlider">
@@ -369,12 +354,16 @@
 			<div id="idFramerateRight" class="navRight"><span class="navCaption">[]</span></div>
 		</div>
 
-		<div id="idProjectPage">
-			mouse-left: zoom in<br/>
-			mouse-right: zoom out<br/>
-			press-wheel: drag<br/>
-			<br/>
-			Visit <a href="https://github.com/RockingShip/jsFractalZoom">jsFractalZoom</a> project page
+		<div class="navSeparator">
+			<div class="navSepFull"></div>
+		</div>
+
+		<div id="idSmallText">
+			<div id="L1">mouse-left: zoom in</div>
+			<div id="L2">mouse-right: zoom out</div>
+			<div id="L3">wheel: colour density</div>
+			<div id="L4">press-wheel: drag</div>
+			<div id="R4">Visit <a href="https://github.com/RockingShip/jsFractalZoom">jsFractalZoom</a> project page</div>
 		</div>
 
 		<svg id="idResize" viewBox="0 0 64 64" role="img">
@@ -384,7 +373,7 @@ M 3 55   a 2.8284 2.8284 0 0 1 4 -4   l  6  6   a 2.8284 2.8284 0 1 1 -4 4   z
 M 3 39   a 2.8284 2.8284 0 0 1 4 -4   l 22 22   a 2.8284 2.8284 0 1 1 -4 4   z
 M 3 23   a 2.8284 2.8284 0 0 1 4 -4   l 38 38   a 2.8284 2.8284 0 1 1 -4 4   z
 M 3  7   a 2.8284 2.8284 0 0 1 4 -4   l 54 54   a 2.8284 2.8284 0 1 1 -4 4   z
-"/>
+" />
 		</svg>
 	</div>
 </div>

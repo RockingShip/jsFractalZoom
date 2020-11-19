@@ -650,10 +650,10 @@ function GUI() {
 	this.idNavWrapScale = 1;
 	/** @member {float} - height of top. 5 lines at 1.2em per line */
 	this.topHeightEm = 6.0;
-	/** @member {float} - height of `idNav`. 15*2 + 6@0.6em + 2*0.4 (padding) */
-	this.navHeightEm = 34.4;
-	/** @member {float} - width of `idNav`. 32 + 2*0.4 (padding) */
-	this.navWidthEm = 32.8;
+	/** @member {float} - height of `idNav`: 0.4 (topPadding) + 16*2 (rows) + 6@0.6em (isSmallText) + 0.4 (bottomPadding) */
+	this.navHeightEm = 36.4;
+	/** @member {float} - width of `idNav`. 24.5 (idNav.width) + 2*0.4 (padding) */
+	this.navWidthEm = 25.3;
 
 	/*
 	 * Get position of (absolute) elements relative to page
@@ -1923,6 +1923,11 @@ GUI.prototype.handleKeyDown = function (event) {
 		if (!this.formula.toggleListbox(event))
 			this.domZoomer.focus();
 		break;
+	case "H":
+	case "h":
+		this.home.buttonDown();
+		this.domHomeButton.focus();
+		break;
 	case "I":
 	case "i":
 		if (!this.incolour.toggleListbox(event))
@@ -1978,10 +1983,6 @@ GUI.prototype.handleKeyDown = function (event) {
 		this.speed.moveSliderTo(this.speed.valueNow - Math.log(1.05)); // lower 5%
 		this.domZoomSpeedThumb.focus();
 		break;
-	case "Home":
-		this.home.buttonDown();
-		this.domHomeButton.focus();
-		break;
 	default:
 		return;
 	}
@@ -2017,6 +2018,11 @@ GUI.prototype.handleKeyUp = function (event) {
 		this.paletteGroup.radioButtons[1].buttonUp();
 		this.domZoomer.focus();
 		break;
+	case "H":
+	case "h":
+		this.home.buttonUp();
+		this.domZoomer.focus();
+		break;
 	case "M":
 	case "m":
 		break;
@@ -2046,10 +2052,6 @@ GUI.prototype.handleKeyUp = function (event) {
 		break;
 	case "Z":
 	case "z":
-		this.domZoomer.focus();
-		break;
-	case "Home":
-		this.home.buttonUp();
 		this.domZoomer.focus();
 		break;
 	default:
