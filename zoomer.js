@@ -1521,10 +1521,11 @@ function Zoomer(domZoomer, enableAngle, options) {
 
 			if (!cntUpdated) {
 				// nothing was calculate, enter sleep mode
+				const delay = (this.turboActive === TURBO)
 				window.setTimeout(() => {
 					this.stateStart[this.state] = performance.now();
 					postMessage("mainloop", "*");
-				}, 1000 / this.frameRate / 2); // half the rate because of mainloop overhead
+				}, etime - now);
 			} else {
 				// return and call again.
 				postMessage("mainloop", "*");

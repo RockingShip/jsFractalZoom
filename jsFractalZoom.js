@@ -1643,8 +1643,9 @@ function GUI() {
 		// mouse release
 		this.mouseButtons = 0;
 		this.touchActive = false;
-		// remove mark
-		gui.domPilot.style.visibility = "hidden";
+
+		// remove pilot marker
+		this.pilotOff();
 	});
 
 	setInterval(() => {
@@ -2312,7 +2313,9 @@ GUI.prototype.autopilotOn = function () {
 
 GUI.prototype.autopilotOff = function () {
 	this.mouseButtons = 0;
-	this.domPilot.style.visibility = "hidden";
+
+	// remove pilot marker
+	this.pilotOff();
 };
 
 GUI.prototype.showPilot = function (u, v, borderPixelRadius) {
