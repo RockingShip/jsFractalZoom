@@ -33,15 +33,15 @@ function Config() {
 	Config.autoPilot = false;
 
 	/** @member {float} - zoom magnification */
-	Config.zoomAccelManual = 20;
+	Config.zoomSpeedManual = 20;
 	/** @member {float} - zoom magnification */
-	Config.zoomAccelAuto = 2;
+	Config.zoomSpeedAuto = 2;
 	/** @member {float} - zoom magnification slider Min */
-	Config.zoomAccelMin = Math.log(1.1);
+	Config.zoomSpeedMin = Math.log(1.1);
 	/** @member {float} - zoom magnification slider Max */
-	Config.zoomAccelMax = Math.log(25.0);
+	Config.zoomSpeedMax = Math.log(25.0);
 	/** @member {float} - zoom magnification slider Now */
-	Config.zoomAccelNow = Math.log(Config.zoomAccelManual);
+	Config.zoomSpeedNow = Math.log(Config.zoomSpeedManual);
 
 	/** @member {float} - rotate speed slider Min */
 	Config.rotateSpeedMin = -0.5;
@@ -99,10 +99,8 @@ function Config() {
 	/** @member {int} - Starting seed for palette  */
 	Config.seed = Math.round(Math.random() * 2147483647);
 
-	/** @member {float} - current view zoomSpeed. -1 <= speed <= +1, - timer updated, speedup/slowdown modifier for zoomAccel  */
-	Config.zoomSpeed = 0;
 	/** @member {float} - After 1sec, get 80% closer to target speed */
-	Config.zoomSpeedCoef = 0.80;
+	Config.zoomAccelCoef = 0.80;
 
 	/** @member {float} - screen U coordinate - autopilot updated */
 	Config.autopilotU = 0;
@@ -112,8 +110,22 @@ function Config() {
 	Config.autopilotCoef = 0.3;
 	/** @member {number} - HighestIter/LowestIter contrast threshold */
 	Config.autopilotContrast = 5;
-	/** @member {number} - movement gesture - autopilot updated*/
-	Config.autopilotButtons = 0;
+
+	/*
+	 * @date 2020-11-18 01:24:53
+	 * acceleration/deceleration of zoom/density:
+	 *
+	 * 	`GUI.zoomAccel` is the transition between stand-still and movement.
+	 *		-1 FullSpeed reverse
+	 * 		 0 Standstill
+	 *		+1 Full speed ahead
+	 * 	`Config.zoomAccelCoef` is the speed of the transition, implemented as low-pass filter.
+	 * 		During timer updates, if a gesture is active it increased `zoomAccel` to reach +/-. Otherwise it decreases to reach 0.
+	 * 	`Config.zoomSpeed(Auto/Manual)` is the maximum speed and ranges between `Config.zoomSpeedMin` and `Config.zoomSpeedMax`.
+	 * 		It is updated by UI controls/gestures
+	 *
+	 * 	`zoomer.onBeginFrame()` combines `zoomAccel` and `zoomSpeed` to determine the actual speed and changes the motion vector accordingly
+	 */
 }
 
 /**
@@ -601,8 +613,8 @@ function GUI() {
 	 */
 
 	// construct sliders
-	this.speed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
-		Config.zoomAccelMin, Config.zoomAccelMax, Config.zoomAccelNow);
+	this.zoomSpeed = new Aria.Slider(this.domZoomSpeedThumb, this.domZoomSpeedRail,
+		Config.zoomSpeedMin, Config.zoomSpeedMax, Config.zoomSpeedNow);
 	this.rotateSpeed = new Aria.Slider(this.domRotateThumb, this.domRotateRail,
 		Config.rotateSpeedMin, Config.rotateSpeedMax, Config.rotateSpeedNow);
 	this.paletteSpeed = new Aria.Slider(this.domPaletteSpeedThumb, this.domPaletteSpeedRail,
@@ -636,7 +648,7 @@ function GUI() {
 	 * It's easier to redraw the sliders than to hack "em" into them
 	 */
 	this.redrawSliders = () => {
-		this.speed.moveSliderTo(this.speed.valueNow);
+		this.zoomSpeed.moveSliderTo(this.zoomSpeed.valueNow);
 		this.rotateSpeed.moveSliderTo(this.rotateSpeed.valueNow);
 		this.paletteSpeed.moveSliderTo(this.paletteSpeed.valueNow);
 		this.density.moveSliderTo(this.density.valueNow);
@@ -653,6 +665,9 @@ function GUI() {
 	this.navHeightEm = 36.4;
 	/** @member {float} - width of `idNav`. 24.5 (idNav.width) + 2*0.4 (padding) */
 	this.navWidthEm = 25.3;
+
+	/** @member {float} - current zoom (de-)acceleration. -1=maxReverse, 0=standStill, +1=maxForward */
+	this.zoomAccel = 0;
 
 	/** @member {int} - Maximum number of fingers on screen for touch gestures */
 	this.touchActive = 0;
@@ -874,9 +889,9 @@ function GUI() {
 			this.mouseX = Config.centerX + dx;
 			this.mouseY = Config.centerY + dy;
 
-			if (Config.zoomSpeed) {
+			if (this.zoomAccel) {
 				// convert normalised zoom speed (-1<=speed<=+1) to magnification and scale to this time interval
-				const magnify = Math.pow(Config.autoPilot ? Config.zoomAccelAuto : Config.zoomAccelManual, Config.zoomSpeed * diffSec);
+				const magnify = Math.pow(Config.autoPilot ? Config.zoomSpeedAuto : Config.zoomSpeedManual, this.zoomAccel * diffSec);
 
 				// zoom, The mouse pointer coordinate should not change
 				Config.centerX = (Config.centerX - this.mouseX) / magnify + this.mouseX;
@@ -1050,16 +1065,16 @@ function GUI() {
 	 */
 
 	// sliders
-	this.speed.setCallbackValueChange((newValue) => {
+	this.zoomSpeed.setCallbackValueChange((newValue) => {
 
-		Config.zoomAccelNow = newValue;
+		Config.zoomSpeedNow = newValue;
 
 		const zoomAccel = Math.round(Math.exp(newValue) * 10) / 10; // round
 
 		if (Config.autoPilot)
-			Config.zoomAccelAuto = zoomAccel;
+			Config.zoomSpeedAuto = zoomAccel;
 		else
-			Config.zoomAccelManual = zoomAccel;
+			Config.zoomSpeedManual = zoomAccel;
 
 		this.domZoomSpeedLeft.innerHTML = zoomAccel;
 	});
@@ -1160,24 +1175,24 @@ function GUI() {
 		 * When switching auto/manual mode and view is still moving, the change in speed is visually noticable.
 		 * Adapt the speed such that the magnification is continuous
 		 *
-		 * `magnify = Math.pow(Config.zoomSpeedNow, Config.zoomSpeed * diffSec)`
+		 * `magnify = Math.pow(Config.zoomSpeedNow, this.zoomAccel * diffSec)`
 		 */
-		const magnify = Math.pow(Config.autoPilot ? Config.zoomAccelAuto : Config.zoomAccelManual, Config.zoomSpeed)
+		const magnify = Math.pow(Config.autoPilot ? Config.zoomSpeedAuto : Config.zoomSpeedManual, this.zoomAccel)
 
 		Config.autoPilot = newValue;
 
 		if (Config.autoPilot) {
-			Config.zoomAccelNow = Math.log(Config.zoomAccelAuto);
-			Config.zoomSpeed = Math.log(magnify) / Math.log(Config.zoomAccelAuto);
+			Config.zoomSpeedNow = Math.log(Config.zoomSpeedAuto);
+			this.zoomAccel = Math.log(magnify) / Math.log(Config.zoomSpeedAuto);
 			this.autopilotOn();
 		} else {
-			Config.zoomAccelNow = Math.log(Config.zoomAccelManual);
-			Config.zoomSpeed = Math.log(magnify) / Math.log(Config.zoomAccelManual);
+			Config.zoomSpeedNow = Math.log(Config.zoomSpeedManual);
+			this.zoomAccel = Math.log(magnify) / Math.log(Config.zoomSpeedManual);
 			this.autopilotOff();
 		}
 
-		this.speed.moveSliderTo(Config.zoomAccelNow);
-		this.speed.updateLabels();
+		this.zoomSpeed.moveSliderTo(Config.zoomSpeedNow);
+		this.zoomSpeed.updateLabels();
 	});
 	this.home.setCallbackValueChange((newValue) => {
 		Config.home();
@@ -1833,11 +1848,11 @@ function GUI() {
 			this.domZoomer.focus();
 			break;
 		case "Z":
-			this.speed.moveSliderTo(this.speed.valueNow + Math.log(1.05)); // raise 5%
+			this.zoomSpeed.moveSliderTo(this.zoomSpeed.valueNow + Math.log(1.05)); // raise 5%
 			this.domZoomSpeedThumb.focus();
 			break;
 		case "z":
-			this.speed.moveSliderTo(this.speed.valueNow - Math.log(1.05)); // lower 5%
+			this.zoomSpeed.moveSliderTo(this.zoomSpeed.valueNow - Math.log(1.05)); // lower 5%
 			this.domZoomSpeedThumb.focus();
 			break;
 		default:
@@ -2127,7 +2142,7 @@ function GUI() {
 			const touchB = event.touches[1];
 			const zoomerRect = this.getRect(this.domZoomer);
 
-			// simulate a drage gesture
+			// simulate a drag gesture
 			const touchAu = touchA.pageX - zoomerRect.left;
 			const touchAv = touchA.pageY - zoomerRect.top;
 			const touchBu = touchB.pageX - zoomerRect.left;
@@ -2175,15 +2190,15 @@ function GUI() {
 
 			/*
 			 * Set zoom speed.
-			 * Config.zoomSpeed is -1..+1, set by the interval timer, i=used for speedup/slowdown
-			 * Config.zoomAccelManual is zoom speed, set by `onBeginFrame()`
+			 * this.zoomAccel is -1..+1, set by the interval timer, i=used for speedup/slowdown
+			 * Config.zoomSpeedManual is zoom speed, set by `onBeginFrame()`
 			 */
 
 			if (touchDistance > 1) {
-				Config.zoomAccelManual = 3 * touchDistance;
+				Config.zoomSpeedManual = 3 * touchDistance;
 				this.gesture = SPEEDUP;
 			} else {
-				Config.zoomAccelManual = 3 * (1 / touchDistance);
+				Config.zoomSpeedManual = 3 * (1 / touchDistance);
 				this.gesture = SLOWDOWN;
 			}
 
@@ -2198,7 +2213,7 @@ function GUI() {
 
 			// make speedup/slowdown more responsive
 			// todo: hardcoded, awaiting a more configurable solution
-			Config.zoomSpeedCoef = 0.95;
+			Config.zoomAccelCoef = 0.95;
 
 			// make zoomer responsive to change
 			this.zoomer.turboActive = 0;
@@ -2270,20 +2285,20 @@ function GUI() {
 			}
 
 			/*
-			 * Update zoom (de-)acceleration. 1(standstill) < zoomSpeed < Movement
+			 * Update zoom (de-)acceleration. -1=maxReverse, 0=standStill, +1=maxForward
 			 */
 			if (this.gesture === SPEEDUP) {
 				// zoom-in only
-				Config.zoomSpeed = +1 - (+1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+				this.zoomAccel = +1 - (+1 - this.zoomAccel) * Math.pow((1 - Config.zoomAccelCoef), diffSec);
 			} else if (this.gesture === SLOWDOWN) {
 				// zoom-out only
-				Config.zoomSpeed = -1 - (-1 - Config.zoomSpeed) * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+				this.zoomAccel = -1 - (-1 - this.zoomAccel) * Math.pow((1 - Config.zoomAccelCoef), diffSec);
 			} else if (this.gesture === 0) {
 				// buttons released
-				Config.zoomSpeed = Config.zoomSpeed * Math.pow((1 - Config.zoomSpeedCoef), diffSec);
+				this.zoomAccel = this.zoomAccel * Math.pow((1 - Config.zoomAccelCoef), diffSec);
 
-				if (Config.zoomSpeed >= -0.001 && Config.zoomSpeed < +0.001)
-					Config.zoomSpeed = 0; // full stop
+				if (this.zoomAccel >= -0.001 && this.zoomAccel < +0.001)
+					this.zoomAccel = 0; // full stop
 			}
 
 			/*
