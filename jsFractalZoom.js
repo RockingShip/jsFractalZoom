@@ -1379,12 +1379,12 @@ function GUI() {
 		this.pilotOff();
 	};
 
-	this.showPilot = (u, v, borderPixelRadius) => {
+	this.showPilot = (u, v, borderPixelRadius, colour) => {
 		this.domPilot.style.top = (v - borderPixelRadius) + "px";
 		this.domPilot.style.left = (u - borderPixelRadius) + "px";
 		this.domPilot.style.width = (borderPixelRadius * 2) + "px";
 		this.domPilot.style.height = (borderPixelRadius * 2) + "px";
-		this.domPilot.style.border = "4px solid green";
+		this.domPilot.style.border = "4px solid " + colour;
 		this.domPilot.style.visibility = "visible";
 	}
 
@@ -1484,7 +1484,7 @@ function GUI() {
 				this.autopilotGesture = SPEEDUP;
 
 				// and position autopilot mark
-				this.showPilot(u, v, borderPixelRadius);
+				this.showPilot(u, v, borderPixelRadius, "green");
 				return true;
 			}
 		}
@@ -1502,7 +1502,7 @@ function GUI() {
 			this.autopilotGesture = SPEEDUP;
 
 			// and position autopilot mark
-			this.showPilot(u, v, borderPixelRadius);
+			this.showPilot(u, v, borderPixelRadius, "green");
 			return true;
 		}
 
@@ -2128,7 +2128,39 @@ function GUI() {
 		event.preventDefault();
 		event.stopPropagation();
 
-		if (event.touches.length >= 2) {
+		if (event.touches.length === 1) {
+			// single-touch is drag
+
+			// get zoomer rectangle (might have a margin)
+			const touchEvent = event.touches[0];
+			const zoomerRect = this.getRect(this.domZoomer);
+			this.mouseU = touchEvent.pageX - zoomerRect.left;
+			this.mouseV = touchEvent.pageY - zoomerRect.top;
+
+			if (this.touchActive === 2) {
+				// downgrade from move to drag. Keep navigation vector and speed
+
+				// convert touchUV to relative coordinates (vector to last marker)
+				if (this.touchAbs) {
+					this.touchU = this.touchU - this.mouseU;
+					this.touchV = this.touchV - this.mouseV;
+					this.touchAbs = false;
+				}
+
+				// add pilot marker relative vector
+				this.mouseU += this.touchU;
+				this.mouseV += this.touchV;
+
+				// position marker
+				this.showPilot(this.mouseU, this.mouseV, 4, "green");
+			} else {
+				// drag gesture
+				this.touchActive = 1;
+
+				// simulate a drag gesture
+				this.gesture = DRAG;
+			}
+		} else if (event.touches.length >= 2) {
 			// when adding a finger, switch from drag to zoom
 			this.gesture = 0;
 
@@ -2208,8 +2240,13 @@ function GUI() {
 			this.mouseU = (touchAu + touchBu) >> 1;
 			this.mouseV = (touchAv + touchBv) >> 1;
 
+			// save a copy for when dropping to drag
+			this.touchU = this.mouseU;
+			this.touchV = this.mouseV;
+			this.touchAbs = true;
+
 			// and position autopilot mark
-			this.showPilot(this.mouseU, this.mouseV, 4);
+			this.showPilot(this.mouseU, this.mouseV, 4, "green");
 
 			// make speedup/slowdown more responsive
 			// todo: hardcoded, awaiting a more configurable solution
@@ -2217,22 +2254,6 @@ function GUI() {
 
 			// make zoomer responsive to change
 			this.zoomer.turboActive = 0;
-		} else if (event.touches.length === 1) {
-			// single-touch is drag
-
-			// ignore when releasing the screen
-			if (this.touchActive > 1)
-				return;
-			this.touchActive = 1;
-
-			// get zoomer rectangle (might have a margin)
-			const touchEvent = event.touches[0];
-			const zoomerRect = this.getRect(this.domZoomer);
-
-			// simulate a drage gesture
-			this.mouseU = touchEvent.pageX - zoomerRect.left;
-			this.mouseV = touchEvent.pageY - zoomerRect.top;
-			this.gesture = DRAG;
 		} else if (event.touches.length === 0) {
 			// screen released
 			this.gesture = 0;
@@ -2344,7 +2365,7 @@ function GUI() {
 				Config.centerY = this.dragCenterY - dy;
 
 				// mark visual center
-				this.showPilot((this.zoomer.viewWidth >> 1), (this.zoomer.viewHeight >> 1), 4);
+				this.showPilot((this.zoomer.viewWidth >> 1), (this.zoomer.viewHeight >> 1), 4, "orange");
 
 			} else if (this.dragActive) {
 				this.dragActive = false;
