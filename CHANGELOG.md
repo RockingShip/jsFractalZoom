@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-21 15:51:03 Smoother popup.
 2020-11-20 01:17:11 2-touch to 1-touch gesture. 
 2020-11-20 01:09:37 Consistent use `zoomAccel` and `zoomSpeed`.
 2020-11-19 22:45:46 Enumerate gestures.

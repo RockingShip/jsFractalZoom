@@ -96,16 +96,22 @@ div {
  * left=0,right=auto,margin=auto,width=auto to determine width. then
  * left=0,right=0,margin=auto,width=<width> to horizontally align
  */
-#idPopup {
-	opacity: 0;
+#idPopupWrapper {
 	position: absolute;
 	margin: auto;
 	top: 0;
-	right: auto;
+	right: 0;
 	bottom: 0;
 	left: 0;
 	width: auto;
-	height: 1.2em;
+	height: 4.8em; /* 1.2 lineHeight + 2* 0.1em border + 2* 0.5em padding @ 2em fontSize */
+	text-align: center;
+	pointer-events: none;
+}
+
+#idPopup {
+	opacity: 0;
+	display: inline-block;
 	padding: 0.5em;
 	border: .1em solid #fff;
 	border-radius: .5em;

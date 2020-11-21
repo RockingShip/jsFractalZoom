@@ -782,36 +782,24 @@ function GUI() {
 	/*
 	 * Activate center popup contents was preloaded
 	 */
-	this.activatePopup = () => {
+	this.activatePopup = (innerText) => {
 		const popup = this.domPopup;
 
-		// hide popup
-		popup.style.visibility = "hidden";
+		// set text
+		popup.innerText = innerText;
+
+		// show popup
+		popup.className = "active";
 
 		// get new sequence number
 		const seqnr = ++this.popupSeqnr;
 
-		// set to determine width
-		popup.style.right = "auto";
-		popup.style.width = "auto";
-
 		// let event queue redraw
 		setTimeout(() => {
-			// set actual size so popup centers (remove 2x .5em padding at 2em fontSize
-			const fontSize = parseInt(document.body.style.fontSize);
-			popup.style.width = (popup.clientWidth - 2 * .5 * 2 * fontSize) + "px";
-			popup.style.right = "0";
-
-			// show popup
-			popup.style.visibility = "visible";
-
-			popup.className = "active";
-			setTimeout(() => {
-				// only remove popup if sequence number matches
-				if (seqnr === this.popupSeqnr)
-					popup.className = "";
-			}, 2000)
-		}, 1)
+			// only remove popup if sequence number matches
+			if (seqnr === this.popupSeqnr)
+				popup.className = "";
+		}, 2000);
 	};
 
 	/**
@@ -843,8 +831,7 @@ function GUI() {
 
 			this.setFontSize();
 
-			this.domPopup.innerText = viewWidth + "x" + viewHeight;
-			this.activatePopup();
+			this.activatePopup(viewWidth + "x" + viewHeight);
 		},
 
 		/**
@@ -1202,8 +1189,7 @@ function GUI() {
 		/*
 		 * Popup
 		 */
-		this.domPopup.innerText = "Saving...";
-		this.activatePopup();
+		this.activatePopup("Saving...");
 
 		// save image through clicking hidden <a href="blob"/>
 		const link = document.createElement("a");
@@ -1254,8 +1240,7 @@ function GUI() {
 		/*
 		 * Popup
 		 */
-		this.domPopup.innerText = "Copied to clipboard";
-		this.activatePopup();
+		this.activatePopup("Copied to clipboard");
 	});
 	this.theme.setCallbackValueChange(() => {
 		palette.mkrandom();
@@ -1997,8 +1982,7 @@ function GUI() {
 				const json = this.extractJson(image);
 				if (!json) {
 					// image does not contain json
-					this.domPopup.innerText = "Image does not contain navigation data";
-					this.activatePopup();
+					this.activatePopup("Image does not contain navigation data");
 				} else {
 					// convert json to query string
 					let qarr = [];
@@ -2016,20 +2000,17 @@ function GUI() {
 				}
 			};
 			image.onerror = () => {
-				this.domPopup.innerText = "Failed to decode file";
-				this.activatePopup();
-			}
+				this.activatePopup("Failed to decode file");
+			};
 
 			image.src = reader.result;
 		};
 		reader.onabort = () => {
-			this.domPopup.innerText = "Drop canceled";
-			this.activatePopup();
-		}
+			this.activatePopup("Drop canceled");
+		};
 		reader.onerror = () => {
-			this.domPopup.innerText = "Drop error";
-			this.activatePopup();
-		}
+			this.activatePopup("Drop error");
+		};
 
 		reader.readAsDataURL(file);
 	});
