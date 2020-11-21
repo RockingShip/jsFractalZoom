@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 2020-11-21 20:02:58 [Version 0.10.0]
+
+Touch gestures. Better UX/UI. Video codec.
+
 ```
 2020-11-21 17:57:24 Added `devicePixelRatio`.
 2020-11-21 16:02:38 Lost+Found.
@@ -64,7 +68,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 2020-10-26 23:28:27 Correct site URL.
 ```
 
-## [Version 0.9.0] 2020-10-26 22:32:53
+## 2020-10-26 22:32:53 [Version 0.9.0]
 
 `Zoomer`, Isolate and extract core logic so it can be used within other projects.
 
@@ -198,7 +202,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Initial creation
 
-[Unreleased]: https://github.com/xyzzy/jsFractalZoom/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/xyzzy/jsFractalZoom/compare/v0.10.0...HEAD
+[Version 0.10.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.9.0...v0.10.0
 [Version 0.9.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.8.0...v0.9.0
 [Version 0.8.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.7.0...v0.8.0
 [Version 0.7.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.6.0...v0.7.0
