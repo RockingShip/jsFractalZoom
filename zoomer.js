@@ -421,6 +421,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			newNearest[iNew] = oldNearest[iOld];
 			newError[iNew] = Math.abs(newCoord[iNew] - oldNearest[iOld]);
 			newFrom[iNew] = iOld;
+			iNew++;
 		}
 
 		return cntExact;
@@ -779,6 +780,17 @@ function Zoomer(domZoomer, enableAngle, options) {
 	 */
 
 	/**
+	 * Pixel density.
+	 * The CSS standard most giant fail: 1inch is always 96 dpi.
+	 * How is this quirk fixed" `window.pixelDensity`, and even about that browsers sometimes lie.
+	 *
+	 * NOTE: when using this, scale all CSS pixel units to this, including events.
+	 *
+	 * @member {float} - Physical pixels per CSS pixel.
+	 */
+	this.devicePixelRatio = 1;
+
+	/**
 	 * Frames per second.
 	 * Rendering frames is expensive, too high setting might render more than calculate.
 	 *
@@ -909,8 +921,8 @@ function Zoomer(domZoomer, enableAngle, options) {
 		// get final buffer
 		const imagedata = new ImageData(new Uint8ClampedArray(frame.rgba.buffer), frame.viewWidth, frame.viewHeight);
 
-		// draw frame onto canvas
-		this.ctx.putImageData(imagedata, 0, 0);
+		// draw frame onto canvas. `ctx` is part of caller.
+		// ctx.putImageData(imagedata, 0, 0);
 	};
 
 	/*
@@ -1318,9 +1330,14 @@ function Zoomer(domZoomer, enableAngle, options) {
 			/*
 			 * Test for DOM resize
 			 */
-			if ((domZoomer.parentElement.clientWidth & ~1) !== this.viewWidth || (domZoomer.parentElement.clientHeight & ~1) !== this.viewHeight) {
+
+			// compensate broken CSS pixels by over-sampling the canvas
+			let realClientWidth = Math.round(domZoomer.parentElement.clientWidth * this.devicePixelRatio) & ~1;
+			let realClientHeight = Math.round(domZoomer.parentElement.clientHeight * this.devicePixelRatio) & ~1;
+
+			if (realClientWidth !== this.viewWidth || realClientHeight !== this.viewHeight) {
 				// upgrade views
-				this.resize(domZoomer.parentElement.clientWidth, domZoomer.parentElement.clientHeight, this.enableAngle);
+				this.resize(realClientWidth, realClientHeight, this.enableAngle);
 				// invoke callback
 				this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 			}
@@ -1756,14 +1773,17 @@ function Zoomer(domZoomer, enableAngle, options) {
 		// import options
 		Object.assign(this, options);
 
-		// set DOM size property
-		domZoomer.width = this.viewWidth;
-		domZoomer.height = this.viewHeight;
 
 		// set initial dummy frame
 		this.calcFrame = this.allocFrame(1, 1, 1, 1, 0);
 		this.calcView.setPosition(this.calcFrame, 0, 0, 0, null);
 
+		// over-sample canvas and DOM size property
+		let realClientWidth = Math.round(domZoomer.parentElement.clientWidth * this.devicePixelRatio) & ~1;
+		let realClientHeight = Math.round(domZoomer.parentElement.clientHeight * this.devicePixelRatio) & ~1;
+		this.resize(realClientWidth, realClientHeight, this.enableAngle);
+
+		// invoke callback
 		this.onResize(this, this.viewWidth, this.viewHeight, this.pixelWidth, this.pixelHeight);
 
 		/*

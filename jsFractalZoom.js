@@ -810,12 +810,32 @@ function GUI() {
 		}, 2000);
 	};
 
+	/*
+	 * @date 2020-10-15 13:08:13
+	 * `desynchronized` dramatically speed enhances `putImageData()` but it might also glitch mouse movement when hovering over the canvas.
+	 * `alpha` might have an effect, however not noticed yet.
+	 */
+
+	/** @member {CanvasRenderingContext2D} */
+	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
+
 	/**
 	 * Create the zoomer
 	 *
 	 * @member {Zoomer} - Zoomer instance
 	 */
 	this.zoomer = new Zoomer(this.domZoomer, (Config.angle !== 0), {
+
+		/**
+		 * Pixel density.
+		 * The CSS standard most giant fail: 1inch is always 96 dpi.
+		 * How is this quirk fixed" `window.pixelDensity`, and even about that browsers sometimes lie.
+		 *
+		 * NOTE: when using this, scale all CSS pixel units to this, including events.
+		 *
+		 * @member {float} - Physical pixels per CSS pixel.
+		 */
+		devicePixelRatio: 1, // todo: make this user selectable: window.devicePixelRatio,
 
 		/**
 		 * Disable web-workers.
@@ -1045,15 +1065,6 @@ function GUI() {
 
 	// set initial position. Do it now for UI control consistency (read: angle)
 	this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
-
-	/*
-	 * @date 2020-10-15 13:08:13
-	 * `desynchronized` dramatically speed enhances `putImageData()` but it might also glitch mouse movement when hovering over the canvas.
-	 * `alpha` might have an effect, however not noticed yet.
-	 */
-
-	/** @member {CanvasRenderingContext2D} */
-	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
 
 	/*
 	 * callbacks and listeners
@@ -1352,6 +1363,9 @@ function GUI() {
 		const view = this.zoomer.calcView;
 		Config.autopilotU = this.zoomer.viewWidth >> 1;
 		Config.autopilotV = this.zoomer.viewHeight >> 1;
+		// scale over-sampling
+		Config.autopilotU *= this.zoomer.devicePixelRatio;
+		Config.autopilotV *= this.zoomer.devicePixelRatio;
 
 		this.domPilot.style.visibility = "visible";
 
@@ -1372,7 +1386,13 @@ function GUI() {
 		this.pilotOff();
 	};
 
-	this.showPilot = (u, v, borderPixelRadius, colour) => {
+	this.showPilot = (u, v, colour) => {
+		// scale over-sampling
+		u /= this.zoomer.devicePixelRatio;
+		v /= this.zoomer.devicePixelRatio;
+
+		let borderPixelRadius = 4;
+
 		this.domPilot.style.top = (v - borderPixelRadius) + "px";
 		this.domPilot.style.left = (u - borderPixelRadius) + "px";
 		this.domPilot.style.width = (borderPixelRadius * 2) + "px";
@@ -1409,6 +1429,12 @@ function GUI() {
 		maxI -= borderPixelRadius;
 		minJ += borderPixelRadius;
 		maxJ -= borderPixelRadius;
+
+		// scale over-sampling
+		minI *= zoomer.devicePixelRatio;
+		minJ *= zoomer.devicePixelRatio;
+		maxI *= zoomer.devicePixelRatio;
+		maxJ *= zoomer.devicePixelRatio;
 
 		// `cnt`
 		const minCnt = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
@@ -1477,7 +1503,7 @@ function GUI() {
 				this.autopilotGesture = ZOOMIN;
 
 				// and position autopilot mark
-				this.showPilot(u, v, borderPixelRadius, "green");
+				this.showPilot(u, v, "green");
 				return true;
 			}
 		}
@@ -1495,7 +1521,7 @@ function GUI() {
 			this.autopilotGesture = ZOOMIN;
 
 			// and position autopilot mark
-			this.showPilot(u, v, borderPixelRadius, "green");
+			this.showPilot(u, v, "green");
 			return true;
 		}
 
@@ -2045,6 +2071,9 @@ function GUI() {
 		// determine mouse screen position
 		this.mouseU = event.pageX - rect.left;
 		this.mouseV = event.pageY - rect.top;
+		// scale over-sampling
+		this.mouseU *= zoomer.devicePixelRatio;
+		this.mouseV *= zoomer.devicePixelRatio;
 
 		/*
 		 * Encountered a Hydra bug.
@@ -2152,6 +2181,9 @@ function GUI() {
 			// Direction is midpoint between touch points
 			this.mouseU = (touchAu + touchBu) >> 1;
 			this.mouseV = (touchAv + touchBv) >> 1;
+			// scale over-sampling
+			this.mouseU *= this.zoomer.devicePixelRatio;
+			this.mouseV *= this.zoomer.devicePixelRatio;
 
 			/*
 			 * Gesture states
@@ -2256,7 +2288,7 @@ function GUI() {
 				this.touchAbs = true;
 
 				// and position autopilot mark
-				this.showPilot(this.mouseU, this.mouseV, 4, "green");
+				this.showPilot(this.mouseU, this.mouseV, "green");
 
 				// make speedup/slowdown more responsive
 				// todo: hardcoded, awaiting a more configurable solution
@@ -2273,7 +2305,11 @@ function GUI() {
 			const zoomerRect = this.getRect(this.domZoomer);
 			this.mouseU = touchEvent.pageX - zoomerRect.left;
 			this.mouseV = touchEvent.pageY - zoomerRect.top;
+			// scale over-sampling
+			this.mouseU *= this.zoomer.devicePixelRatio;
+			this.mouseV *= this.zoomer.devicePixelRatio;
 
+			/*
 			/*
 			 * Gesture states
 			 */
@@ -2303,7 +2339,7 @@ function GUI() {
 				this.mouseV += this.touchV;
 
 				// position marker
-				this.showPilot(this.mouseU, this.mouseV, 4, "green");
+				this.showPilot(this.mouseU, this.mouseV, "green");
 
 			} else if (this.gesture === DENSITY) {
 				// DENSITY -> DENSITYDRAG
@@ -2430,7 +2466,7 @@ function GUI() {
 				Config.centerY = this.dragCenterY - dy;
 
 				// mark visual center
-				this.showPilot((this.zoomer.viewWidth >> 1), (this.zoomer.viewHeight >> 1), 4, "orange");
+				this.showPilot((this.zoomer.viewWidth >> 1), (this.zoomer.viewHeight >> 1), "orange");
 
 			} else if (this.dragActive) {
 				this.dragActive = false;
