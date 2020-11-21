@@ -163,7 +163,7 @@ Config.load = function (query) {
 		else if (k === "plane")
 			Formula.plane = Number.parseInt(v);
 	}
-}
+};
 
 /**
  * set initial position
@@ -404,7 +404,7 @@ function Palette() {
 				(128.0 + 127 * Math.sin(Math.PI * i / bcycle + t0)) << 16 | // Blue
 				255 << 24; // Alpha
 		}
-	}
+	};
 
 	this.randomize_segments5 = function (whitemode) {
 
@@ -418,7 +418,7 @@ function Palette() {
 				g << 16 | // Blue
 				255 << 24; // Alpha
 		}
-	}
+	};
 
 	this.loadTheme = function () {
 		// set PRNG seed for this palette
@@ -473,7 +473,7 @@ function Palette() {
 		Config.theme = (Config.theme + 1) % 8;
 
 		this.loadTheme();
-	}
+	};
 
 	/**
 	 * Set palette
@@ -653,7 +653,7 @@ function GUI() {
 		this.paletteSpeed.moveSliderTo(this.paletteSpeed.valueNow);
 		this.density.moveSliderTo(this.density.valueNow);
 		this.Framerate.moveSliderTo(this.Framerate.valueNow);
-	}
+	};
 
 	/** @member {float} - scaling of `idNav` within `idNavWrapper` */
 	this.idNavScale = 1;
@@ -715,7 +715,7 @@ function GUI() {
 			el = el.offsetParent;
 		}
 		return {left: left, width: width, top: top, height: height};
-	}
+	};
 
 	/*
 	 * Set fontsize
@@ -1172,7 +1172,7 @@ function GUI() {
 		 *
 		 * `magnify = Math.pow(Config.zoomSpeedNow, this.zoomAccel * diffSec)`
 		 */
-		const magnify = Math.pow(Config.autoPilot ? Config.zoomSpeedAuto : Config.zoomSpeedManual, this.zoomAccel)
+		const magnify = Math.pow(Config.autoPilot ? Config.zoomSpeedAuto : Config.zoomSpeedManual, this.zoomAccel);
 
 		Config.autoPilot = newValue;
 
@@ -1270,7 +1270,7 @@ function GUI() {
 		const canvas = document.createElement("canvas");
 		canvas.width = image.width;
 		canvas.height = image.height;
-		const ctx = canvas.getContext('2d');
+		const ctx = canvas.getContext("2d");
 
 		// set background background colour
 		ctx.strokeStyle = "#000";
@@ -1379,11 +1379,11 @@ function GUI() {
 		this.domPilot.style.height = (borderPixelRadius * 2) + "px";
 		this.domPilot.style.border = "4px solid " + colour;
 		this.domPilot.style.visibility = "visible";
-	}
+	};
 
 	this.hidePilot = () => {
 		this.domPilot.style.visibility = "hidden";
-	}
+	};
 
 	/**
 	 * @param {ZoomerView} view
@@ -1452,7 +1452,7 @@ function GUI() {
 			let cnt = 0;
 			for (let j = testJ - borderPixelRadius; j <= testJ + borderPixelRadius; j++) {
 				for (let i = testI - borderPixelRadius; i <= testI + borderPixelRadius; i++) {
-					const iter = pixels[j * pixelWidth + i]
+					const iter = pixels[j * pixelWidth + i];
 					if (iter === 65535) {
 						cnt++;
 					} else if (iterLow > iter) {
@@ -1572,15 +1572,15 @@ function GUI() {
 			event.preventDefault();
 			event.stopPropagation();
 
-			document.removeEventListener('touchmove', handleTouchMove);
-			document.removeEventListener('touchend', handleTouchEnd);
-			document.removeEventListener('touchcancel', handleTouchEnd);
+			document.removeEventListener("touchmove", handleTouchMove);
+			document.removeEventListener("touchend", handleTouchEnd);
+			document.removeEventListener("touchcancel", handleTouchEnd);
 		};
 
 		// bind a mousemove event handler to move pointer
-		document.addEventListener('touchmove', handleTouchMove);
-		document.addEventListener('touchend', handleTouchEnd);
-		document.addEventListener('touchcancel', handleTouchEnd);
+		document.addEventListener("touchmove", handleTouchMove);
+		document.addEventListener("touchend", handleTouchEnd);
+		document.addEventListener("touchcancel", handleTouchEnd);
 	});
 
 	this.domResize.addEventListener("mousedown", (event0) => {
@@ -1619,10 +1619,10 @@ function GUI() {
 		event.preventDefault();
 		event.stopPropagation();
 
-		let currentState = this.domFullscreen.getAttribute('aria-pressed');
+		let currentState = this.domFullscreen.getAttribute("aria-pressed");
 
-		if (currentState === 'true') {
-			currentState = 'false';
+		if (currentState === "true") {
+			currentState = "false";
 
 			// exit fullscreen
 			if (document.exitFullscreen)
@@ -1634,7 +1634,7 @@ function GUI() {
 			else
 				return;
 		} else {
-			currentState = 'true';
+			currentState = "true";
 
 			// enter fullscreen
 			let elem = document.documentElement;
@@ -1648,23 +1648,23 @@ function GUI() {
 			else return;
 		}
 
-		this.domFullscreen.setAttribute('aria-pressed', currentState);
+		this.domFullscreen.setAttribute("aria-pressed", currentState);
 	});
 
 	this.domMenu.addEventListener("mousedown", (event) => {
 		event.preventDefault();
 
-		let currentState = this.domMenu.getAttribute('aria-pressed');
+		let currentState = this.domMenu.getAttribute("aria-pressed");
 
-		if (currentState === 'true') {
-			currentState = 'false';
+		if (currentState === "true") {
+			currentState = "false";
 
 			this.domTop.style.visibility = "hidden";
 			this.domNav.style.visibility = "hidden";
 			this.domTop.style.pointerEvents = "none";
 			this.domNav.style.pointerEvents = "none";
 		} else {
-			currentState = 'true';
+			currentState = "true";
 
 			this.domTop.style.visibility = "visible";
 			this.domNav.style.visibility = "visible";
@@ -1675,7 +1675,7 @@ function GUI() {
 			this.redrawSliders();
 		}
 
-		this.domMenu.setAttribute('aria-pressed', currentState);
+		this.domMenu.setAttribute("aria-pressed", currentState);
 	});
 
 	/*
@@ -1800,7 +1800,7 @@ function GUI() {
 			break;
 		case "M":
 		case "m":
-			this.domMenu.dispatchEvent(new MouseEvent('mousedown'));
+			this.domMenu.dispatchEvent(new MouseEvent("mousedown"));
 			break;
 		case "O":
 		case "o":
@@ -2341,7 +2341,7 @@ function GUI() {
 		keyView.fill(Config.centerX, Config.centerY, Config.radius, Config.angle, this.zoomer, this.zoomer.onUpdatePixel);
 
 		// set initial position and inject key frame (mandatory)
-		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView)
+		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle, keyView);
 
 		// snap to actual dimensions
 		this.setFontSize();

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-11-21 16:02:38 Lost+Found.
 2020-11-21 15:59:32 Gesture states and added palette density (3-finger) gesture.
 2020-11-21 15:51:03 Smoother popup.
 2020-11-20 01:17:11 2-touch to 1-touch gesture. 
