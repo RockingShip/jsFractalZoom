@@ -32,15 +32,15 @@ function Config() {
 	Config.power = false;
 	Config.autoPilot = false;
 
-	/** @member {float} - zoom magnification */
+	/** @member {float} - zoom speed */
 	Config.zoomSpeedManual = 20;
-	/** @member {float} - zoom magnification */
+	/** @member {float} - zoom speed */
 	Config.zoomSpeedAuto = 2;
-	/** @member {float} - zoom magnification slider Min */
+	/** @member {float} - zoom speed slider Min */
 	Config.zoomSpeedMin = Math.log(1.1);
-	/** @member {float} - zoom magnification slider Max */
+	/** @member {float} - zoom speed slider Max */
 	Config.zoomSpeedMax = Math.log(25.0);
-	/** @member {float} - zoom magnification slider Now */
+	/** @member {float} - zoom speed slider Now */
 	Config.zoomSpeedNow = Math.log(Config.zoomSpeedManual);
 
 	/** @member {float} - rotate speed slider Min */
@@ -57,13 +57,13 @@ function Config() {
 	/** @member {float} - palette cycle slider Now */
 	Config.paletteSpeedNow = 0;
 
-	/** @member {float} - density slider Min */
+	/** @member {float} - palette density */
 	Config.density = 1; // actual value
-	/** @member {float} - density slider Min */
+	/** @member {float} - palette density slider Min */
 	Config.densityMin = Math.log(0.0001);
-	/** @member {float} - density slider Max */
-	Config.densityMax = Math.log(20);
-	/** @member {float} - density slider Now */
+	/** @member {float} - palette density slider Max */
+	Config.densityMax = Math.log(1);
+	/** @member {float} - palette density slider Now */
 	Config.densityNow = Math.log(Config.density);
 
 	/** @member {float} - calculation depth slider Min */
@@ -671,6 +671,8 @@ function GUI() {
 
 	/** @member {int} - Maximum number of fingers on screen for touch gestures */
 	this.touchActive = 0;
+	/** @member {float} - Config.density at start of touch gesture (gesture is offset to this) */
+	this.touchDensity0 = 0;
 	/** @member {float} - Config.angle at start of touch gesture (gesture is offset to this) */
 	this.touchAngle0 = 0;
 	/** @member {float} - Angle at start of touch gesture */
@@ -680,15 +682,21 @@ function GUI() {
 
 	/**
 	 * @member {int}
-	 * @property {int}  1 SPEEDUP
-	 * @property {int}  2 SLOWDOWN
-	 * @property {int}  4 DRAG
+	 * @property {int}  1 DRAG
+	 * @property {int}  2 ZOOMIN
+	 * @property {int}  3 ZOOMOUT
+	 * @property {int}  4 ZOOMDRAG
+	 * @property {int}  5 DENSITY
+	 * @property {int}  6 DENSITYDRAG
 	 * @description Active gesture */
 	this.gesture = 0;
 
-	const SPEEDUP = 1;
-	const SLOWDOWN = 2;
-	const DRAG = 3;
+	const DRAG = 1; // wheel or 1-finger
+	const ZOOMIN = 2; // mouse-left or stretch
+	const ZOOMOUT = 3; // mouse-right or pinch
+	const ZOOMDRAG = 4; // zoom continuation with remaining finger after zoom
+	const DENSITY = 5; // stretch/pinch after 3rd finger
+	const DENSITYDRAG = 6; // density continuation with remaining finger after zoom
 
 	/** @member {number} - movement gesture - autopilot updated*/
 	this.autopilotGesture = 0;
@@ -1466,7 +1474,7 @@ function GUI() {
 				Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
 				Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
 
-				this.autopilotGesture = SPEEDUP;
+				this.autopilotGesture = ZOOMIN;
 
 				// and position autopilot mark
 				this.showPilot(u, v, borderPixelRadius, "green");
@@ -1484,7 +1492,7 @@ function GUI() {
 			Config.autopilotU += Math.round((u - Config.autopilotU) * Config.autopilotCoef);
 			Config.autopilotV += Math.round((v - Config.autopilotV) * Config.autopilotCoef);
 
-			this.autopilotGesture = SPEEDUP;
+			this.autopilotGesture = ZOOMIN;
 
 			// and position autopilot mark
 			this.showPilot(u, v, borderPixelRadius, "green");
@@ -1940,20 +1948,16 @@ function GUI() {
 			let newValue = Config.densityNow + Math.log(1.05);
 			if (newValue > Config.densityMax)
 				newValue = Config.densityMax;
-
-			Config.densityNow = newValue;
-			Config.density = Math.exp(newValue);
-			Config.density = Math.round(Config.density * 10000) / 10000; // round
 		}
 		if (delta <= -1) {
 			let newValue = Config.densityNow - Math.log(1.05);
 			if (newValue < Config.densityMin)
 				newValue = Config.densityMin;
-
-			Config.densityNow = newValue;
-			Config.density = Math.exp(newValue);
-			Config.density = Math.round(Config.density * 10000) / 10000; // round
 		}
+
+		Config.densityNow = newValue;
+		Config.density = Math.exp(newValue);
+		Config.density = Math.round(Config.density * 10000) / 10000; // round
 
 		this.density.moveSliderTo(Config.densityNow);
 	});
@@ -2083,9 +2087,9 @@ function GUI() {
 		}
 
 		if (event.buttons & (1 << Aria.ButtonCode.BUTTON_LEFT))
-			this.gesture = SPEEDUP;
+			this.gesture = ZOOMIN;
 		else if (event.buttons & (1 << Aria.ButtonCode.BUTTON_RIGHT))
-			this.gesture = SLOWDOWN;
+			this.gesture = ZOOMOUT;
 		else if (event.buttons & (1 << Aria.ButtonCode.BUTTON_WHEEL))
 			this.gesture = DRAG;
 		else
@@ -2109,46 +2113,21 @@ function GUI() {
 		event.preventDefault();
 		event.stopPropagation();
 
-		if (event.touches.length === 1) {
-			// single-touch is drag
+		/*
+		 * States:
+		 *    Gesture    #fingers   Add finger   Release finger   Description
+		 * ------------+----------+------------+----------------+------------
+		 * NONE        |     0    |   DRAG     |      NONE      | No contact
+		 * DRAG        |     1    |   ZOOM     |      NONE      | Wheel or 1-finger
+		 * ZOOM        |     2    | DENSITY(3) |    ZOOMDRAG    | Mouse-left/right or stretch/pinch
+		 * ZOOMDRAG    |     1    |   ZOOM     |      NONE      | Zoom continuation with remaining finger after zoom
+		 * DENSITY     |     3    | DENSITY(3) |  DENSITYDRAG   | Stretch/pinch with 3rd finger
+		 * DENSITY     |     2    | DENSITY(3) |  DENSITYDRAG   | Stretch/pinch after releasing 3rd finger
+		 * DENSITYDRAG |     1    | DENSITY(2) |      NONE      | Density continuation with remaining finger after zoom
+		 */
+		const debugTouch = false;
 
-			// get zoomer rectangle (might have a margin)
-			const touchEvent = event.touches[0];
-			const zoomerRect = this.getRect(this.domZoomer);
-			this.mouseU = touchEvent.pageX - zoomerRect.left;
-			this.mouseV = touchEvent.pageY - zoomerRect.top;
-
-			if (this.touchActive === 2) {
-				// downgrade from move to drag. Keep navigation vector and speed
-
-				// convert touchUV to relative coordinates (vector to last marker)
-				if (this.touchAbs) {
-					this.touchU = this.touchU - this.mouseU;
-					this.touchV = this.touchV - this.mouseV;
-					this.touchAbs = false;
-				}
-
-				// add pilot marker relative vector
-				this.mouseU += this.touchU;
-				this.mouseV += this.touchV;
-
-				// position marker
-				this.showPilot(this.mouseU, this.mouseV, 4, "green");
-			} else {
-				// drag gesture
-				this.touchActive = 1;
-
-				// simulate a drag gesture
-				this.gesture = DRAG;
-			}
-		} else if (event.touches.length >= 2) {
-			// when adding a finger, switch from drag to zoom
-			this.gesture = 0;
-
-			// ignore when releasing the screen
-			const old = this.touchActive;
-			if (this.touchActive > 2)
-				return;
+		if (event.touches.length >= 2) {
 
 			// get zoomer rectangle (might have a margin)
 			const touchA = event.touches[0];
@@ -2167,78 +2146,183 @@ function GUI() {
 			let touchAngle = Math.atan2(du, dv) * 180 / Math.PI + 180;
 			let touchDistance = Math.sqrt(du * du + dv * dv);
 
-			if (touchDistance === 0) {
-				// duplicate touch,merge to a drag
-				this.mouseU = touchAu;
-				this.mouseV = touchAv;
-				this.gesture = DRAG;
-				return;
-			}
+			if (touchDistance === 0)
+				return; // don't divide by zero
 
-			// save initial angle and distance
-			if (this.touchActive !== 2) {
-				this.touchAngle0 = Config.angle;
-				this.touchAngle = touchAngle;
-				this.touchDistance = touchDistance;
-				this.touchActive = 2; // two-finger
-			}
-
-			// determine difference with initial
-			touchAngle -= this.touchAngle;
-			touchDistance /= this.touchDistance;
-			const a0 = touchAngle;
-			while (touchAngle > 180)
-				touchAngle -= 360;
-			while (touchAngle < -180)
-				touchAngle += 360;
-
-			/*
-			 * set angle
-			 */
-			Config.angle = this.touchAngle0 + touchAngle;
-
-			// enable rotation
-			if (!this.zoomer.enableAngle)
-				this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, true);
-
-			/*
-			 * Set zoom speed.
-			 * this.zoomAccel is -1..+1, set by the interval timer, i=used for speedup/slowdown
-			 * Config.zoomSpeedManual is zoom speed, set by `onBeginFrame()`
-			 */
-
-			if (touchDistance > 1) {
-				Config.zoomSpeedManual = 3 * touchDistance;
-				this.gesture = SPEEDUP;
-			} else {
-				Config.zoomSpeedManual = 3 * (1 / touchDistance);
-				this.gesture = SLOWDOWN;
-			}
-
-			/*
-			 * Direction is midpoint between touch points
-			 */
+			// Direction is midpoint between touch points
 			this.mouseU = (touchAu + touchBu) >> 1;
 			this.mouseV = (touchAv + touchBv) >> 1;
 
-			// save a copy for when dropping to drag
-			this.touchU = this.mouseU;
-			this.touchV = this.mouseV;
-			this.touchAbs = true;
+			/*
+			 * Gesture states
+			 */
+			if (event.touches.length > 2 && (this.gesture === ZOOMIN || this.gesture === ZOOMOUT)) {
+				// ZOOM -> DENSITY3
 
-			// and position autopilot mark
-			this.showPilot(this.mouseU, this.mouseV, 4, "green");
+				if (debugTouch) this.activatePopup("ZOOM->DENSITY3");
 
-			// make speedup/slowdown more responsive
-			// todo: hardcoded, awaiting a more configurable solution
-			Config.zoomAccelCoef = 0.95;
+				// update initial distance
+				this.touchDensity0 = Config.density;
+				this.touchAngle0 = Config.angle;
+				this.touchAngle = touchAngle;
+				this.touchDistance = touchDistance;
+				this.touchActive = true;
 
-			// make zoomer responsive to change
-			this.zoomer.turboActive = 0;
+				this.gesture = DENSITY;
+
+			} else if (this.gesture === DENSITYDRAG) {
+				// DENSITY(DRAG)->DENSITY2
+
+				if (debugTouch && this.gesture === DENSITYDRAG) this.activatePopup("DENSITYDRAG->DENSITY2");
+
+				// update initial distance
+				this.touchDensity0 = Config.density;
+				this.touchAngle0 = Config.angle;
+				this.touchAngle = touchAngle;
+				this.touchDistance = touchDistance;
+				this.touchActive = true;
+
+				this.gesture = DENSITY;
+
+			} else if (this.gesture === DENSITY) {
+				// DENSITY -> DENSITY
+
+				if (this.touchDistance === 0)
+					return; // don't divide by zero
+
+				// determine difference with initial finger distance
+				let ratio = touchDistance / this.touchDistance;
+
+				// dampen effect of ratio
+				ratio = Math.exp(Math.log(ratio) * 0.75);
+
+				Config.density = this.touchDensity0 * ratio;
+
+				// NOTE: slider is exponential
+				this.density.moveSliderTo(Math.log(Config.density));
+
+				this.activatePopup(Config.density);
+
+			} else if (this.gesture === DRAG || this.gesture === ZOOMDRAG || this.gesture === ZOOMIN || this.gesture === ZOOMOUT) {
+				// (ZOOM)DRAG->ZOOM
+
+				if (debugTouch && this.gesture === DRAG) this.activatePopup("DRAG->ZOOM");
+				if (debugTouch && this.gesture === ZOOMDRAG) this.activatePopup("ZOOMDRAG->ZOOM");
+
+				// save initial angle and distance
+				if (!this.touchActive) {
+					this.touchDensity0 = Config.density;
+					this.touchAngle0 = Config.angle;
+					this.touchAngle = touchAngle;
+					this.touchDistance = touchDistance;
+					this.touchActive = true;
+				}
+
+				// determine difference with initial
+				touchAngle -= this.touchAngle;
+				touchDistance /= this.touchDistance;
+				const a0 = touchAngle;
+				while (touchAngle > 180)
+					touchAngle -= 360;
+				while (touchAngle < -180)
+					touchAngle += 360;
+
+				/*
+				 * set angle
+				 */
+				Config.angle = this.touchAngle0 + touchAngle;
+
+				// enable rotation
+				if (!this.zoomer.enableAngle)
+					this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, true);
+
+				/*
+				 * Set zoom speed.
+				 * this.zoomAccel is -1..+1, set by the interval timer, i=used for speedup/slowdown
+				 * Config.zoomSpeedManual is zoom speed, set by `onBeginFrame()`
+				 */
+
+				if (touchDistance > 1) {
+					Config.zoomSpeedManual = 3 * touchDistance;
+					this.gesture = ZOOMIN;
+				} else {
+					Config.zoomSpeedManual = 3 * (1 / touchDistance);
+					this.gesture = ZOOMOUT;
+				}
+
+				// save a copy for when dropping to drag
+				this.touchU = this.mouseU;
+				this.touchV = this.mouseV;
+				this.touchAbs = true;
+
+				// and position autopilot mark
+				this.showPilot(this.mouseU, this.mouseV, 4, "green");
+
+				// make speedup/slowdown more responsive
+				// todo: hardcoded, awaiting a more configurable solution
+				Config.zoomAccelCoef = 0.95;
+
+				// make zoomer responsive to change
+				this.zoomer.turboActive = 0;
+			}
+
+		} else if (event.touches.length === 1) {
+
+			// get zoomer rectangle (might have a margin)
+			const touchEvent = event.touches[0];
+			const zoomerRect = this.getRect(this.domZoomer);
+			this.mouseU = touchEvent.pageX - zoomerRect.left;
+			this.mouseV = touchEvent.pageY - zoomerRect.top;
+
+			/*
+			 * Gesture states
+			 */
+			if (this.gesture === 0 || this.gesture === DRAG) {
+				// NONE/DRAG -> DRAG
+
+				if (debugTouch && this.gesture === 0) this.activatePopup("NONE->DRAG");
+
+				this.gesture = DRAG;
+
+			} else if (this.gesture === ZOOMIN || this.gesture === ZOOMOUT || this.gesture === ZOOMDRAG) {
+				// ZOOM(DRAG) -> ZOOMDRAG
+
+				if (debugTouch && this.gesture !== ZOOMDRAG) this.activatePopup("ZOOM->ZOOMDRAG");
+
+				this.gesture = ZOOMDRAG;
+
+				// convert touchUV to relative coordinates (vector to last marker)
+				if (this.touchAbs) {
+					this.touchU = this.touchU - this.mouseU;
+					this.touchV = this.touchV - this.mouseV;
+					this.touchAbs = false;
+				}
+
+				// add pilot marker relative vector
+				this.mouseU += this.touchU;
+				this.mouseV += this.touchV;
+
+				// position marker
+				this.showPilot(this.mouseU, this.mouseV, 4, "green");
+
+			} else if (this.gesture === DENSITY) {
+				// DENSITY -> DENSITYDRAG
+
+				if (debugTouch && this.gesture !== DENSITYDRAG) this.activatePopup("DENSITY->DENSITYDRAG");
+
+				this.gesture = DENSITYDRAG;
+
+			} else if (this.gesture === DENSITYDRAG) {
+				// DENSITYDRAG -> DENSITYDRAG
+
+			}
+
 		} else if (event.touches.length === 0) {
 			// screen released
+
 			this.gesture = 0;
 			this.touchActive = false;
+			this.hidePilot();
 		}
 	};
 
@@ -2270,7 +2354,7 @@ function GUI() {
 
 			if (Config.autoPilot) {
 				if (calcView.reachedLimits()) {
-					this.autopilotGesture = SLOWDOWN;
+					this.autopilotGesture = ZOOMOUT;
 					gui.domPilot.style.border = "4px solid orange";
 				} else {
 					this.domStatusPosition.innerHTML = "";
@@ -2278,7 +2362,7 @@ function GUI() {
 					if (!this.updateAutopilot(calcView, 4, 16))
 						if (!this.updateAutopilot(calcView, 60, 16))
 							if (!this.updateAutopilot(calcView, Math.min(calcView.pixelWidth, calcView.pixelHeight) >> 1, 16))
-								this.autopilotGesture = SLOWDOWN;
+								this.autopilotGesture = ZOOMOUT;
 				}
 
 				this.mouseU = Config.autopilotU;
@@ -2289,13 +2373,13 @@ function GUI() {
 			/*
 			 * Update zoom (de-)acceleration. -1=maxReverse, 0=standStill, +1=maxForward
 			 */
-			if (this.gesture === SPEEDUP) {
-				// zoom-in only
+			if (this.gesture === ZOOMIN) {
+				// zoom-in
 				this.zoomAccel = +1 - (+1 - this.zoomAccel) * Math.pow((1 - Config.zoomAccelCoef), diffSec);
-			} else if (this.gesture === SLOWDOWN) {
-				// zoom-out only
+			} else if (this.gesture === ZOOMOUT) {
+				// zoom-out
 				this.zoomAccel = -1 - (-1 - this.zoomAccel) * Math.pow((1 - Config.zoomAccelCoef), diffSec);
-			} else if (this.gesture === 0) {
+			} else if (this.gesture !== DRAG && this.gesture !== ZOOMDRAG) {
 				// buttons released
 				this.zoomAccel = this.zoomAccel * Math.pow((1 - Config.zoomAccelCoef), diffSec);
 
