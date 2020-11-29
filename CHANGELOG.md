@@ -6,21 +6,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+```
+2020-11-29 22:13:56 Added. `select-gta.html`.
+```
+
 ## 2020-11-21 20:02:58 [Version 0.10.0]
 
-Touch gestures. Better UX/UI. Video codec.
+- Touch gestures.
+- Better UX/UI.
+- Video codec.
 
 ```
-2020-11-21 17:57:24 Added `devicePixelRatio`.
-2020-11-21 16:02:38 Lost+Found.
-2020-11-21 15:59:32 Gesture states and added palette density (3-finger) gesture.
-2020-11-21 15:51:03 Smoother popup.
-2020-11-20 01:17:11 2-touch to 1-touch gesture. 
-2020-11-20 01:09:37 Consistent use `zoomAccel` and `zoomSpeed`.
-2020-11-19 22:45:46 Enumerate gestures.
-2020-11-19 21:14:37 Relocate GUI prototypes to function. Only critical code changes.
-2020-11-19 19:13:32 Tweaked autopilot marker and framerate.
-2020-11-19 19:11:58 Updated control panel layout.
+2020-11-21 17:57:24 Added. `devicePixelRatio`.
+2020-11-21 16:02:38 Changed. Lost+Found.
+2020-11-21 15:59:32 Added. Gesture states and palette density (3-finger) gesture.
+2020-11-21 15:51:03 Changed. Smoother popup.
+2020-11-20 01:17:11 Added. 2-touch to 1-touch gesture. 
+2020-11-20 01:09:37 Changed. Consistent use `zoomAccel` and `zoomSpeed`.
+2020-11-19 22:45:46 Added. Enumerate gestures.
+2020-11-19 21:14:37 Changed. Relocate GUI prototypes to function. Only critical code changes.
+2020-11-19 19:13:32 Changed. Autopilot marker and framerate.
+2020-11-19 19:11:58 Changed. Control panel layout.
 2020-11-19 18:58:42 Fixed palette size+outcolour.
 2020-11-19 18:51:57 Simplified `Zoomer.options`.
 2020-11-17 11:38:19 Don't start with monochrome theme.
