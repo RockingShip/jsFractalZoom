@@ -1,4 +1,4 @@
-<a href="https://rockingship.github.io/jsFractalZoom/jsFractalZoom.js?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823" target="_blank"><img src="assets/favimage-840x472.jpg" width="100%" alt="favimage"/></a>
+<a href="https://RockingShip.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823" target="_blank"><img src="assets/favimage-840x472.jpg" width="100%" alt="favimage"/></a>
 
 # Welcome to the wonderful world of (fractal) zooming.
 
@@ -12,7 +12,7 @@ This project has 3 Components:
 
 ## Experience the fractal zoomer
 
-Click on the image above to start the zoomer at that location.
+Click on the image above to start the zoomer at the presented location.
 
 Suggestions for the best experience:
 
@@ -65,13 +65,13 @@ The 2020 version is canvas based. The 2018 engine created GIF images using an ul
 
 There are 3 demos. All are work-in-progress and may not work in any/all situations.
 
-[jsFractalZoom-formula.html](jsFractalZoom-formula.html)
+[jsFractalZoom-formula.html](https://RockingShip.github.io/jsFractalZoom/jsFractalZoom-formula.html)
 The original with most of the formula's working.
 
-[jsFractalZoom-navigation.html](jsFractalZoom-navigation.html)
+[jsFractalZoom-navigation.html](https://RockingShip.github.io/jsFractalZoom/jsFractalZoom-navigation.html)
 The original with most of the navigation working.
 
-[jsFractalZoom.html](jsFractalZoom.html)
+[jsFractalZoom.html](https://RockingShip.github.io/jsFractalZoom/jsFractalZoom.html)
 The current unification and completion.
 
 ## Versioning
