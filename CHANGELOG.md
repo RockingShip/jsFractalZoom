@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-12-01 01:22:18 Added. `select-ade.html`.
 2020-11-29 22:13:56 Added. `select-gta.html`.
 ```
 
