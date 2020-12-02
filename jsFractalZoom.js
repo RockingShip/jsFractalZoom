@@ -619,7 +619,10 @@ function GUI() {
 	 *
 	 * @member {float} - Physical pixels per CSS pixel.
 	 */
-	this.devicePixelRatio = 1; // todo: make this user selectable: window.devicePixelRatio,
+	this.devicePixelRatio = 1; // todo: make this user selectable: window.devicePixelRatio
+	// redefine devicePixelRatio based on forced settings so navigation works
+	if ((Config.forceWidth || Config.forceHeight) && !Config.forceDevicePixelRatio)
+		this.devicePixelRatio = Config.forceWidth / this.domZoomer.parentNode.clientWidth;
 
 	/** @member {number} - view mouse X coordinate */
 	this.mouseU = 0;
@@ -671,7 +674,7 @@ function GUI() {
 	this.plane.listbox.focusItem(gebi("plane_" + Formula.plane));
 
 	// enable if already at maximum
-	if (window.devicePixelRatio === 1)
+	if (window.devicePixelRatio === 1 || Config.forceDevicePixelRatio)
 		this.domHiResButton.setAttribute("aria-pressed", "true");
 
 	// construct buttons
