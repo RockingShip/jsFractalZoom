@@ -31,6 +31,7 @@ function Config() {
 	 */
 	Config.power = false;
 	Config.autoPilot = false;
+	Config.hiRes = (window.devicePixelRatio === 1);
 
 	/** @member {float} - zoom speed */
 	Config.zoomSpeedManual = 20;
@@ -581,6 +582,7 @@ function GUI() {
 	this.domFramerateLeft = gebi("idFramerateLeft");
 	this.domFramerateRail = gebi("idFramerateRail");
 	this.domFramerateThumb = gebi("idFramerateThumb");
+	this.domHiResButton = gebi("idHiResButton");
 	this.domWxH = gebi("WxH");
 	this.domPilot = gebi("idPilot");
 	this.domResize = gebi("idResize");
@@ -655,6 +657,11 @@ function GUI() {
 	this.url = new Aria.Button(this.domUrlButton, true);
 	this.theme = new Aria.Button(this.domThemeButton, true);
 
+	// enable if already at maximum
+	if (window.devicePixelRatio === 1)
+		this.domHiResButton.setAttribute("aria-pressed", "true");
+	this.hiRes = new Aria.Button(this.domHiResButton, false);
+
 	/*
 	 * It's easier to redraw the sliders than to hack "em" into them
 	 */
@@ -672,8 +679,8 @@ function GUI() {
 	this.idNavWrapScale = 1;
 	/** @member {float} - height of top. 5 lines at 1.2em per line */
 	this.topHeightEm = 6.0;
-	/** @member {float} - height of `idNav`: 0.4 (topPadding) + 16*2 (rows) + 6@0.6em (isSmallText) + 0.4 (bottomPadding) */
-	this.navHeightEm = 36.4;
+	/** @member {float} - height of `idNav`: 0.4 (topPadding) + 17*2 (rows) + 6@0.6em (isSmallText) + 0.4 (bottomPadding) */
+	this.navHeightEm = 38.4;
 	/** @member {float} - width of `idNav`. 24.5 (idNav.width) + 2*0.4 (padding) */
 	this.navWidthEm = 25.3;
 
@@ -1303,6 +1310,20 @@ function GUI() {
 		 * However, this handler is UI event context and `renderFrame()` is `postMessage()` context.
 		 */
 		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
+	});
+	this.hiRes.setCallbackValueChange((newValue) => {
+		/*
+		 * Apply `window.pixelDensity` to CSS pixels
+		 */
+		Config.hiRes = newValue;
+
+		if (Config.hiRes) {
+			this.devicePixelRatio = window.devicePixelRatio;
+		} else {
+			this.devicePixelRatio = 1;
+		}
+
+		// change will be detected on next `onEndFrame()`.
 	});
 
 	/*
