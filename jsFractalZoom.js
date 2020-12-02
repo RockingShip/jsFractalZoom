@@ -1502,7 +1502,7 @@ function GUI() {
 		this.gesture = 0;
 
 		// remove pilot marker
-		this.pilotOff();
+		this.hidePilot();
 	};
 
 	this.showPilot = (u, v, colour) => {
