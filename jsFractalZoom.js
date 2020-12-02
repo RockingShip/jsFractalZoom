@@ -204,9 +204,15 @@ Config.home = function () {
 	Config.autopilotU = 0;
 	Config.autopilotV = 0;
 
-	// reset palette density
-	Config.density = 1;
-	Config.densityNow = Math.log(Config.density);
+	if (0) {
+		/*
+		 * @date 2020-12-02 23:34:08
+		 * Keep density when zooming out to home. It part of palette the palette.
+		 */
+		// reset palette density
+		Config.density = 1;
+		Config.densityNow = Math.log(Config.density);
+	}
 };
 
 /**

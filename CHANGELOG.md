@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-12-02 23:50:17 Changed: Keep palette density when presetting home.
 2020-12-02 23:49:12 Fixed: Typo when disabling autopilot.
 2020-12-02 23:47:19 Changed: Accuracy `devicePixelRatio` when size set  manually.
 2020-12-02 23:45:46 Cleanup: CSS for canvas.
