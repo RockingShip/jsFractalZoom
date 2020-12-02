@@ -867,8 +867,8 @@ function GUI() {
 	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
 
 	// compensate broken CSS pixels by over-sampling the canvas
-	let realClientWidth = Math.round(document.body.clientWidth * this.devicePixelRatio);
-	let realClientHeight = Math.round(document.body.clientHeight * this.devicePixelRatio);
+	let realClientWidth = Math.round(this.domZoomer.parentNode.clientWidth * this.devicePixelRatio);
+	let realClientHeight = Math.round(this.domZoomer.parentNode.clientHeight * this.devicePixelRatio);
 	// set canvas
 	this.resize(realClientWidth, realClientHeight);
 
@@ -1030,8 +1030,8 @@ function GUI() {
 			 */
 
 			// compensate broken CSS pixels by over-sampling the canvas
-			let realClientWidth = Math.round(document.body.clientWidth * this.devicePixelRatio);
-			let realClientHeight = Math.round(document.body.clientHeight * this.devicePixelRatio);
+			let realClientWidth = Math.round(this.domZoomer.parentNode.clientWidth * this.devicePixelRatio);
+			let realClientHeight = Math.round(this.domZoomer.parentNode.clientHeight * this.devicePixelRatio);
 
 			if (realClientWidth !== zoomer.viewWidth || realClientHeight !== zoomer.viewHeight) {
 				// update views
@@ -2041,8 +2041,6 @@ function GUI() {
 	 * Turning wheel
 	 */
 	document.addEventListener("wheel", (event) => {
-		event.preventDefault();
-
 		/*
 		 * Node: the slider has logarithmic values. "Times N" is "add log(N)"
 		 *
@@ -2053,14 +2051,15 @@ function GUI() {
 		 * Do simple, and move slide 1 position per event
 		 */
 
+		let newValue = 1;
 		let delta = event.deltaY;
 		if (delta >= 1) {
-			let newValue = Config.densityNow + Math.log(1.05);
+			newValue = Config.densityNow + Math.log(1.05);
 			if (newValue > Config.densityMax)
 				newValue = Config.densityMax;
 		}
 		if (delta <= -1) {
-			let newValue = Config.densityNow - Math.log(1.05);
+			newValue = Config.densityNow - Math.log(1.05);
 			if (newValue < Config.densityMin)
 				newValue = Config.densityMin;
 		}
