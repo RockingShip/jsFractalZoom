@@ -587,6 +587,17 @@ function GUI() {
 	this.domFullscreen = gebi("idFullscreen");
 	this.domMenu = gebi("idMenu");
 
+	/**
+	 * Pixel density.
+	 * The CSS standard most giant fail: 1inch is always 96 dpi.
+	 * How is this quirk fixed: `window.pixelDensity`, and even about that browsers sometimes lie.
+	 *
+	 * NOTE: scale all CSS pixel units to this, including events.
+	 *
+	 * @member {float} - Physical pixels per CSS pixel.
+	 */
+	this.devicePixelRatio = 1; // todo: make this user selectable: window.devicePixelRatio,
+
 	/** @member {number} - view mouse X coordinate */
 	this.mouseU = 0;
 	this.mouseX = 0;
@@ -810,6 +821,32 @@ function GUI() {
 		}, 2000);
 	};
 
+	/**
+	 * Size change detected for `domZoomer`
+	 *
+	 * @param {int}    viewWidth   - Screen width (pixels)
+	 * @param {int}    viewHeight  - Screen height (pixels)
+	 */
+	this.resize = (viewWidth, viewHeight) => {
+		/*
+		 * set DOM size property
+		 *
+		 * @date 2020-11-16 00:32:31
+		 * NOTE: this will erase the canvas contents
+		 */
+		this.domZoomer.width = viewWidth;
+		this.domZoomer.height = viewHeight;
+
+		// recalculate fontSize
+		this.setFontSize();
+
+		// update status line
+		this.domWxH.innerHTML = "[" + viewWidth + "x" + viewHeight + "]";
+
+		// show popup
+		this.activatePopup(viewWidth + "x" + viewHeight);
+	}
+
 	/*
 	 * @date 2020-10-15 13:08:13
 	 * `desynchronized` dramatically speed enhances `putImageData()` but it might also glitch mouse movement when hovering over the canvas.
@@ -819,6 +856,12 @@ function GUI() {
 	/** @member {CanvasRenderingContext2D} */
 	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
 
+	// compensate broken CSS pixels by over-sampling the canvas
+	let realClientWidth = Math.round(document.body.clientWidth * this.devicePixelRatio);
+	let realClientHeight = Math.round(document.body.clientHeight * this.devicePixelRatio);
+	// set canvas
+	this.resize(realClientWidth, realClientHeight);
+
 	/**
 	 * Create the zoomer
 	 *
@@ -827,40 +870,12 @@ function GUI() {
 	this.zoomer = new Zoomer(this.domZoomer, (Config.angle !== 0), {
 
 		/**
-		 * Pixel density.
-		 * The CSS standard most giant fail: 1inch is always 96 dpi.
-		 * How is this quirk fixed" `window.pixelDensity`, and even about that browsers sometimes lie.
-		 *
-		 * NOTE: when using this, scale all CSS pixel units to this, including events.
-		 *
-		 * @member {float} - Physical pixels per CSS pixel.
-		 */
-		devicePixelRatio: 1, // todo: make this user selectable: window.devicePixelRatio,
-
-		/**
 		 * Disable web-workers.
 		 * Offload frame rendering to web-workers
 		 *
 		 * @member {boolean} - Frames per second
 		 */
 		disableWW: false,
-
-		/**
-		 * Size change detected for `domZoomer`
-		 *
-		 * @param {Zoomer} zoomer      - This
-		 * @param {int}    viewWidth   - Screen width (pixels)
-		 * @param {int}    viewHeight  - Screen height (pixels)
-		 * @param {int}    pixelWidth  - Storage width (pixels)
-		 * @param {int}    pixelHeight - Storage Height (pixels)
-		 */
-		onResize: (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
-			this.domWxH.innerHTML = "[" + viewWidth + "x" + viewHeight + "]";
-
-			this.setFontSize();
-
-			this.activatePopup(viewWidth + "x" + viewHeight);
-		},
 
 		/**
 		 * Additional allocation of a new frame.
@@ -999,6 +1014,23 @@ function GUI() {
 
 				this.lastNow = now;
 			}
+
+			/*
+			 * Test for DOM resize now before starting next frame
+			 */
+
+			// compensate broken CSS pixels by over-sampling the canvas
+			let realClientWidth = Math.round(document.body.clientWidth * this.devicePixelRatio);
+			let realClientHeight = Math.round(document.body.clientHeight * this.devicePixelRatio);
+
+			if (realClientWidth !== zoomer.viewWidth || realClientHeight !== zoomer.viewHeight) {
+				// update views
+				zoomer.resize(realClientWidth, realClientHeight, zoomer.enableAngle);
+				// update canvas
+				this.resize(zoomer.viewWidth, zoomer.viewHeight);
+			}
+
+
 		},
 
 		/**
@@ -1364,8 +1396,8 @@ function GUI() {
 		Config.autopilotU = this.zoomer.viewWidth >> 1;
 		Config.autopilotV = this.zoomer.viewHeight >> 1;
 		// scale over-sampling
-		Config.autopilotU *= this.zoomer.devicePixelRatio;
-		Config.autopilotV *= this.zoomer.devicePixelRatio;
+		Config.autopilotU *= this.devicePixelRatio;
+		Config.autopilotV *= this.devicePixelRatio;
 
 		this.domPilot.style.visibility = "visible";
 
@@ -1388,8 +1420,8 @@ function GUI() {
 
 	this.showPilot = (u, v, colour) => {
 		// scale over-sampling
-		u /= this.zoomer.devicePixelRatio;
-		v /= this.zoomer.devicePixelRatio;
+		u /= this.devicePixelRatio;
+		v /= this.devicePixelRatio;
 
 		let borderPixelRadius = 4;
 
@@ -1431,10 +1463,10 @@ function GUI() {
 		maxJ -= borderPixelRadius;
 
 		// scale over-sampling
-		minI *= zoomer.devicePixelRatio;
-		minJ *= zoomer.devicePixelRatio;
-		maxI *= zoomer.devicePixelRatio;
-		maxJ *= zoomer.devicePixelRatio;
+		minI *= this.devicePixelRatio;
+		minJ *= this.devicePixelRatio;
+		maxI *= this.devicePixelRatio;
+		maxJ *= this.devicePixelRatio;
 
 		// `cnt`
 		const minCnt = ((borderPixelRadius + 1) * (borderPixelRadius + 1)) >> 2;
@@ -2072,8 +2104,8 @@ function GUI() {
 		this.mouseU = event.pageX - rect.left;
 		this.mouseV = event.pageY - rect.top;
 		// scale over-sampling
-		this.mouseU *= zoomer.devicePixelRatio;
-		this.mouseV *= zoomer.devicePixelRatio;
+		this.mouseU *= this.devicePixelRatio;
+		this.mouseV *= this.devicePixelRatio;
 
 		/*
 		 * Encountered a Hydra bug.
@@ -2182,8 +2214,8 @@ function GUI() {
 			this.mouseU = (touchAu + touchBu) >> 1;
 			this.mouseV = (touchAv + touchBv) >> 1;
 			// scale over-sampling
-			this.mouseU *= this.zoomer.devicePixelRatio;
-			this.mouseV *= this.zoomer.devicePixelRatio;
+			this.mouseU *= this.devicePixelRatio;
+			this.mouseV *= this.devicePixelRatio;
 
 			/*
 			 * Gesture states
@@ -2306,8 +2338,8 @@ function GUI() {
 			this.mouseU = touchEvent.pageX - zoomerRect.left;
 			this.mouseV = touchEvent.pageY - zoomerRect.top;
 			// scale over-sampling
-			this.mouseU *= this.zoomer.devicePixelRatio;
-			this.mouseV *= this.zoomer.devicePixelRatio;
+			this.mouseU *= this.devicePixelRatio;
+			this.mouseV *= this.devicePixelRatio;
 
 			/*
 			/*
