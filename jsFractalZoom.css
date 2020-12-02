@@ -31,6 +31,10 @@
 	outline: .2em dotted #888;
 }
 
+div {
+	position: relative;
+}
+
 body {
 	font-family: Verdana, Geneva, sans-serif;
 	position: absolute;
@@ -43,25 +47,22 @@ body {
 	right: 0;
 	bottom: 0;
 	left: 0;
-	overflow: hidden; /* layout is pixel precise. don't let whitespace between tags FIU */
 	background-color: #000;
+	overflow: hidden; /* layout is pixel precise. don't let whitespace between tags FIU */
 	line-height: 1.2; /* needed for box calculations, do not remove or change */
-}
-
-div {
-	position: relative;
 }
 
 #idZoomer {
 	position: absolute;
+	border: none;
 	margin : auto;
 	padding: 0;
+	width: 100%; /* fit to screen when over-sampled */
+	height: 100%; /* fit to screen when over-sampled */
 	top: 0;
 	right: 0;
 	bottom: 0;
 	left: 0;
-	width: 100%; /* fit to screen when over-sampled */
-	height: 100%; /* fit to screen when over-sampled */
 }
 
 
