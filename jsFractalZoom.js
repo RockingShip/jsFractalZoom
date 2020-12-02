@@ -31,6 +31,7 @@ function Config() {
 	 */
 	Config.power = false;
 	Config.autoPilot = false;
+	Config.rotate = true;
 	Config.hiRes = (window.devicePixelRatio === 1);
 
 	/** @member {float} - zoom speed */
@@ -569,6 +570,7 @@ function GUI() {
 	this.domZoomSpeedLeft = gebi("idZoomSpeedLeft");
 	this.domZoomSpeedRail = gebi("idZoomSpeedRail");
 	this.domZoomSpeedThumb = gebi("idZoomSpeedThumb");
+	this.domRotateButton = gebi("idRotateButton");
 	this.domRotateLeft = gebi("idRotateLeft");
 	this.domRotateRail = gebi("idRotateRail");
 	this.domRotateThumb = gebi("idRotateThumb");
@@ -649,17 +651,18 @@ function GUI() {
 	this.outcolour.listbox.focusItem(gebi("outcolour_" + Formula.outcolour));
 	this.plane.listbox.focusItem(gebi("plane_" + Formula.plane));
 
+	// enable if already at maximum
+	if (window.devicePixelRatio === 1)
+		this.domHiResButton.setAttribute("aria-pressed", "true");
+
 	// construct buttons
 	this.power = new Aria.Button(this.domPowerButton, false);
 	this.autoPilot = new Aria.Button(this.domAutoPilotButton, false);
 	this.home = new Aria.Button(this.domHomeButton, true);
 	this.save = new Aria.Button(this.domSaveButton, true);
 	this.url = new Aria.Button(this.domUrlButton, true);
+	this.rotate = new Aria.Button(this.domRotateButton, false);
 	this.theme = new Aria.Button(this.domThemeButton, true);
-
-	// enable if already at maximum
-	if (window.devicePixelRatio === 1)
-		this.domHiResButton.setAttribute("aria-pressed", "true");
 	this.hiRes = new Aria.Button(this.domHiResButton, false);
 
 	/*
@@ -1134,7 +1137,7 @@ function GUI() {
 		 */
 		if (newValue) {
 			// rotating, enable
-			if (!this.zoomer.enableAngle)
+			if (!this.zoomer.enableAngle && Config.rotate)
 				this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, true);
 		} else if (this.zoomer.angle === 0) {
 			// stopped and horizontal, disable
@@ -1299,6 +1302,34 @@ function GUI() {
 		 * Popup
 		 */
 		this.activatePopup("Copied to clipboard");
+	});
+	this.rotate.setCallbackValueChange((newValue) => {
+		/*
+		 * Apply `window.pixelDensity` to CSS pixels
+		 */
+		Config.rotate = newValue;
+
+		if (newValue) {
+			// enable rotating
+			if (!this.zoomer.enableAngle) {
+				// set backend
+				this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, true);
+				// restore angle
+				this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
+			}
+		} else {
+			// disable rotating
+			if (this.zoomer.enableAngle) {
+				// set backend
+				this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, false);
+				// remove angle
+				this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, 0);
+			}
+		}
+
+		// make zoomer responsive to change
+		this.zoomer.turboActive = 0;
+
 	});
 	this.theme.setCallbackValueChange(() => {
 		palette.mkrandom();
@@ -2318,7 +2349,7 @@ function GUI() {
 				Config.angle = this.touchAngle0 + touchAngle;
 
 				// enable rotation
-				if (!this.zoomer.enableAngle)
+				if (!this.zoomer.enableAngle && Config.rotate)
 					this.zoomer.resize(this.zoomer.viewWidth, this.zoomer.viewHeight, true);
 
 				/*

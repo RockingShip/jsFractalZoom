@@ -261,8 +261,17 @@
 			<div id="idZoomSpeedRight" class="navRight"><span class="navCaption">[z/Z]</span></div>
 		</div>
 
-		<div id="idRotate" class="navRow navSlider">
-			<div id="idRotateLabel" class="navLabel">Rotate</div>
+		<div id="idRotate" class="navRow navButton navSlider">
+			<div id="idRotateLabel" class="navLabel">
+				<div id="idRotateButton"
+				     class="button"
+				     tabindex="0"
+				     role="button"
+				     aria-pressed="true">
+					Rotate
+					<div class="light"></div>
+				</div>
+			</div>
 			<div id="idRotateLeft" class="navLeft"></div>
 			<div id="idRotateValue" class="navValue">
 				<div id="idRotateRail" class="rail">
@@ -355,22 +364,18 @@
 		</div>
 
 		<div id="idHiRes" class="navRow navButton">
-			<div id="idHiResLabel" class="navLabel"></div>
-			<div id="idHiResLeft" class="navLeft"></div>
-			<div id="idHiResValue" class="navValue">
-
+			<div id="idHiResLabel" class="navLabel">
 				<div id="idHiResButton"
 				     class="button"
 				     tabindex="0"
 				     role="button"
 				     aria-pressed="false">
 					HiRes
-
 					<div class="light"></div>
 				</div>
-				<span class="navCaption"></span>
-
 			</div>
+			<div id="idHiResLeft" class="navLeft"></div>
+			<div id="idHiResValue" class="navValue"></div>
 			<div id="idHiResRight" class="navRight"><span class="navCaption">[]</span></div>
 		</div>
 
