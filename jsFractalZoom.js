@@ -2140,6 +2140,10 @@ function GUI() {
 					Config.load(qstr);
 					palette.loadTheme();
 
+					// update density slider so value does not change when opening the menu
+					// NOTE: slider is exponential
+					this.density.moveSliderTo(Math.log(Config.density));
+
 					// activate
 					this.reload();
 				}
