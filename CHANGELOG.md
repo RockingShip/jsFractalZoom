@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-12-02 01:39:22 Renamed: `error` into `score`.
 2020-12-02 01:36:01 Added: `Rotate` button.
 2020-12-02 00:56:30 Added: `HiRes` button.
 2020-12-02 00:00:41 Changed: Relocated `devicePixelRatio` and resizing out of `zoomer`.

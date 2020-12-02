@@ -349,7 +349,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 	/** @member {Float64Array}
 	    @description Cached distance between Logical/Physical */
-	this.xError = new Float64Array(this.pixelWidth);
+	this.xScore = new Float64Array(this.pixelWidth);
 
 	/** @member {Int32Array}
 	    @description Inherited index from previous update */
@@ -365,7 +365,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 	/** @member {Float64Array}
 	    @description Cached distance between Logical/Physical */
-	this.yError = new Float64Array(this.pixelHeight);
+	this.yScore = new Float64Array(this.pixelHeight);
 
 	/** @member {Int32Array}
 	    @description Inherited index from previous update */
@@ -377,12 +377,12 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	 * @param {number}       end        - end coordinate
 	 * @param {Float64Array} newCoord   - coordinate stops
 	 * @param {Float64Array} newNearest - nearest evaluated coordinate stop
-	 * @param {Float64Array} newError   - difference between newCoord[] and newNearest[]
+	 * @param {Float64Array} newScore   - difference between newCoord[] and newNearest[]
 	 * @param {Uint16Array}  newFrom    - matching oldNearest[] index
 	 * @param {Float64Array} oldNearest - source ruler
-	 * @param {Float64Array} oldError   - source ruler
+	 * @param {Float64Array} oldScore   - source ruler
 	 */
-	this.makeRuler = (start, end, newCoord, newNearest, newError, newFrom, oldNearest, oldError) => {
+	this.makeRuler = (start, end, newCoord, newNearest, newScore, newFrom, oldNearest, oldScore) => {
 
 		/*
 		 *
@@ -395,31 +395,31 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			// determine coordinate current tab stop
 			const currCoord = (end - start) * iNew / (newCoord.length - 1) + start;
 
-			// determine errors
-			let currError = Math.abs(currCoord - oldNearest[iOld]);
-			let nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
+			// determine scoring. 0=exact
+			let currScore = Math.abs(currCoord - oldNearest[iOld]);
+			let nextScore = Math.abs(currCoord - oldNearest[iOld + 1]);
 
 			// bump if next source stop is better
-			while (nextError <= currError && iOld < oldNearest.length - 1) {
+			while (nextScore <= currScore && iOld < oldNearest.length - 1) {
 				iOld++;
-				currError = nextError;
-				nextError = Math.abs(currCoord - oldNearest[iOld + 1]);
+				currScore = nextScore;
+				nextScore = Math.abs(currCoord - oldNearest[iOld + 1]);
 			}
 
-			if (currError === 0)
+			if (currScore === 0)
 				cntExact++;
 
 			// populate
 			newCoord[iNew] = currCoord;
 			newNearest[iNew] = oldNearest[iOld];
-			newError[iNew] = currError;
+			newScore[iNew] = currScore;
 			newFrom[iNew] = iOld;
 		}
 
 		// copy the only option
 		while (iNew < newCoord.length) {
 			newNearest[iNew] = oldNearest[iOld];
-			newError[iNew] = Math.abs(newCoord[iNew] - oldNearest[iOld]);
+			newScore[iNew] = Math.abs(newCoord[iNew] - oldNearest[iOld]);
 			newFrom[iNew] = iOld;
 			iNew++;
 		}
@@ -444,7 +444,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		this.frame = frame;
 		this.pixels = frame.pixels;
 
-		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, viewWidth, viewHeight, pixelWidth, pixelHeight, pixels} = this;
+		const {xCoord, xNearest, xScore, xFrom, yCoord, yNearest, yScore, yFrom, viewWidth, viewHeight, pixelWidth, pixelHeight, pixels} = this;
 
 		this.centerX = centerX;
 		this.centerY = centerY;
@@ -472,23 +472,23 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			// simple linear fill of rulers
 			for (let i = 0; i < xCoord.length; i++) {
 				xNearest[i] = xCoord[i] = i * (pixelMaxX - pixelMinX) / xCoord.length + pixelMinX;
-				xError[i] = 0;
+				xScore[i] = 0;
 				xFrom[i] = -1;
 			}
 			for (let j = 0; j < yCoord.length; j++) {
 				yNearest[j] = yCoord[j] = j * (pixelMaxY - pixelMinY) / yCoord.length + pixelMinY;
-				yError[j] = 0;
+				yScore[j] = 0;
 				yFrom[j] = -1;
 			}
 
 			return;
 		}
 
-		const {xNearest: oldXnearest, xError: oldXerror, yNearest: oldYnearest, yNearest: oldYerror, pixelWidth: oldPixelWidth, pixelHeight: oldPixelHeight, pixels: oldPixels} = previousView;
+		const {xNearest: oldXnearest, xScore: oldXscore, yNearest: oldYnearest, yNearest: oldYscore, pixelWidth: oldPixelWidth, pixelHeight: oldPixelHeight, pixels: oldPixels} = previousView;
 
 		// setup new rulers
-		const exactX = this.makeRuler(centerX - radiusPixelHor, centerX + radiusPixelHor, xCoord, xNearest, xError, xFrom, previousView.xNearest, previousView.xError);
-		const exactY = this.makeRuler(centerY - radiusPixelVer, centerY + radiusPixelVer, yCoord, yNearest, yError, yFrom, previousView.yNearest, previousView.yError);
+		const exactX = this.makeRuler(centerX - radiusPixelHor, centerX + radiusPixelHor, xCoord, xNearest, xScore, xFrom, previousView.xNearest, previousView.xScore);
+		const exactY = this.makeRuler(centerY - radiusPixelVer, centerY + radiusPixelVer, yCoord, yNearest, yScore, yFrom, previousView.yNearest, previousView.yScore);
 
 		frame.cntPixels += exactX * exactY;
 		frame.cntHLines += exactX;
@@ -529,21 +529,21 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			}
 		}
 
-		// keep the `From`s with lowest error
+		// keep the `From`s with lowest score
 		for (let i = 1; i < pixelWidth; i++) {
-			if (xFrom[i - 1] === xFrom[i] && xError[i - 1] > xError[i])
+			if (xFrom[i - 1] === xFrom[i] && xScore[i - 1] > xScore[i])
 				xFrom[i - 1] = -1;
 		}
 		for (let j = 1; j < pixelHeight; j++) {
-			if (yFrom[j - 1] === yFrom[j] && yError[j - 1] > yError[j])
+			if (yFrom[j - 1] === yFrom[j] && yScore[j - 1] > yScore[j])
 				yFrom[j - 1] = -1;
 		}
 		for (let i = pixelWidth - 2; i >= 0; i--) {
-			if (xFrom[i + 1] === xFrom[i] && xError[i + 1] > xError[i])
+			if (xFrom[i + 1] === xFrom[i] && xScore[i + 1] > xScore[i])
 				xFrom[i + 1] = -1;
 		}
 		for (let j = pixelHeight - 2; j >= 0; j--) {
-			if (yFrom[j + 1] === yFrom[j] && yError[j + 1] > yError[j])
+			if (yFrom[j + 1] === yFrom[j] && yScore[j + 1] > yScore[j])
 				yFrom[j + 1] = -1;
 		}
 
@@ -585,24 +585,24 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	 */
 	this.updateLines = (zoomer) => {
 
-		const {xCoord, xNearest, xError, xFrom, yCoord, yNearest, yError, yFrom, pixels, pixelWidth, pixelHeight} = this;
+		const {xCoord, xNearest, xScore, xFrom, yCoord, yNearest, yScore, yFrom, pixels, pixelWidth, pixelHeight} = this;
 
-		// which tabstops have the worst error
-		let worstXerr = xError[0];
+		// which tabstops have the worst score
+		let worstXerr = xScore[0];
 		let worstXi = 0;
-		let worstYerr = yError[0];
+		let worstYerr = yScore[0];
 		let worstYj = 0;
 
 		for (let i = 1; i < pixelWidth; i++) {
-			if (xError[i] > worstXerr) {
+			if (xScore[i] > worstXerr) {
 				worstXi = i;
-				worstXerr = xError[i];
+				worstXerr = xScore[i];
 			}
 		}
 		for (let j = 1; j < pixelHeight; j++) {
-			if (yError[j] > worstYerr) {
+			if (yScore[j] > worstYerr) {
 				worstYj = j;
-				worstYerr = yError[j];
+				worstYerr = yScore[j];
 			}
 		}
 
@@ -623,7 +623,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			let x = xCoord[i];
 
 			let result = zoomer.onUpdatePixel(zoomer, frame, x, yCoord[0]);
-			if (yError[0] === 0 || yFrom[0] !== -1)
+			if (yScore[0] === 0 || yFrom[0] !== -1)
 				frame.cntPixels++;
 
 			let ji = 0 * pixelWidth + i;
@@ -632,7 +632,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 			for (let j = 1; j < pixelHeight; j++) {
 				// only calculate cross points of exact lines, fill the others
-				if (yError[j] === 0 || yFrom[j] !== -1) {
+				if (yScore[j] === 0 || yFrom[j] !== -1) {
 					result = zoomer.onUpdatePixel(zoomer, frame, x, yCoord[j]);
 					frame.cntPixels++;
 				}
@@ -642,7 +642,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			}
 
 			for (let u = i + 1; u < pixelWidth; u++) {
-				if (xError[u] === 0 || xFrom[u] !== -1)
+				if (xScore[u] === 0 || xFrom[u] !== -1)
 					break;
 
 				for (let v = 0; v < pixelHeight; v++) {
@@ -651,7 +651,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			}
 
 			xNearest[i] = x;
-			xError[i] = 0;
+			xScore[i] = 0;
 			frame.cntHLines++;
 
 		} else {
@@ -660,7 +660,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			let y = yCoord[j];
 
 			let result = zoomer.onUpdatePixel(zoomer, frame, xCoord[0], y);
-			if (xError[0] === 0 || xFrom[0] !== -1)
+			if (xScore[0] === 0 || xFrom[0] !== -1)
 				frame.cntPixels++;
 
 			let ji = j * pixelWidth + 0;
@@ -668,7 +668,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 			for (let i = 1; i < pixelWidth; i++) {
 				// only calculate cross points of exact lines, fill the others
-				if (xError[i] === 0 || xFrom[i] !== -1) {
+				if (xScore[i] === 0 || xFrom[i] !== -1) {
 					result = zoomer.onUpdatePixel(zoomer, frame, xCoord[i], y);
 					frame.cntPixels++;
 				}
@@ -676,7 +676,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			}
 
 			for (let v = j + 1; v < pixelHeight; v++) {
-				if (yError[v] === 0 || yFrom[v] !== -1)
+				if (yScore[v] === 0 || yFrom[v] !== -1)
 					break;
 
 				// for (let u = 0; u < pixelWidth; u++)
@@ -687,7 +687,7 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			}
 
 			yNearest[j] = y;
-			yError[j] = 0;
+			yScore[j] = 0;
 			frame.cntVLines++;
 		}
 
