@@ -877,7 +877,7 @@ function GUI() {
 	 *
 	 * @member {Zoomer} - Zoomer instance
 	 */
-	this.zoomer = new Zoomer(this.domZoomer, (Config.angle !== 0), {
+	this.zoomer = new Zoomer(realClientWidth, realClientHeight, (Config.angle !== 0), {
 
 		/**
 		 * Disable web-workers.

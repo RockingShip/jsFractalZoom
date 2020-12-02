@@ -758,23 +758,23 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
  * Viewing direction is the center x,y and radius. Angle is part of `Frame` rendering.
  *
  * @class
- * @param {HTMLCanvasElement}	domZoomer		 - Element to detect a resize	 -
- * @param {boolean}		enableAngle		 - Enable rotation
- * @param {Object}		[options]   		 - Template values for new frames. These may be changed during runtime.
- * @param {float}		[options.frameRate]	 - Frames per second
- * @param {float}		[options.turboFrameRate] - Frames per second when no navigational changes
- * @param {float}		[options.updateSlice]	 - UPDATEs get sliced into smaller  chucks to stay responsive and limit overshoot
- * @param {float}		[options.coef]		 - Low-pass filter coefficient to dampen spikes
- * @param {boolean}		[options.disableWW]	 - Disable Web Workers
- * @param {function}		[options.onResize]	 - Called when canvas resize detected.
- * @param {function}		[options.onInitFrame]	 - Additional allocation of a new frame.
- * @param {function}		[options.onBeginFrame]	 - Called before start frame. Set x,y,radius,angle.
- * @param {function}		[options.onUpdatePixel]	 - Called to calculate pixel values.
- * @param {function}		[options.onRenderFrame]	 - Called directly before rendering. Set palette.
- * @param {function}		[options.onEndFrame]	 - Called directly after frame complete. Update statistics
- * @param {function}		[options.onPutImageData] - Inject frame into canvas.
+ * @param {int}		viewWidth		 	 - View width
+ * @param {int}		viewHeight		 	 - View Height
+ * @param {boolean}	enableAngle		 - Enable rotation
+ * @param {Object}	[options]   		 - Template values for new frames. These may be changed during runtime.
+ * @param {float}	[options.frameRate]	 - Frames per second
+ * @param {float}	[options.turboFrameRate] - Frames per second when no navigational changes
+ * @param {float}	[options.updateSlice]	 - UPDATEs get sliced into smaller chucks to stay responsive and limit overshoot
+ * @param {float}	[options.coef]		 - Low-pass filter coefficient to dampen spikes
+ * @param {boolean}	[options.disableWW]	 - Disable Web Workers
+ * @param {function}	[options.onInitFrame]	 - Additional allocation of a new frame.
+ * @param {function}	[options.onBeginFrame]	 - Called before start frame. Set x,y,radius,angle.
+ * @param {function}	[options.onUpdatePixel]	 - Called to calculate pixel values.
+ * @param {function}	[options.onRenderFrame]	 - Called directly before rendering. Set palette.
+ * @param {function}	[options.onEndFrame]	 - Called directly after frame complete. Update statistics
+ * @param {function}	[options.onPutImageData] - Inject frame into canvas.
  */
-function Zoomer(domZoomer, enableAngle, options) {
+function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 	/*
 	 * defaults. Suggested to review and adapt to your situation
 	 */
@@ -817,19 +817,6 @@ function Zoomer(domZoomer, enableAngle, options) {
 	 * @member {boolean} - Frames per second
 	 */
 	this.disableWW = false;
-
-	/**
-	 * Size change detected for `domZoomer`
-	 *
-	 * @param {Zoomer} zoomer      - This
-	 * @param {int}    viewWidth   - Screen width (pixels)
-	 * @param {int}    viewHeight  - Screen height (pixels)
-	 * @param {int}    pixelWidth  - Storage width (pixels)
-	 * @param {int}    pixelHeight - Storage Heignt (pixels)
-	 */
-	this.onResize = (zoomer, viewWidth, viewHeight, pixelWidth, pixelHeight) => {
-		// console.log("WxH", viewWidth, viewHeight);
-	};
 
 	/**
 	 * Additional allocation of a new frame.
@@ -956,11 +943,11 @@ function Zoomer(domZoomer, enableAngle, options) {
 
 	/** @member {int}
 	    @description Display/screen width (pixels) */
-	this.viewWidth = domZoomer.parentElement.clientWidth;
+	this.viewWidth = viewWidth;
 
 	/** @member {int}
 	    @description Display/screen height (pixels) */
-	this.viewHeight = domZoomer.parentElement.clientHeight;
+	this.viewHeight = viewHeight;
 
 	/** @member {int}
 	    @description Frame buffer width (pixels) */

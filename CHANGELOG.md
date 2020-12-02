@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-12-02 14:38:56 Changed: zoomer constructor.
 2020-12-02 02:19:26 Fixed: `wheel` event and canvas parent.
 2020-12-02 01:39:22 Renamed: `error` into `score`.
 2020-12-02 01:36:01 Added: `Rotate` button.
