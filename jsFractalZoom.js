@@ -29,10 +29,21 @@ function Config() {
 	/*
 	 * GUI settings
 	 */
+	/** @member {boolean} - on/off state message queue */
 	Config.power = false;
+	/** @member {boolean} - on/off autopilot */
 	Config.autoPilot = false;
+	/** @member {boolean} - enable/disable rotation/angle */
 	Config.rotate = true;
+	/** @member {boolean} - enable/disable devicePixelRatio */
 	Config.hiRes = (window.devicePixelRatio === 1);
+
+	/** @member {int} - force fixed clientWidth if non zero */
+	Config.forceWidth = 0;
+	/** @member {int} - force fixed clientHeight if non zero */
+	Config.forceHeight = 0;
+	/** @member {int} - force fixed devicePixelRatio if non zero */
+	Config.forceDevicePixelRatio = 0;
 
 	/** @member {float} - zoom speed */
 	Config.zoomSpeedManual = 20;
@@ -164,6 +175,14 @@ Config.load = function (query) {
 			Formula.outcolour = Number.parseInt(v);
 		else if (k === "plane")
 			Formula.plane = Number.parseInt(v);
+		else if (k === "w")
+			Config.forceWidth = Number.parseInt(v);
+		else if (k === "h")
+			Config.forceHeight = Number.parseInt(v);
+		else if (k === "dpr") {
+			Config.forceDevicePixelRatio = Number.parseInt(v);
+			Config.hiRes = true;
+		}
 	}
 };
 
@@ -847,6 +866,19 @@ function GUI() {
 		this.domZoomer.width = viewWidth;
 		this.domZoomer.height = viewHeight;
 
+		/*
+		 * Update canvas CSS with forced width?height
+		 */
+		if (Config.forceWidth || Config.forceHeight) {
+			if (viewWidth > viewHeight) {
+				this.domZoomer.style.setProperty("width", "100%");
+				this.domZoomer.style.setProperty("height", "unset");
+			} else {
+				this.domZoomer.style.setProperty("width", "unset");
+				this.domZoomer.style.setProperty("height", "100%");
+			}
+		}
+
 		// recalculate fontSize
 		this.setFontSize();
 
@@ -867,8 +899,8 @@ function GUI() {
 	this.ctx = this.domZoomer.getContext("2d", {desynchronized: true});
 
 	// compensate broken CSS pixels by over-sampling the canvas
-	let realClientWidth = Math.round(this.domZoomer.parentNode.clientWidth * this.devicePixelRatio);
-	let realClientHeight = Math.round(this.domZoomer.parentNode.clientHeight * this.devicePixelRatio);
+	let realClientWidth = Config.forceWidth || Math.round(this.domZoomer.parentNode.clientWidth * this.devicePixelRatio);
+	let realClientHeight = Config.forceHeight || Math.round(this.domZoomer.parentNode.clientHeight * this.devicePixelRatio);
 	// set canvas
 	this.resize(realClientWidth, realClientHeight);
 
@@ -1030,8 +1062,8 @@ function GUI() {
 			 */
 
 			// compensate broken CSS pixels by over-sampling the canvas
-			let realClientWidth = Math.round(this.domZoomer.parentNode.clientWidth * this.devicePixelRatio);
-			let realClientHeight = Math.round(this.domZoomer.parentNode.clientHeight * this.devicePixelRatio);
+			let realClientWidth = Config.forceWidth || Math.round(this.domZoomer.parentNode.clientWidth * this.devicePixelRatio);
+			let realClientHeight = Config.forceHeight || Math.round(this.domZoomer.parentNode.clientHeight * this.devicePixelRatio);
 
 			if (realClientWidth !== zoomer.viewWidth || realClientHeight !== zoomer.viewHeight) {
 				// update views
@@ -1349,7 +1381,7 @@ function GUI() {
 		Config.hiRes = newValue;
 
 		if (Config.hiRes) {
-			this.devicePixelRatio = window.devicePixelRatio;
+			this.devicePixelRatio = Config.forceDevicePixelRatio || window.devicePixelRatio;
 		} else {
 			this.devicePixelRatio = 1;
 		}
