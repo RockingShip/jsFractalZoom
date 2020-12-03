@@ -471,7 +471,13 @@ M 26.727 32.727   a 2 2 0 0 1 -4  0   l  0 -8   a 2 2 0 0 1  2 -2   l  8  0   a 
 
 		// override config/formula
 		try {
-			const query = decodeURI(location.search.substring(1));
+			// Get query string
+			let query = decodeURI(location.search.substring(1));
+
+			// for older mobile
+			// NOTE: is `decodeURI()` doesn't catch this then don't expect `replaceAll()` to be present.
+			query= query.replace(/%26/g, '&');
+
 			if (query)
 				Config.load(query);
 		} catch (e) { // catches a malformed URI
