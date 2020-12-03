@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-12-03 14:51:30 Changed: `README.md`.
 2020-12-03 01:10:12 Fixed: Broken `decodeURI()`.
 2020-12-03 01:10:12 Fixed: Decoding URI for single "h=". 
 2020-12-03 01:05:10 Fixed: Decoding URI.

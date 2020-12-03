@@ -782,29 +782,38 @@ function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 	/**
 	 * Frames per second.
 	 * Rendering frames is expensive, too high setting might render more than calculate.
+	 * If a too high setting causes a frame to drop, `zoomer` will lower this setting with 10%
 	 *
 	 * @member {float} - Frames per second
 	 */
 	this.frameRate = 20;
 
 	/**
-	 * Turbo mode is when there is no visible movement. Lower FPS to (drastically) reduce render overhead.
+	 * Turbo mode is when there is no visible movement.
+	 * When detected, lower FPS to (drastically) reduce render overhead.
 	 * Calls to `setPosition()` disable turbo mode.
+	 * There is still a coding issue with the time needed to switch back to normal mode.
 	 *
 	 * @member {float} - Framerate when in turbo mode
 	 */
 	this.turboFrameRate = 2;
 
 	/**
-	 * Update rate in milli seconds used to slice UPDATE state.
-	 * Low values keep the event queue responsive.
+	 * Duration in milli-seconds used to timeslice the `UPDATE` state.
+	 * Basically the sample duration for the timer queue Phased Locked Loop.
+	 * With 20FPS the frame delay is 1/20 = 50 mSec.
+	 * With an `updateSlice` of 5 mSec there are 10 slices per frame.
+	 * Also the acceptable maximum for overshooting a vsync.
 	 *
-	 * @member {float} - Frames per second
+	 * @member {float} - Timeslice duration `UPDATE` state
 	 */
-	this.updateSlice = 2;
+	this.updateSlice = 5;
 
 	/**
-	 * Low-pass coefficient to dampen spikes for averages
+	 * Low-pass coefficient to dampen spikes for continuous averages.
+	 * Used primarily for the timer queue Phase Locked Loop.
+	 * Formula:
+	 * 	 average += (sample - average) * coef
 	 *
 	 * @member {float} - Low-pass filter coefficient to dampen spikes
 	 */
@@ -812,30 +821,36 @@ function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 
 	/**
 	 * Disable web-workers.
-	 * Offload frame rendering to web-workers
+	 * Offload frame rendering to web-workers.
+	 * When ever the default changes, you will appreciate it explicitly being noted.
+	 * You cannot use webworkers if you add protected recources to frames.
 	 *
-	 * @member {boolean} - Frames per second
+	 * @member {boolean} - disable/Enable web workers.
 	 */
 	this.disableWW = false;
 
 	/**
-	 * Additional allocation of a new frame.
-	 * Setup optional palette and add custom settings.
-	 * NOTE: each frame has it's own palette.
+	 * Additional resources added to new frames.
+	 * Frames are passed to webworkers.
+	 * Frames are re-used without reinitialising.
 	 *
-	 * @param {Zoomer}   zoomer - This
+	 * Most commonly, setup optional palette,
+	 *
+	 * @param {Zoomer}      zoomer - Running engine
 	 * @param {ZoomerFrame} frame  - Frame being initialized.
 	 */
 	this.onInitFrame = (zoomer, frame) => {
-		// allocate palette
-		// frame.palette = new Uint32Array(65536);
+		// allocate RGBA palette.
+		// `zoomer` does not read the contents, web-workers do
+
+		/* frame.palette = new Uint32Array(65536); */
 	};
 
 	/**
 	 * Start of a new frame.
 	 * Process timed updates (piloting), set x,y,radius,angle.
 	 *
-	 * @param {Zoomer}      zoomer    - This
+	 * @param {Zoomer}      zoomer    - Running engine
 	 * @param {ZoomerView}  calcView  - View about to be constructed
 	 * @param {ZoomerFrame} calcFrame - Frame about to be constructed
 	 * @param {ZoomerView}  dispView  - View to extract rulers
@@ -843,62 +858,68 @@ function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 	 */
 	this.onBeginFrame = (zoomer, calcView, calcFrame, dispView, dispFrame) => {
 		// set navigation direction
-		// zoomer.setPosition(centerX, centerY, radius, angle);
+
+		/* zoomer.setPosition(centerX, centerY, radius, angle); */
 	};
 
-	/**
-	 * This is done for every pixel. optimize well!
-	 *
-	 * @param {Zoomer}   zoomer  - This
-	 * @param {ZoomerFrame} frame   - This
-	 * @param {float}    x       - X value
-	 * @param {float}    y       - Y value
-	 */
+   /**
+     * This is done for every pixel. optimize well!
+     * Easy extendable for 3D.
+     * Return the pixel value for the given floating point coordinate.
+     * Zoomer will use it to fill integer pixel positions.
+     * The positions are ordered in decreasing significance.
+     *
+     * @param {Zoomer}      zoomer  - Running engine
+     * @param {ZoomerFrame} frame   - Pixel/Palette/Rotate
+     * @param {float}       x       - X coordinate
+     * @param {float}       y       - Y coordinate
+     * @return {int} - Pixel value
+     */
 	this.onUpdatePixel = (zoomer, frame, x, y) => {
 		// calculate pixel
-		// return calculate(x, y);
+
+		return 0; /* your code here */
 	};
 
 	/**
 	 * Start extracting (rotated) RGBA values from (paletted) pixels.
-	 * Extract rotated view from pixels and store them in specified imnagedata.
+	 * Extract rotated view from pixels and store them in specified imagedata.
 	 * Called just before submitting the frame to a web-worker.
-	 * Previous frame is complete, current frame is under construction.
 	 *
-	 * @param {Zoomer} zoomer - This
+	 * @param {Zoomer}      zoomer - Running engine
 	 * @param {ZoomerFrame} frame  - Frame about to render
 	 */
 	this.onRenderFrame = (zoomer, frame) => {
 		// update palette
-		// if (frame.palette)
-		// 	frame.palette.set(yourUint32TypedPalette);
+
+		/* updatePalette(frame.palette); */
 	};
 
 	/**
-	 * Frame construction complete. Update statistics.
-	 * Frame might be in transit to the web-worker and is not available as parameter.
+	 * Frame construction complete. Update statistics. Check resize.
 	 *
-	 * @param {Zoomer} zoomer - This
+	 * @param {Zoomer}      zoomer - Running engine
 	 * @param {ZoomerFrame} frame  - Frame before releasing to pool
 	 */
 	this.onEndFrame = (zoomer, frame) => {
 		// statistics
-		// console.log('fps', zoomer.avgFrameRate);
+
+		/* console.log('fps', zoomer.avgFrameRate); */
 	};
 
 	/**
 	 * Inject frame into canvas.
 	 * This is a callback to keep all canvas resource handling/passing out of Zoomer context.
 	 *
-	 * @param {Zoomer}   zoomer - This
+	 * @param {Zoomer}      zoomer - Running engine
 	 * @param {ZoomerFrame} frame  - Frame to inject
 	 */
 	this.onPutImageData = (zoomer, frame) => {
 		// get final buffer
-		const imagedata = new ImageData(new Uint8ClampedArray(frame.rgba.buffer), frame.viewWidth, frame.viewHeight);
+		const imageData = new ImageData(new Uint8ClampedArray(frame.rgba.buffer), frame.viewWidth, frame.viewHeight);
 
-		// draw frame onto canvas. `ctx` is part of caller.
-		// ctx.putImageData(imagedata, 0, 0);
+		// draw frame onto canvas. `ctx` is namespace of caller.
+		ctx.putImageData(imagedata, 0, 0);
 	};
 
 	/*
