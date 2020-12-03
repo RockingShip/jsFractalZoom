@@ -631,7 +631,9 @@ function GUI() {
 	 */
 	this.devicePixelRatio = 1; // todo: make this user selectable: window.devicePixelRatio
 	// redefine devicePixelRatio based on forced settings so navigation works
-	if ((Config.forceWidth || Config.forceHeight) && !Config.forceDevicePixelRatio)
+	if (Config.forceHeight && !Config.forceDevicePixelRatio)
+		this.devicePixelRatio = Config.forceHeight / this.domZoomer.parentNode.clientHeight;
+	if (Config.forceWidth && !Config.forceDevicePixelRatio)
 		this.devicePixelRatio = Config.forceWidth / this.domZoomer.parentNode.clientWidth;
 
 	/** @member {number} - view mouse X coordinate */

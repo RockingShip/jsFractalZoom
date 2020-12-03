@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-12-03 01:10:12 Fixed: Decoding URI for single "h=". 
 2020-12-03 01:05:10 Fixed: Decoding URI.
 2020-12-03 00:23:05 Changed: `gallery` and `gallery-video` html.
 2020-12-02 23:51:26 Changed: `README.md`.
