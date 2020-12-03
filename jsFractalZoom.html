@@ -470,9 +470,12 @@ M 26.727 32.727   a 2 2 0 0 1 -4  0   l  0 -8   a 2 2 0 0 1  2 -2   l  8  0   a 
 		} while (Config.theme === 7);
 
 		// override config/formula
-		const query = location.search.substring(1);
-		if (query)
-			Config.load(query);
+		try {
+			const query = decodeURI(location.search.substring(1));
+			if (query)
+				Config.load(query);
+		} catch (e) { // catches a malformed URI
+		}
 
 		window.gui = new GUI();
 

@@ -150,6 +150,10 @@ Config.load = function (query) {
 	const vars = query.split('&');
 	for (let i = 0; i < vars.length; i++) {
 		const [k, v] = vars[i].split('=');
+		String.length
+		if (v.length === 0)
+			continue; // skip empty values
+
 		if (k === "x")
 			Config.centerX = Number.parseFloat(v);
 		else if (k === "y")
