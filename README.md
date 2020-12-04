@@ -20,8 +20,8 @@ The only requirement is the implementation of:
      * Zoomer will use it to fill integer pixel positions. 
      * The positions are ordered in decreasing significance.
      *
-     * @param {Zoomer}      zoomer  - &#1F60A;
-     * @param {ZoomerFrame} frame   - Pixel/Palette/Rotate
+     * @param {Zoomer}      zoomer  - 😊
+     * @param {ZoomerFrame} frame   - Pixels/Palette/Rotate
      * @param {float}       x       - X coordinate
      * @param {float}       y       - Y coordinate
      * @return {int} - Pixel value           
