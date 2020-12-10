@@ -998,7 +998,7 @@ function GUI() {
 			// maxIter for embedded calc(), maxDepth for formula.js
 			this.domStatusTitle.innerHTML = JSON.stringify({
 				x: Config.centerX, y: Config.centerY, radius: Config.radius, angle: Config.angle, density: Config.density, iter: Config.maxIter,
-				quality: Math.round(dispFrame.quality * 100000) / 100000
+				complete: Math.round(dispFrame.complete * 100000) / 100000
 			});
 		},
 

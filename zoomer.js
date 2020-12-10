@@ -187,8 +187,8 @@ function ZoomerFrame(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 	this.cntVLines = 0;
 
 	/** @member {float}
-	    @description Quality */
-	this.quality = 0;
+	    @description Completion. Randing from 0 to 1. */
+	this.complete = 0;
 }
 
 /**
@@ -547,8 +547,8 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 				yFrom[j + 1] = -1;
 		}
 
-		// update quality
-		frame.quality = frame.cntPixels / (frame.pixelWidth * frame.pixelHeight);
+		// update completion
+		frame.complete = frame.cntPixels / (frame.pixelWidth * frame.pixelHeight);
 	};
 
 	/**
@@ -691,8 +691,8 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 			frame.cntVLines++;
 		}
 
-		// update quality
-		frame.quality = frame.cntPixels / (frame.pixelWidth * frame.pixelHeight);
+		// update completion
+		frame.complete = frame.cntPixels / (frame.pixelWidth * frame.pixelHeight);
 		return 1;
 	};
 
@@ -745,8 +745,8 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 		}
 		this.frame.cntPixels = pixelWidth * pixelHeight;
 
-		// update quality
-		this.frame.quality = 1;
+		// update completion
+		this.frame.complete = 1;
 	};
 }
 
@@ -1103,8 +1103,8 @@ function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 	this.avgFrameRate = 0;
 
 	/** @member {float[]}
-	    @description Average quality (0..1) */
-	this.avgQuality = 0;
+	    @description Average Completion (0..1) */
+	this.avgComplete = 0;
 
 	/** @member {float}
 	    @description Total number of milli seconds UPDATE was prolonged. calculate() takes too long. */
@@ -1176,7 +1176,7 @@ function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 		this.avgPixelsPerFrame += (frame.cntPixels - this.avgPixelsPerFrame) * this.coef;
 		this.avgLinesPerFrame += ((frame.cntHLines + frame.cntVLines) - this.avgLinesPerFrame) * this.coef;
 		this.avgRoundTrip += (frame.durationRoundTrip - this.avgRoundTrip) * this.coef;
-		this.avgQuality += ((frame.cntPixels / (frame.pixelWidth * frame.pixelHeight)) - this.avgQuality) * this.coef;
+		this.avgComplete += ((frame.cntPixels / (frame.pixelWidth * frame.pixelHeight)) - this.avgComplete) * this.coef;
 
 	};
 

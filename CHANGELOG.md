@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-12-10 00:14:26 Rename: quality into completion.
 2020-12-04 19:35:11 Changed: %26 not in strings.
 2020-12-03 14:51:30 Changed: `README.md`.
 2020-12-03 01:10:12 Fixed: Broken `decodeURI()`.
