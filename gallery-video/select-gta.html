@@ -224,12 +224,16 @@
 	<span class="rowDescription2">Upscaled 90x50</span>
 	<button onclick="loadRight(event, 'gta-90x50-420x236')">R</button>
 </div>
+<div class="row">
+	<span class="rowDescription2" style="width:auto">Loading can take up to 20 seconds.</span>
+</div>
 
 <h1>Comparing GTA with different PixelPerFrame settings</h1>
 <p style="text-align:center; font-weight: bold">(contains reckless driving)</p>
 <p>Above is an overview of available clips with different PPF settings. Press "L"/"R" to load them into the preview areas above.</p>
 <p>Suggested combos: <span class="mono">"1/100 <-> 1/900"</span>, <span class="mono">"1/10 <-> upscaled 285x160"</span> and <span class="mono">"1/100 <-> upscaled 90x50"</span></p>
 <p>Both previews should be in sync (buttons are green). If out of sync after loading press button again.</p>
+<p>If buttons stay orange then network might not be sufficient responsive. Sync on visual impressions.</p>
 
 <p>This clip was chosen because it has fast and abrupt movements which stresses low bandwidth settings. Audio has been removed to reduce ear stress.</p>
 <p>The original 720p source with audio: <a href="https://www.youtube.com/watch?v=cVGRDjlmMFk"><span class="mono">https://www.youtube.com/watch?v=cVGRDjlmMFk</span></a></p>
@@ -246,6 +250,8 @@
 	<dd>Balance between less abrupt movements and different sizes of head lights stress blurring of splash effect.</dd>
 	<dt>Roof</dt>
 	<dd>Extreme low amount of changes prolong updates which stresses ghosting, dithering and colour shading.</dd>
+	<dt>Front hood/bonnet</dt>
+	<dd>The reflections of passing vehicle on the front hood/bonnet.</dd>
 </dl>
 
 <script type="text/javascript">
@@ -341,5 +347,7 @@
 	});
 
 </script>
+
+<p><button onclick="history.back()">&#x23ee; BACK</button> <button onclick="window.location='https://github.com/RockingShip/jsFractalZoom'">&#x23cf; PROJECT HOME</button></p>
 </body>
 </html>
