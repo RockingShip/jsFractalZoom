@@ -1,4 +1,4 @@
-<a href="https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728%26y=0.2308933773688535%26r=3.021785750590329e-7%26a=0%26density=0.0362%26iter=10080%26theme=6%26seed=2140484823" target="_blank"><img src="assets/favimage-840x472.jpg" width="100%" alt="favimage"/></a>
+<a href="https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823" target="_blank"><img src="assets/favimage-840x472.jpg" width="100%" alt="favimage"/></a>
 
 # Welcome to the wonderful world of (fractal) zooming.
 
@@ -6,7 +6,7 @@ When insufficient resources force you to prioritize which pixels to render first
 
 This project has 3 Components:
 
-- XaoS inspired fractals as sample content.
+- [XaoS](http://xaos.sourceforge.net/black/index.php) inspired fractals as sample content.
 - The `zoomer` engine.
 - The `splash` video codec.
 
@@ -28,8 +28,12 @@ The only requirement is the implementation of:
      */
     onUpdatePixel: (zoomer, frame, x, y) => {
         return <YourCodeHere>;
-    },
+    }
 ```
+
+## NOTE: This document is under construction and semantically/grammatically under-par!
+
+Currently collecting points of interest, later redacting a storyline.
 
 ## Experience the fractal zoomer
 
@@ -42,15 +46,15 @@ Suggestions for the best experience:
 - Too much noise, with the wheel you can adjust focus like a microscope.
 - Drag to position photogenic.
 - Staying put enables turbo mode for maximum calculations.
-- Rendering is complete when "quality" (top status line in menu) reaches "1".
+- Rendering is complete when "complete" (top status line in menu) reaches "1".
 - Menu has many goodies. The control panel can be resized.
 - Panel buttons "save" to save PNG or "url" to copy weblink to clipboard.
 
 Saving:
 - Files are PNG.
 - Panels and text are removed.
-- PNG contains navigation and setting information.
-- Drop PNG on zoomer page to load settings.
+- PNG contains navigation and setting.
+- Drop PNG on zoomer page to load stored information.
 
 Tips for 4K:
 - Switch to HD resolution for fast navigation
@@ -76,7 +80,7 @@ Multi-monitor wallpapers:
 - Paste clipboard in URL bar and append `&w=<width>&h=<height>` reflecting your total multi-monitor size.
 - Resize window to minimize margins.
 - Reload adapted URL to adjust internals accordingly.
-- Wait for quality to reach "1".
+- Wait for complete to reach "1".
 - "SAVE".
 
 ### A Pixel is not a Pixel
@@ -93,6 +97,88 @@ Mobile sets CSS pixels which could be as low as 560x360, this to save battery.
 To switch to physical pixels, toggle the `HiRes` button on the control panel.
 
 For more information, visit the side project: [https://github.com/xyzzy/realDPI](https://github.com/xyzzy/realDPI)
+
+## The `zoomer` architecture
+
+The `zoomer` engine lets you visually navigate through a procedurally generated landscape.  
+It assumes that calculating pixel value is highly expensive.  
+Maximises reuse of data from the previous frame to avoid unnecessary calculations,  
+New pixel values are calculated in order of significance.
+
+###  Navigation
+
+The directional viewing vector consists of three components:
+
+  - The x,y coordinates, extendable to 3D or more
+  - radius
+  - rotational angle
+
+Updating the directional vector is user defined.
+
+### States
+
+`zoomer` is a timed state machine to construct frames.
+
+The states are:
+
+  - COPY
+    Construct rulers for scaling/shifting pixels from previous frame.  
+    Copy pixels using an `indexed memcpy()`.  
+    Determine calculate order for rows/columns.
+- 
+  - UPDATE
+    Update key pixels along an axis, called a scanline.  
+    Key pixels are pixels that have been scanned along in all directions.  
+    Flood fill neighbours to create motion blur using `interleaved memcpy()`.
+
+  - RENDER
+    Copy pixel values from the backing store to a RGBA storage.  
+    Optional palettes are applied.  
+    Apply rotation where/when necessary using `angled memcpy()`.
+
+  - PAINT
+    Write RGBA storage to the display.  
+    Most probably being a canvas using `putImageData()`.
+
+###  Phased Locked Loop
+
+The time needed for `COPY`, `RENDER` and `PAINT` is constant.  
+The `UPDATE` timings for calculating a pixel is undetermined.  
+Duration and overhead of time measurement functions is considered a factor more than calculating pixel values.
+The stability of framerate depends on the accuracy of timing predictions.
+
+Phased Locked Loop predicts the number of calculations/iterations based on averages from the past.  
+Two time measurements are made, before and after a predetermined number of iterations.  
+The number of iterations for the next round is adjusted heuristically.
+
+Phase Lock Loop is self adapting to environmental changes like Javascript Engine, CPU and display.
+
+### Coordinates
+
+Pixel values use three different types of coordinates:
+
+  - x,y (float) formula coordinate
+  - u,v (int) screen position
+  - i,j (int) backing store location
+
+Which unit is applicable depends on the position in the data path:
+
+formula `<-xy->` backingStore `<-ij->` clip/rotation `<-uv->` screen/canvas
+
+### Backing store
+
+Backing store has three functions:
+
+  - Separation of storage/logic
+    Pixel data objects (frames) can easily transfer to web-workers or other distributed agent.
+
+  - Contains the previous frame
+    Ruler construction requires scoring based on frame differences.
+    Scoring is currently the amount of pixel drift, and can be adapted to different models.
+
+  - Holds inter-frame
+    Updating scanlines can fill neighbouring pixels.  
+    Encoders/Decoders share temporal synced pixel data
 
 # The `zoomer` architecture
 
