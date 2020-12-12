@@ -1,5 +1,5 @@
 /*
- *  This file is part of jsFractalZoom - Fractal zoomer written in javascript
+ *  This file is part of jsFractalZoom - Fractal zoomer and splash video codec
  *
  *  Copyright (C) 2020, xyzzy@rockingship.org
  *
@@ -236,7 +236,7 @@ function zoomerRenderFrame(frame) {
 			}
 		} else if (pixelWidth === viewWidth) {
 			// 1:1
-			zoomerMemcpy(rgba, vu, pixels, ji, viewWidth * viewHeight)
+			zoomerMemcpy(rgba, vu, pixels, ji, viewWidth * viewHeight);
 		} else {
 			// cropped
 			for (let v = 0; v < viewHeight; v++) {
@@ -865,19 +865,19 @@ function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 		/* zoomer.setPosition(centerX, centerY, radius, angle); */
 	};
 
-   /**
-     * This is done for every pixel. optimize well!
-     * Easy extendable for 3D.
-     * Return the pixel value for the given floating point coordinate.
-     * Zoomer will use it to fill integer pixel positions.
-     * The positions are ordered in decreasing significance.
-     *
-     * @param {Zoomer}      zoomer  - Running engine
-     * @param {ZoomerFrame} frame   - Pixel/Palette/Rotate
-     * @param {float}       x       - X coordinate
-     * @param {float}       y       - Y coordinate
-     * @return {int} - Pixel value
-     */
+	/**
+	 * This is done for every pixel. optimize well!
+	 * Easy extendable for 3D.
+	 * Return the pixel value for the given floating point coordinate.
+	 * Zoomer will use it to fill integer pixel positions.
+	 * The positions are ordered in decreasing significance.
+	 *
+	 * @param {Zoomer}      zoomer  - Running engine
+	 * @param {ZoomerFrame} frame   - Pixel/Palette/Rotate
+	 * @param {float}       x       - X coordinate
+	 * @param {float}       y       - Y coordinate
+	 * @return {int} - Pixel value
+	 */
 	this.onUpdatePixel = (zoomer, frame, x, y) => {
 		// calculate pixel
 
@@ -1164,7 +1164,7 @@ function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 				return frame;
 			}
 		}
-	}
+	};
 
 	/**
 	 * Update statistics with frame metrics
@@ -1291,7 +1291,7 @@ function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 
 		// push frame into canvas
 		this.onPutImageData(this, this.calcFrame);
-	}
+	};
 
 	/**
 	 * GUI mainloop called by timer event
@@ -1514,7 +1514,7 @@ function Zoomer(viewWidth, viewHeight, enableAngle, options) {
 
 			if (!cntUpdated) {
 				// nothing was calculate, enter sleep mode
-				const delay = (this.turboActive === TURBO)
+				const delay = (this.turboActive === TURBO);
 				setTimeout(() => {
 					this.stateStart[this.state] = performance.now();
 					postMessage("mainloop", "*");

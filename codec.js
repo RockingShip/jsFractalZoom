@@ -1,5 +1,5 @@
 /*
- *  This file is part of jsFractalZoom - Fractal zoomer written in javascript
+ *  This file is part of jsFractalZoom - Fractal zoomer and splash video codec
  *
  *  Copyright (C) 2020, xyzzy@rockingship.org
  *

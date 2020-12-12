@@ -3,13 +3,9 @@
  * It contains the settings to reproduce the image.
  */
 /*
- *  This file is part of jsFractalZoom - Fractal zoomer written in javascript
+ *  This file is part of jsFractalZoom - Fractal zoomer and splash video codec
  *
  *  Copyright (C) 2020, xyzzy@rockingship.org
- *
- *  This file is part of jsFractalZoom - Fractal zoomer written in javascript
- *
- *  Copyright (C) 2018, xyzzy@rockingship.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published
