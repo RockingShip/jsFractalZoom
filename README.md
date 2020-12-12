@@ -121,22 +121,22 @@ Updating the directional vector is user defined.
 
 The states are:
 
-  - COPY
+  - `COPY`
     Construct rulers for scaling/shifting pixels from previous frame.  
     Copy pixels using an `indexed memcpy()`.  
     Determine calculate order for rows/columns.
-- 
-  - UPDATE
+
+  - `UPDATE`
     Update key pixels along an axis, called a scanline.  
     Key pixels are pixels that have been scanned along in all directions.  
     Flood fill neighbours to create motion blur using `interleaved memcpy()`.
 
-  - RENDER
+  - `RENDER`
     Copy pixel values from the backing store to a RGBA storage.  
     Optional palettes are applied.  
     Apply rotation where/when necessary using `angled memcpy()`.
 
-  - PAINT
+  - `PAINT`
     Write RGBA storage to the display.  
     Most probably being a canvas using `putImageData()`.
 
@@ -180,19 +180,132 @@ Backing store has three functions:
     Updating scanlines can fill neighbouring pixels.  
     Encoders/Decoders share temporal synced pixel data
 
+### Rotation
+
+<img src="assets/rotate-400x400.webp" width="400" height="400" alt="rotate"/>
+
+When rotating is enabled the pixel storage (backing store) needs to hold all the pixels for all angles.  
+The size of the storage is the diagonal of the screen/canvas squared.  
+Rotation uses fixed point sin/cos.  
+The sin/cos can be loop unrolled to make clipping/rotating high speed.
+
+Rotation requires square backing store, otherwise it is shrink-to-fit width*height.
+
+Rotation has two penalties:
+ - Needs to calculate about 2.5 times more pixels than displayed
+ - Extra loop overhead
+
+`Zoomer` can easily enable/disable rotational mode on demand.
+
+### `memcpy()`
+
+Javascript as a language does not support acceleration of array copy.  
+In languages like `C`/`C++`, it is advertised as library function `memcpy()`.  
+With Javascript, the only access to `memcpy()` is through `Array.subarray`
+
+```
+    /**
+     * zoomerMemcpy Accelerated array copy.
+     *
+     * @param {ArrayBuffer} dst       - Destination array
+     * @param {int}         dstOffset - Starting offset in destination
+     * @param {ArrayBuffer} src       - Source array
+     * @param {int}         srcOffset - Starting offset in source
+     * @param {int}         length    - Number of elements to be copyied
+     */
+    function zoomerMemcpy(dst, dstOffset, src, srcOffset, length) {
+        src = src.subarray(srcOffset, srcOffset + length);
+        dst.set(src, dstOffset);
+    }
+```
+
+Within `zoomer`, three variations of `memcpy()` are used:
+
+#### Indexed
+
+Indexed `memcpy` transforms the contents using a lookup table.  
+Palettes are lookup tables translating from pixel value to RGBA.  
+Copying/scaling/shifting pixel values from previous frame to next after ruler creation.
+
+A conceptual implementation:
+```
+    function memcpy_indexed(dst, src, cnt) {
+      while (--cnt >= 0)
+        *dst++ = LUtable[*src++];
+    }  
+```
+
+#### Interleaved
+
+There are two kinds of scan-lines: scan-rows and scan-columns.  
+Only scan-rows can profit from hardware acceleration.  
+CPU instruction-set lacks multi dimensional support.  
+Auto-increment is always word based.  
+Acceleration support for arbitrary offset is missing.
+
+A conceptual implementation:
+```
+    // increment can be negative
+    // an option could be to have separate increments for source/destination
+    function memcpy_interleave(dst, src, cnt, increment) {
+      offset = 0;
+      while (--cnt >= 0) {
+          dst[offset] = SomeLookupTable[src[offset]];
+          offset += increment;
+        }
+    }  
+```
+
+#### Angled
+
+Clip and rotate when copying pixels from the backing store to RGBA
+
+A conceptual implementation:
+```
+    /**
+     * memcpy with clip and rotate. (partially optimised)
+     *
+     * @param {ArrayBuffer} dst         - Destination array (rgba[]) 
+     * @param {ArrayBuffer} src         - Source array (pixel[])
+     * @param {int}         viewWidth   - Viewport width (pixels)
+     * @param {int}         viewHeight  - Viewport height (pixels)
+     * @param {int}         pixelWidth  - Backing store width (pixels)
+     * @param {int}         pixelHeight - Backing store height (pixels)
+     */
+    function memcpyAngle(dst, src, angle, viewWidth, viewHeight, pixelWidth, pixelHeight) {
+		// Loop unroll slating increments
+		// Fixed point floats
+		// with 4K displays rounding errors are negligible. 
+		const rsin = Math.sin(angle * Math.PI / 180); // sine for view angle
+		const rcos = Math.cos(angle * Math.PI / 180); // cosine for view angle
+		const xstart = Math.floor((pixelWidth - viewHeight * rsin - viewWidth * rcos) * 32768);
+		const ystart = Math.floor((pixelHeight - viewHeight * rcos + viewWidth * rsin) * 32768);
+		const xstep = Math.floor(rcos * 65536);
+		const ystep = Math.floor(rsin * 65536);
+
+		// copy pixels
+		let vu = 0;
+        for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += xstep, y += ystep) {
+            for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ystep, iy -= xstep) {
+                dst[vu++] = src[(iy >> 16) * pixelWidth + (ix >> 16)];
+            }
+        }
+    }
+```
+
 # The `zoomer` architecture
 
 # The `zoomer` API
 
 Zoomer is full-screen canvas orientated.  
 All interaction with the physical environment (DOM) is done through callbacks.  
-Coordinates are floating point, pixel locations are integer.
-Scaling those two is a design fundamental.
-Rotation is also fully integrated with a minimal performance penalty.
+Coordinates are floating point, pixel locations are integer.  
+Scaling those two is a design fundamental.  
+Rotation is also fully integrated with a minimal performance penalty.  
 `devicePixelDensity` is a natural environment and integrates seamlessly.
 
-Being full-screen oriented, HTML positioning is absolute.
-CSS for centering and padding the canvas.
+Being full-screen oriented, HTML positioning is absolute.  
+CSS for centering and padding the canvas.  
 Javascript to glue resources.
 
 The following template is a bare minimum:
@@ -286,7 +399,7 @@ The following template is a bare minimum:
 
 The only mandatory addition is the contents of `OPTIONS` which are initial values for any or all `zoomer` properties.
 
-All callbacks have the zoomer instance as first argument for easy engine access.
+All callbacks have the zoomer instance as first argument for easy engine access.  
 In combination with arrow functions, `this` is caller/DOM namespace and `zoomer` is engine/webworker namespace.
 
 Most important properties are:
@@ -409,9 +522,9 @@ const OPTIONS = {
 
 ## Function declaration
 
-There are two styles of function declaration, traditional and arrow notation.
-Both are identical in functionality and performance.
-Difference is the binding of `this`.
+There are two styles of function declaration, traditional and arrow notation.  
+Both are identical in functionality and performance.  
+Difference is the binding of `this`.  
 With `function()` the bind is the web-worker event queue, with `() => { }` the bind is the DOM event queue.
 
 ```

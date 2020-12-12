@@ -20,7 +20,7 @@
 "use strict";
 
 /**
- * zoomerMemcpy over 2 arrays.
+ * zoomerMemcpy Accelerated array copy.
  *
  * @param {ArrayBuffer} dst       - Destination array
  * @param {int}         dstOffset - Starting offset in destination
@@ -251,6 +251,9 @@ function zoomerRenderFrame(frame) {
 	} else {
 
 		// SLOW view rotation
+		// Loop unroll slating increments
+		// Fixed point floats
+		// with 4K displays rounding errors are negligible.
 		const rsin = Math.sin(angle * Math.PI / 180); // sine for view angle
 		const rcos = Math.cos(angle * Math.PI / 180); // cosine for view angle
 		const xstart = Math.floor((pixelWidth - viewHeight * rsin - viewWidth * rcos) * 32768);
