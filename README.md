@@ -6,9 +6,9 @@ When insufficient resources force you to prioritize which pixels to render first
 
 This project has 3 Components:
 
-- [XaoS](http://xaos.sourceforge.net/black/index.php) inspired fractals as sample content.
-- The `zoomer` engine.
-- The `splash` video codec.
+  - [XaoS](http://xaos.sourceforge.net/black/index.php) inspired fractals as sample content.
+  - The `zoomer` engine.
+  - The `splash` video codec.
 
 The only requirement is the implementation of:
 
@@ -41,47 +41,47 @@ Click on the image above to start the zoomer at the presented location.
 Or, start vanilla [https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html)
 
 Suggestions for the best experience:
-- Enable full-screen. If the browser gives too much of a hassle, there is a button in the top right corner.
-- Fly around in high speed to nice places.
-- Too much noise, with the wheel you can adjust focus like a microscope.
-- Drag to position photogenic.
-- Staying put enables turbo mode for maximum calculations.
-- Rendering is complete when "complete" (top status line in menu) reaches "1".
-- Menu has many goodies. The control panel can be resized.
-- Panel buttons "save" to save PNG or "url" to copy weblink to clipboard.
+  - Enable full-screen. If the browser gives too much of a hassle, there is a button in the top right corner.
+  - Fly around in high speed to nice places.
+  - Too much noise, with the wheel you can adjust focus like a microscope.
+  - Drag to position photogenic.
+  - Staying put enables turbo mode for maximum calculations.
+  - Rendering is complete when "complete" (top status line in menu) reaches "1".
+  - Menu has many goodies. The control panel can be resized.
+  - Panel buttons "save" to save PNG or "url" to copy weblink to clipboard.
 
 Saving:
-- Files are PNG.
-- Panels and text are removed.
-- PNG contains navigation and setting.
-- Drop PNG on zoomer page to load stored information.
+  - Files are PNG.
+  - Panels and text are removed.
+  - PNG contains navigation and setting.
+  - Drop PNG on zoomer page to load stored information.
 
 Tips for 4K:
-- Switch to HD resolution for fast navigation
-- For scenic locations switch to 4K for maximum quality
+  - Switch to HD resolution for fast navigation
+  - For scenic locations switch to 4K for maximum quality
 
 For desktop (primary design target):
-- Use `ctrl+` / `ctrl-` to change display resolution. For highest quality match this to your screen.
-- Mouse left: zoom in
-- Mouse right: zoom out
-- Wheel pressed: drag
-- Wheel turn: focus
+  - Use `ctrl+` / `ctrl-` to change display resolution. For highest quality match this to your screen.
+  - Mouse left: zoom in
+  - Mouse right: zoom out
+  - Wheel pressed: drag
+  - Wheel turn: focus
 
 Touch screen:
-- Hold horizontal if buttons are too small.
-- Disable rotation for a performance boost.
-- 1-finger: drag
-- 2-fingers: navigation. You can release one finger afterwards.
-- 3-fingers: focus. You can release two fingers. Then with your second finger use the screen like it being a wheel.
+  - Hold horizontal if buttons are too small.
+  - Disable rotation for a performance boost.
+  - 1-finger: drag
+  - 2-fingers: navigation. You can release one finger afterwards.
+  - 3-fingers: focus. You can release two fingers. Then with your second finger use the screen like it being a wheel.
 
 Multi-monitor wallpapers:
-- Find location to your liking.
-- Press "URL" to copy settings to clipboard
-- Paste clipboard in URL bar and append `&w=<width>&h=<height>` reflecting your total multi-monitor size.
-- Resize window to minimize margins.
-- Reload adapted URL to adjust internals accordingly.
-- Wait for complete to reach "1".
-- "SAVE".
+  - Find location to your liking.
+  - Press "URL" to copy settings to clipboard
+  - Paste clipboard in URL bar and append `&w=<width>&h=<height>` reflecting your total multi-monitor size.
+  - Resize window to minimize margins.
+  - Reload adapted URL to adjust internals accordingly.
+  - Wait for complete to reach "1".
+  - "SAVE".
 
 ### A Pixel is not a Pixel
 
@@ -117,28 +117,56 @@ Updating the directional vector is user defined.
 
 ### States
 
-`zoomer` is a timed state machine to construct frames.
+`zoomer` is a timed state machine to construct frames.  
+Frame construction has been split into phases/states.
 
 The states are:
 
-  - `COPY`
+  - `COPY` (New frame)  
     Construct rulers for scaling/shifting pixels from previous frame.  
     Copy pixels using an `indexed memcpy()`.  
     Determine calculate order for rows/columns.
 
-  - `UPDATE`
+  - `UPDATE` (Calculate blurry pixels)  
     Update key pixels along an axis, called a scanline.  
     Key pixels are pixels that have been scanned along in all directions.  
     Flood fill neighbours to create motion blur using `interleaved memcpy()`.
 
-  - `RENDER`
+  - `RENDER` (RGBA frame buffer)
     Copy pixel values from the backing store to a RGBA storage.  
     Optional palettes are applied.  
     Apply rotation where/when necessary using `angled memcpy()`.
 
-  - `PAINT`
+  - `PAINT` (Forward to display)
     Write RGBA storage to the display.  
-    Most probably being a canvas using `putImageData()`.
+    Most probably being a canvas using `putImageData()`.  
+    `putImageData()` can be CPU intensive and has therefore a dedicated state.
+
+State timings:
+
+The `COPY`, `UPDATE` and `PAINT` states are run from the main event queue, `RENDER` is done by web-workers.
+The duration of a complete frame is `max(COPY+UPDATE+PAINT,RENDER)`.
+The Phased Locked Loop should tune `COPY+UPDATE+PAINT` to equal the requested frame rate
+
+Running on an AMD FX-8320E, state durations (mSec) have been grossly averaged in the following table:
+
+|  platform       |   COPY  |  UPDATE  |  RENDER  |  PAINT  |  MAX FPS |
+|:----------------|:-------:|:--------:|:--------:|:-------:|:--------:|
+|  Firefox 1080p  |   7     |  30      |  11      |    9    | 21
+|  Firefox 4K     |   50    |  30      |  150     |   62    |  7
+|  Chrome 1080p   |   11    |  29      |  9       |    2    | 23
+|  Chrome 4K      |   38    |  28      |  31      |   12    | 12
+
+The timings were measured with a requested FPS of 20.  
+PLL nicely stabilises taking into account a massive amount of statistical noise.  
+The 4K are clearly too much to handle, the engine will automatically reduce FPS until balance is reached.
+
+The choice to perform `RENDER` as web-worker is because:
+
+  - during initial design timings were longer  because of less optimiations
+  - The requirement for a previous frame complicated the reference implementation too much for parallel implementation.
+
+NOTE: `requestAnimationFrame` is basically unusable because (at least) Firefox has added jitter as anti-fingerprinting feature.
 
 ###  Phased Locked Loop
 
@@ -229,9 +257,9 @@ Copying/scaling/shifting pixel values from previous frame to next after ruler cr
 
 A conceptual implementation:
 ```
-    function memcpy_indexed(dst, src, cnt) {
-      while (--cnt >= 0)
-        *dst++ = LUtable[*src++];
+    function memcpyIndexed(dst, src, cnt) {
+      for (let i=0; i<cnt; i++)
+        dst[i] = SomeLookupTable[src[i]];
     }  
 ```
 
@@ -247,12 +275,9 @@ A conceptual implementation:
 ```
     // increment can be negative
     // an option could be to have separate increments for source/destination
-    function memcpy_interleave(dst, src, cnt, increment) {
-      offset = 0;
-      while (--cnt >= 0) {
-          dst[offset] = SomeLookupTable[src[offset]];
-          offset += increment;
-        }
+    function memcpyInterleave(dst, src, cnt, offset) {
+      for (let i=0; i<cnt; i++)
+          dst[i*offset] = src[i*offset];
     }  
 ```
 
@@ -273,18 +298,18 @@ A conceptual implementation:
      * @param {int}         pixelHeight - Backing store height (pixels)
      */
     function memcpyAngle(dst, src, angle, viewWidth, viewHeight, pixelWidth, pixelHeight) {
-		// Loop unroll slating increments
-		// Fixed point floats
-		// with 4K displays rounding errors are negligible. 
-		const rsin = Math.sin(angle * Math.PI / 180); // sine for view angle
-		const rcos = Math.cos(angle * Math.PI / 180); // cosine for view angle
-		const xstart = Math.floor((pixelWidth - viewHeight * rsin - viewWidth * rcos) * 32768);
-		const ystart = Math.floor((pixelHeight - viewHeight * rcos + viewWidth * rsin) * 32768);
-		const xstep = Math.floor(rcos * 65536);
-		const ystep = Math.floor(rsin * 65536);
+        // Loop unroll slating increments
+        // Fixed point floats
+        // with 4K displays rounding errors are negligible. 
+        const rsin = Math.sin(angle * Math.PI / 180); // sine for view angle
+        const rcos = Math.cos(angle * Math.PI / 180); // cosine for view angle
+        const xstart = Math.floor((pixelWidth - viewHeight * rsin - viewWidth * rcos) * 32768);
+        const ystart = Math.floor((pixelHeight - viewHeight * rcos + viewWidth * rsin) * 32768);
+        const xstep = Math.floor(rcos * 65536);
+        const ystep = Math.floor(rsin * 65536);
 
-		// copy pixels
-		let vu = 0;
+        // copy pixels
+        let vu = 0;
         for (let j = 0, x = xstart, y = ystart; j < viewHeight; j++, x += xstep, y += ystep) {
             for (let i = 0, ix = x, iy = y; i < viewWidth; i++, ix += ystep, iy -= xstep) {
                 dst[vu++] = src[(iy >> 16) * pixelWidth + (ix >> 16)];
@@ -293,9 +318,35 @@ A conceptual implementation:
     }
 ```
 
-# The `zoomer` architecture
+### Rulers
 
-# The `zoomer` API
+Rulers are the main component of the zoomer engine and are used for the following:
+
+  - Metadata for pixel storage
+    Attaches coordinates to pixel locations.  
+    The engine separates data from logic, metadata is considered part of the logic and is not passed to web-workers.
+
+  - Create lookup tables for `memcpy_indexed()`
+    Every pixel of a new frame is inherited from the previous frame.  
+    Rulers indicate the source location that are the best choice based on pixel drift.  
+    Scaling/shifting allows seamless changing of frame size, which can be used to set the quality/size of key-frames.
+
+  - Scan-line scoring and ordering.
+    Determines the sequence in which scan-lines are processed.
+
+There are rulers for every dimensional axis.  
+Scaling and shifting introduces motion-blur, scan-line calculations introduces sharpness.  
+Scan-line calculations update ruler scoring. which in turn dynamically changes the order of scan-lines.  
+Ordering of scan-lines is independent of their dimensional-axis.
+
+For the fractal zoomer, rulers contain the following information:
+
+  - exact coordinate
+  - drifted coordinate
+  - score
+  - source location in previous frame
+
+## The `zoomer` API
 
 Zoomer is full-screen canvas orientated.  
 All interaction with the physical environment (DOM) is done through callbacks.  
@@ -307,6 +358,38 @@ Rotation is also fully integrated with a minimal performance penalty.
 Being full-screen oriented, HTML positioning is absolute.  
 CSS for centering and padding the canvas.  
 Javascript to glue resources.
+
+### Application components
+
+A main design principle is to separate pixel data, UI resources and render logic.  
+An application consists of five areas:
+
+  - HTML/CSS
+
+    Zoomer is primarily full-screen canvas orientated.  
+    Being full-screen oriented, HTML positioning is absolute.
+    CSS for centering and padding the canvas.
+
+  - Callbacks
+
+    User supplied callbacks to glue canvas, resources and events to the engine
+
+  - Function object `ZoomerFrame`
+
+    Pixel data, rotation,data transfer to workers
+    deliberately does not contain metadata describing the location of the pixel values.
+    object inaccessable when transferred to web workers
+
+  - Function object `ZoomerView`
+
+    Rulers, rotation
+    deliberately does not contain pixel values.
+
+  - Function object `Zoomer`
+
+    Scheduling+timing, worker communication
+
+### Sample/skeleton implementation HTML/CSS
 
 The following template is a bare minimum:
 
@@ -396,6 +479,8 @@ The following template is a bare minimum:
 </body>
 </html>
 ```
+
+### Sample/skeleton implementation Javascript
 
 The only mandatory addition is the contents of `OPTIONS` which are initial values for any or all `zoomer` properties.
 
@@ -522,9 +607,9 @@ const OPTIONS = {
 
 ## Function declaration
 
-There are two styles of function declaration, traditional and arrow notation.  
-Both are identical in functionality and performance.  
-Difference is the binding of `this`.  
+There are two styles of function declaration, traditional and arrow notation.
+Both are identical in functionality and performance.
+Difference is the binding of `this`.
 With `function()` the bind is the web-worker event queue, with `() => { }` the bind is the DOM event queue.
 
 ```
@@ -532,15 +617,24 @@ With `function()` the bind is the web-worker event queue, with `() => { }` the b
   function(a,b,c) { }  - Expert mode
 ```
 
-# Background
+To aid in scope de-referencing all callbacks have as first parameter a reference to the engine internals.
 
-`jsFractalZoom` is an fractal generator/zoomer written in javascript. It was inspired by XaoS, [https://xaos.sourceforge.net/black/index.php](https://xaos.sourceforge.net/black/index.php).
+```
+    this.domStatus = document.getElementById("idStatus");
 
-The project was originally created in May 2011, resurrected in 2018 and extended in 2020.
+    this.zoomer = new Zoomer(width, height, enableAngle, {
+       onEndFrame: (zoomer, frame) => {
+            /*
+             * `this` references the caller scope
+             * `zoomer` references engine scope
+             * `frame` references web-worker pixel data
+             */
+			this.domStatusLoad.innerText = "FPS:" + zoomer.frameRate;
+        }
+    });
+```
 
-The 2020 version is canvas based. The 2018 engine created GIF images using an ultra fast GIF encoder [https://github.com/xyzzy/jsGifEncoder](https://github.com/xyzzy/jsGifEncoder).
- 
-## Demos
+### Demos
 
 There are 3 demos. All are work-in-progress and may not work in any/all situations.
 
@@ -553,6 +647,23 @@ The original with most of the navigation working.
 [jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html)
 The current unification and completion.
 
+
+There are two sample implementations of the `zoomer` engine.
+
+  - `jsFractalZoom` is a full featured UI/UX frontend
+  - `viewer` a minimalistic reference implementation
+
+Both illustrate how to integrate the engine with your application.
+
+
+# Background
+
+`jsFractalZoom` is an fractal generator/zoomer written in javascript. It was inspired by XaoS, [https://xaos.sourceforge.net/black/index.php](https://xaos.sourceforge.net/black/index.php).
+
+The project was originally created in May 2011, resurrected in 2018 and extended in 2020.
+
+The 2020 version is canvas based. The 2018 engine created GIF images using an ultra fast GIF encoder [https://github.com/xyzzy/jsGifEncoder](https://github.com/xyzzy/jsGifEncoder).
+ 
 ## Versioning
 
 This project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
