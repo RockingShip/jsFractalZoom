@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2020-12-15 23:19:00 Changed: Updated assets.
 2020-12-12 23:46:19 Changed: Project description.
 2020-12-12 23:45:32 Added: `assets/gen-rotate.js`.
 2020-12-10 00:16:59 Fixed: OpenGraph.

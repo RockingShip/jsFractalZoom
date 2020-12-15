@@ -1043,6 +1043,14 @@ function ZoomerView(viewWidth, viewHeight, pixelWidth, pixelHeight) {
 
 //---------
 
+let infile1 = process.argv[2];
+let infile2 = process.argv[3];
+let outpath = process.argv[4];
+if (!outpath) {
+	console.log("usage: "+process.argv[2]+" <frame1> <frame2> <outpath>");
+	process.exit();
+}
+
 let { createCanvas, ImageData } = require("canvas");
 let fs = require('fs');
 let { PNG, COLORTYPE_COLOR_ALPHA, COLORTYPE_COLOR} = require("pngjs");
@@ -1067,7 +1075,7 @@ let view = new ZoomerView(width, height, width, height);
 let frame1 = new ZoomerFrame(width, height, width, height);
 {
 	// load png
-	let data = fs.readFileSync("clip-001.png");
+	let data = fs.readFileSync(infile1);
 	let readPNG = PNG.sync.read(data);
 	let pngPixels = new Uint32Array(readPNG.data.buffer);
 
@@ -1082,7 +1090,7 @@ let frame1 = new ZoomerFrame(width, height, width, height);
 let frame2 = new ZoomerFrame(width, height, width, height);
 {
 	// load png
-	let data = fs.readFileSync("clip-002.png");
+	let data = fs.readFileSync(infile2);
 	let readPNG = PNG.sync.read(data);
 	let pngPixels = new Uint32Array(readPNG.data.buffer);
 
@@ -1155,8 +1163,10 @@ if (1) {
 	view.numPixels = 0;
 	do {
 		const newDataPos = view.updateLines(null, dstPixels, srcPixels, data, dataPos, radius, true);
-		if (!newDataPos)
+		if (!newDataPos) {
+			console.log("shortFrame", view.numPixels, maxPixels);
 			break; // short frame
+		}
 		dataPos = newDataPos;
 	} while (view.numPixels < maxPixels);
 }
@@ -1240,12 +1250,11 @@ console.log((dataPos/3-width-height)/ (width*height), Math.trunc((frameNr/25) / 
 
 			// write
 			let buffer = canvas.toBuffer("image/png")
-			fs.writeFileSync('out-' + frameNr + '.png', buffer);
+			fs.writeFileSync(outpath.replace("%d", frameNr), buffer);
 		}
 
 		dataPos = newDataPos;
 	}
-	while (dataPos < dataSize) ;
 }
 
 /*
