@@ -1,6 +1,8 @@
 <a href="https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823" target="_blank"><img src="assets/favimage-840x472.jpg" width="100%" alt="favimage"/></a>
 
-# Welcome to the wonderful world of (fractal) zooming.
+## NOTE: This document is under active construction
+
+# Welcome to the wonderful world of (fractal) zooming
 
 When insufficient resources force you to prioritize which pixels to render first...
 
@@ -31,72 +33,106 @@ The only requirement is the implementation of:
     }
 ```
 
-## NOTE: This document is under construction and semantically/grammatically under-par!
-
-Currently collecting points of interest, later redacting a storyline.
-
 ## Experience the fractal zoomer
 
 Click on the image above to start the zoomer at the presented location.  
-Or, start vanilla [https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html)
+Or, start from scratch: [https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html)
 
-Suggestions for the best experience:
-  - Enable full-screen. If the browser gives too much of a hassle, there is a button in the top right corner.
-  - Fly around in high speed to nice places.
-  - Too much noise, with the wheel you can adjust focus like a microscope.
-  - Drag to position photogenic.
-  - Staying put enables turbo mode for maximum calculations.
-  - Rendering is complete when "complete" (top status line in menu) reaches "1".
-  - Menu has many goodies. The control panel can be resized.
-  - Panel buttons "save" to save PNG or "url" to copy weblink to clipboard.
+How to use:
+  - press the enlarge button in the top right (or F11) to enable full-screen.
+  - fly around in high speed to nice places.
+  - adjust the "density" using the mouse-wheel to help focus.
+  - drag the image by holding down the mouse-wheel to a photogenic position.
+  - staying static allows for faster loading speed.
+  - the loading is "complete"  when the "complete" indicator reached "1" (located in the top bar).
+   - the control panel can be resized using the bottom left resize button.
 
 Saving:
-  - Files are PNG.
-  - Panels and text are removed.
-  - PNG contains navigation and setting.
-  - Drop PNG on zoomer page to load stored information.
+  - saves as a PNG file.
+  - the panels and text will be removed in the image.
+  - the navigation and setting from capture are stored in the PNG file.
+  - drop the PNG on the zoomer page to load the stored information.
 
-Tips for 4K:
-  - Switch to HD resolution for fast navigation
-  - For scenic locations switch to 4K for maximum quality
+Saving a multi-monitor desktop wallpaper:
+  - find nice location
+  - press "URL" to copy setting
+  - paste in URL bar and add `&w=<width>&h=<height>` at the end. Replace `<width>` and `<height>` with your total multi-monitor dimensions.
+  - load new URL
+  - wait until "complete" reaches 1
+  - save
+  - enjoy your new wallpaper!
 
-For desktop (primary design target):
-  - Use `ctrl+` / `ctrl-` to change display resolution. For highest quality match this to your screen.
-  - Mouse left: zoom in
-  - Mouse right: zoom out
-  - Wheel pressed: drag
-  - Wheel turn: focus
+Tips for using in 4K:
+  - switch to the HD (1080p) browser resolution for faster navigation.
+  - switch to 4K for maximum quality.
 
-Touch screen:
-  - Hold horizontal if buttons are too small.
-  - Disable rotation for a performance boost.
-  - 1-finger: drag
-  - 2-fingers: navigation. You can release one finger afterwards.
-  - 3-fingers: focus. You can release two fingers. Then with your second finger use the screen like it being a wheel.
+For desktop use (primary design target):
+  - use "ctrl+" /"ctrl-" to chang display resolution. For highest quality match resolution to your screen.
+  - left mouse button: zoom in
+  - right mouse button: zoom out
+  - press mouse wheel to drag
+  - turn mouse wheel to focus (adjusts "density" setting)
 
-Multi-monitor wallpapers:
-  - Find location to your liking.
-  - Press "URL" to copy settings to clipboard
-  - Paste clipboard in URL bar and append `&w=<width>&h=<height>` reflecting your total multi-monitor size.
-  - Resize window to minimize margins.
-  - Reload adapted URL to adjust internals accordingly.
-  - Wait for complete to reach "1".
-  - "SAVE".
+For touchscreen use:
+  - enable full-screen mode, hold phone horizontally if buttons are too small.
+  - can be used both portrait and landscape mode.
+  - disable rotate in the zoomer menu for better performance.
+  - use 1 finger to drag.
+  - use 2 fingers to zoom: stretch to zoom in, pinch to zoom out.
+    For unobstructed viewing while zooming you can release 1 finger.
+  - use 3 finger to focus: release one finger and pinch or stretch with the remaining two to adjust "density".
 
-### A Pixel is not a Pixel
+## Concept
 
-The CSS standard has sadly botched the meaning of DPI by fixating it to being 96.  
-To make matters worse, browser builders botched it further (especially on mobile) by differentiating between CSS and Physical pixels.  
-Even the latter is not always what it seems.
+It's about how to construct a frame for animations/video.  
+Normally a frame is constructed by scanning rows from top-left to bottom-right.  
+Problems start when calculating pixels takes (much) long than available time.  
+Reusing pixels from previous frames becomes important to reduce calculations.  
+We perceive motion as zooming for speed and shifting for direction.  
+Zooming/shifting is instantaneous and (usually) enlarges the image which introduces motion blur.  
+Our eye and brain needs to accommodate to the change and will not notice the difference between blur or sharp.  
+As our mind starts to focus on areas of interest it will digest detail and colour aided by the eye's macula (gele vlek).  
+Areas seen outside the macula are monochrome and blurry.  
+The zoomer/splash engine tries to prioritize the pixels our mind and macula desires the most.  
+It is driven by the idea that our brain is most sensitive to contrast changes, so areas with high change (high motion) is what we look at first.  
+Scoring is used to quantify the amount of change and sharpness, the ordering of pixel rendering is based on decreasing scoring.  
+Idealistically we would want to score all the pixels individually, but that requires too much resources to be practically feasible.  
+Second best choice is to average the scoring by row and column.  
+Each row and column receives a scoring based on the difference between the old/previous and new/next frame.  
+The engine basically peeks into the future to indicate which rows and columns are going to change the most.  
+This is done for each dimensional axis and stored in the major component called the ruler.  
+Screens are considered two-dimensional pixel planes using x/row and y/column coordinates.  
+This is different than 3D content which usually gets transformed to 2D before being projected onto the screen.  
+As a side note for advanced modeling, the engine is prepared for upgrading to multi-dimensional pixel planes.
 
-The fractal zoomer displays a popup when it detects screen resolution changes.  
-For maximum quality the resolution should match that of your display.
+Here is an example with three consecutive frames.  
+The first is the starting landscape followed by two incremental steps depicting a forward angled movement.  
+For simplicity only a single scan-line is illustrated.
 
-On desktop, you can change the resolution with `ctrl+` and `ctrl-`.  
-Mobile sets CSS pixels which could be as low as 560x360, this to save battery.  
-To switch to physical pixels, toggle the `HiRes` button on the control panel.
+First step is to zoom and shift the landscape which introduces blur because many pixels are discarded and replaced by neighbouring copies.  
+As we will not be travelling at the speed of light the motion angle and pixel duplication will be minimal.  
+Landscape ranges from `2.0 <= x <= 3.8` and the zoom is changing the range to `24 <= x <= 3.2`
 
-For more information, visit the side project: [https://github.com/xyzzy/realDPI](https://github.com/xyzzy/realDPI)
+![copy frame 1-2](assets/copyFrame12-900x506.jpg)
+
+Second step determine the scan-line sequence and calculate pixels which makes the landscape sharp.  
+Note that it is expected by design that not all scan-lines can be processed within the available frame construction duration.  
+As a side note this is lossy behaviour, only when all scan lines have been processed will the new landscape be lossless.
+
+![calc frame 2](assets/calcFrame2-900x506.jpg)
+
+The third frame repeats the process as the directional vector stays unchanged.  
+Main difference now is that the landscape contains areas which inherit and increase the level of blurriness.
+
+![calc frame 3](assets/calcFrame3-900x506.jpg)
+
+A score of 0 implies that the pixel coordinate is exact and has not drifted.  
+With multi-dimensional rulers (used by screens), a pixel is exact if the drift/score in all dimensions is zero.  
+When calculating a frame, scan rows and columns will intersect, the number of intersections will increase as construction advances.  
+The intersections form corners of rectangles that are filled by the calculated pixel value.  
+In the beginning the rectangles are large giving a pixelated effect and get smaller/sharper when additional scanlines start to sub-divide the area.
+
+![scanlines](assets/scanline-900x506.gif)
 
 ## The `zoomer` architecture
 
