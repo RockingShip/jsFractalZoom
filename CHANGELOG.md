@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2021-03-02 20:22:15 Changed: Relocated media files to `jsFractalZoom-media`.
 2020-12-15 23:19:00 Changed: Updated assets.
 2020-12-12 23:46:19 Changed: Project description.
 2020-12-12 23:45:32 Added: `assets/gen-rotate.js`.

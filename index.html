@@ -21,8 +21,8 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>jsFractalZoom - Navigating and zooming through fractals</title>
-	<meta name="description" content="Navigating and zooming through fractal, make snapshots and save or share with friends">
+	<title>jsFractalZoom - Navigating through fractals and video codec</title>
+	<meta name="description" content="Zoom through fractals, make snapshots, save&share with friends">
 	<link rel="shortcut icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 	<link rel="shortcut icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
 	<link rel="shortcut icon" type="image/png" sizes="160x160" href="assets/favicon-160.png">
@@ -31,13 +31,15 @@
 	<link rel="apple-touch-icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
 	<link rel="apple-touch-icon" type="image/png" sizes="160x160" href="assets/favicon-160.png">
 	<link rel="apple-touch-icon" type="image/png" sizes="196x196" href="assets/favicon-196.png">
-	<meta property="og:url" content="https://RockingShip.github.io/jsFractalZoom"/>
-	<meta property="og:title" content="Navigating&zooming through fractals"/>
-	<meta property="og:description" content="Zooming through fractals, make snapshots, save&share with friends">
-	<meta property="og:image" content="/jsFractalZoom/assets/favimage-480x270.jpg">
-	<meta property="og:type" content="website"/>
-	<meta property="og:locale" content="en_GB"/>
-	<meta charset="UTF-8">
+	<meta property="og:url" content="https://rockingship.github.io/jsFractalZoom">
+	<meta property="og:title" content="Navigating through fractals and video codec">
+	<meta property="og:description" content="Zoom through fractals, make snapshots, save&share with friends">
+	<meta property="og:image" content="https://rockingship.github.io/jsFractalZoom/assets/favimage-480x270.jpg">
+	<meta property="og:image:width" content="480">
+	<meta property="og:image:height" content="270">
+	<meta property="og:image:type" content="image/jpeg">
+	<meta property="og:type" content="website">
+	<meta property="og:locale" content="en_GB">
 	<style>
 		body {
 			font-family: Verdana, Geneva, sans-serif;
@@ -61,21 +63,26 @@
 </head>
 <body>
 
-<a href="https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823"><img src="assets/favimage-840x472.jpg" alt="favimage"/></a>
+<p>[click on image to start <span class="mono">zoomer</span> at shown position]<br/>
+<a href="https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823"><img src="assets/favimage-840x472.jpg" alt="favimage"/></a></p>
 
-<h1>Welcome to the wonderful world of (fractal) zooming.</h1>
-
-<p>Click on the image above to start the zoomer at the presented location.</p>
+<h1>Welcome to the Wonderful World of (fractal) zooming.</h1>
 
 <p>Main project page: <a href="https://github.com/RockingShip/jsFractalZoom"><span class="mono">https://github.com/RockingShip/jsFractalZoom</span></a></p>
 
-<p>Fractal zoomer: <a href="https://rockingship.org/jsFractalZoom/jsFractalZoom.html"><span class="mono">jsFractalZoom.html</span></a></p>
+<p>Fractal <span class="mono">zoomer</span>: <a href="jsFractalZoom.html"><span class="mono">jsFractalZoom.html</span></a></p>
 
-<p>Image gallery: <a href="https://rockingship.org/jsFractalZoom/gallery/index.html"><span class="mono">gallery/index.html</span></a></p>
+<p>Image gallery: <a href="https://rockingship.github.io/jsFractalZoom-media/gallery/index.html"><span class="mono">https://rockingship.github.io/jsFractalZoom-media/gallery/index.html</span></a></p>
 
-<p>ADE PPF selector (contains flashing white lights): <a href="https://rockingship.org/jsFractalZoom/gallery-video/select-ade.html"><span class="mono">gallery-video/select-ade.html</span></a></p>
+<p><span class="mono">splash</span> codec demo: "ADE" PixelsPerFrame selector (contains flashing white lights): <a href="https://rockingship.github.io/jsFractalZoom-media/videos/select-ade.html"><span class="mono">https://rockingship.github.io/jsFractalZoom-media/videos/select-ade.html</span></a></p>
 
-<p>GTA PPF selector (contains reckless driving): <a href="https://rockingship.org/jsFractalZoom/gallery-video/select-gta.html"><span class="mono">gallery-video/select-gta.html</span></a></p>
+<p><span class="mono">splash</span> codec demo: "GTA" PixelsPerFrame selector (contains reckless driving): <a href="https://rockingship.github.io/jsFractalZoom-media/videos/select-gta.html"><span class="mono">https://rockingship.github.io/jsFractalZoom-media/videos/select-gta.html</span></a></p>
+
+<p>Side-By-Side video of above for settings <span class="mono">PPF</span>=100 and upscaled 90x50: <a href="https://rockingship.github.io/jsFractalZoom-media/videos/ade-sbs-900x506.webp"><span class="mono">https://rockingship.github.io/jsFractalZoom-media/videos/ade-sbs-900x506.webp</span></a></p>
+
+<p>Side-By-Side video of above for settings <span class="mono">PPF</span>=100 and upscaled 90x50: <a href="https://rockingship.github.io/jsFractalZoom-media/videos/gta-sbs-900x506.webp"><span class="mono">https://rockingship.github.io/jsFractalZoom-media/videos/gta-sbs-900x506.webp</span></a></p>
+
+<p>Video displaying how <span class="mono">splash</span> constructs a single frame of "ADE".<a href="https://rockingship.github.io/jsFractalZoom-media/videos/ade-border.webp"><span class="mono">https://rockingship.github.io/jsFractalZoom-media/videos/ade-border.webp</span></a></p>
 
 </body>
 </html>
