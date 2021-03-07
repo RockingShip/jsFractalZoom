@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2021-03-07 12:38:19 Changed: `<meta charset="">` closer to beginning.
 2021-03-02 20:22:15 Changed: Relocated media files to `jsFractalZoom-media`.
 2020-12-15 23:19:00 Changed: Updated assets.
 2020-12-12 23:46:19 Changed: Project description.
@@ -159,82 +160,82 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Version 0.8.0] 2018-03-06
 
-### Added
-- Formula, incolour, outcolour and plane
-
-### Changed
-- Config() static scoping
-- Formula() static scoping
-- Improved palette and pixel value 65535 for background
-- Fast initial image
+```
+Added: Formula, incolour, outcolour and plane
+Changed: Config() static scoping
+Changed: Formula() static scoping
+Changed: Improved palette and pixel value 65535 for background
+Changed: Fast initial image
+```
 
 ## [Version 0.7.0] 2018-02-20
 
-### Added
-- Webworker for paint offloading (but with postMessage() disabled)
-
-## Changed
-- Improved update_pixels()
-- Simplified palette
+```
+Added: Webworker for paint offloading (but with postMessage() disabled)
+Changed: Improved update_pixels()
+Changed: Simplified palette
+```
 
 ## [Version 0.6.0] 2018-02-13
 
-### Added
-- Home gesture
-- Palette
-- Starting thumbnail
-- `makeRuler()` error weights
-- `renderLines()` neighbour spreading
-- Autopilot
-- Fullscreen mode
+```
+Added: Home gesture
+Added: Palette
+Added: Starting thumbnail
+Added: `makeRuler()` error weights
+Added: `renderLines()` neighbour spreading
+Added: Autopilot
+Added: Fullscreen mode
+Changed: xyCoord[] calculation was causing out of sync.  
+```
 
-## Changed
-- xyCoord[] calculation was causing out of sync.  
- 
 ## [Version 0.5.0] 2018-02-09
 
-### Added
-- Viewport mouse gestures
-- Double viewports
-- X/Y rulers
+```
+Added: Viewport mouse gestures
+Added: Double viewports
+Added: X/Y rulers
+```
 
-### Changed
-- Relocate pixel data from GUI to newly created Viewport
+Changed: Relocate pixel data from GUI to newly created Viewport
 
 ## [Version 0.4.0] 2018-02-05
 
-### Changed
-- High precision timers
-- mainloop timings
-- double imagedata buffer
-- Optimize paint when not rotated
+```
+Changed: High precision timers
+Changed: mainloop timings
+Changed: double imagedata buffer
+Changed: Optimize paint when not rotated
+```
 
 ## [Version 0.3.0] 2018-02-05
 
-### Added
-- RadioButton/RadioGroup
-- JavaScript bindings
-- Mainloop and GIF encoder
-- Replaced GIF encoder with drawing pixels directly on canvas
-
-### Changed
-- Unified ARIA
+```
+Added: RadioButton/RadioGroup
+Added: JavaScript bindings
+Added: Mainloop and GIF encoder
+Added: Replaced GIF encoder with drawing pixels directly on canvas
+Changed: Unified ARIA
+```
 
 ## [Version 0.2.0] 2018-02-03
 
-### Added
-- Redesigned user interface according to ARIA practices https://www.w3.org/TR/wai-aria-practices
+```
+Added: Redesigned user interface according to ARIA practices https://www.w3.org/TR/wai-aria-practices
+```
 
 ## 0.1.0 2018-01-30
 
-### Changed
-- General cleanup
-- Initial commit
+```
+Changed: General cleanup
+Changed: Initial commit
+```
 
 ## 0.0.0 2011-05-09
 
-### Added
-- Initial creation
+```
+Initial creation
+```
 
 [Unreleased]: https://github.com/xyzzy/jsFractalZoom/compare/v0.10.0...HEAD
 [Version 0.10.0]: https://github.com/xyzzy/jsFractalZoom/compare/v0.9.0...v0.10.0

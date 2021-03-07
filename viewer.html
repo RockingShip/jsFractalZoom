@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<!--
- *  This file is part of jsFractalZoom - Fractal zoomer and splash video codec
- *
- *  Copyright (C) 2020, xyzzy@rockingship.org
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU Affero General Public License as published
- *  by the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU Affero General Public License for more details.
- *
- *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
--->
 <html lang="en">
 <head>
-	<title>Lightweight zoomer viewer</title>
 	<meta charset="UTF-8">
+	<!--
+	 *  This file is part of jsFractalZoom - Fractal zoomer and splash video codec
+	 *
+	 *  Copyright (C) 2020, xyzzy@rockingship.org
+	 *
+	 *  This program is free software: you can redistribute it and/or modify
+	 *  it under the terms of the GNU Affero General Public License as published
+	 *  by the Free Software Foundation, either version 3 of the License, or
+	 *  (at your option) any later version.
+	 *
+	 *  This program is distributed in the hope that it will be useful,
+	 *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 *  GNU Affero General Public License for more details.
+	 *
+	 *  You should have received a copy of the GNU Affero General Public License
+	 *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+	-->
+	<title>Lightweight zoomer viewer</title>
 	<style>
 		body {
 			font-family: Verdana, Geneva, sans-serif;
@@ -82,7 +82,7 @@
 		}
 
 	</style>
-	<script type="text/javascript" src="zoomer.js"></script>
+	<script src="zoomer.js"></script>
 </head>
 <body>
 <canvas id="idZoomer">
@@ -93,7 +93,7 @@
 	<span id="idStatus"></span>
 </div>
 
-<script type="text/javascript">
+<script>
 	"use strict";
 
 	window.addEventListener('load', function () {
@@ -302,11 +302,11 @@
 			 * Start of a new frame.
 			 * Process timed updates (piloting), set x,y,radius,angle.
 			 *
-			 * @param {Zoomer}   zoomer            - This
-			 * @param {Viewport} currentViewport   - Current viewport
-			 * @param {Frame}    currentFrame      - Current frame
-			 * @param {Viewport} previousViewport  - Previous viewport to extract rulers/pixels
-			 * @param {Frame}    previousFrame     - Previous frame
+			 * @param {Zoomer}   zoomer     - This
+			 * @param {Viewport} calcView   - Current viewport
+			 * @param {Frame}    calcFrame  - Current frame
+			 * @param {Viewport} dispView   - Previous viewport to extract rulers/pixels
+			 * @param {Frame}    dispFrame  - Previous frame
 			 */
 			onBeginFrame: (zoomer, calcView, calcFrame, dispView, dispFrame) => {
 				if (zoomer.radius < minRadius) {
