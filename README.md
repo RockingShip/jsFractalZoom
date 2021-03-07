@@ -1,20 +1,26 @@
-<a href="https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823" target="_blank"><img src="assets/favimage-840x472.jpg" width="100%" alt="favimage"/></a>
+\[click on image to start `zoomer` at shown location\]  
+[![favimage](assets/favimage-840x472.jpg)](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823)
 
-## NOTE: This document is under active construction
+# `jsFractalZoom`
 
-# Welcome to the wonderful world of (fractal) zooming
+## Welcome to the Wonderful World of (fractal) zooming
 
-When insufficient resources force you to prioritize which pixels to render first...
+*when insufficient resources force you to prioritize which pixels to render first*
 
-This project has 3 Components:
+This project has 3 main Components:
 
-  - [XaoS](http://xaos.sourceforge.net/black/index.php) inspired fractals as sample content.
-  - The `zoomer` engine.
-  - The `splash` video codec.
+  - The `zoomer` engine.  
+    Or skip to the location [120 lines below](#the-fractal-zoomer).
 
-The only requirement is the implementation of:
+  - [XaoS](https://github.com/xaos-project) inspired fractals as sample content.  
+    Or jump on the engine [https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html).
+    
+  - The `splash` video codec.  
+    Or skip to the location [760 lines below](#the-splash-codec). 
 
-```
+Implementation wise, the only requirement is to supply:
+
+```javascript
     /**
      * This is done for every pixel. optimize well!
      * Easy extendable for 3D.
@@ -29,14 +35,13 @@ The only requirement is the implementation of:
      * @return {int} - Pixel value           
      */
     onUpdatePixel: (zoomer, frame, x, y) => {
-        return <YourCodeHere>;
+        [YourCodeHere];
     }
 ```
 
 ## Experience the fractal zoomer
 
-Click on the image above to start the zoomer at the presented location.  
-Or, start from scratch: [https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html)
+Jump to [https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html)
 
 How to use:
   - press the enlarge button in the top right (or F11) to enable full-screen.
@@ -45,7 +50,7 @@ How to use:
   - drag the image by holding down the mouse-wheel to a photogenic position.
   - staying static allows for faster loading speed.
   - the loading is "complete"  when the "complete" indicator reached "1" (located in the top bar).
-   - the control panel can be resized using the bottom left resize button.
+  - the control panel can be resized using the bottom left resize button.
 
 Saving:
   - saves as a PNG file.
@@ -82,74 +87,133 @@ For touchscreen use:
     For unobstructed viewing while zooming you can release 1 finger.
   - use 3 finger to focus: release one finger and pinch or stretch with the remaining two to adjust "density".
 
-## Concept
 
-It's about how to construct a frame for animations/video.  
-Normally a frame is constructed by scanning rows from top-left to bottom-right.  
-Problems start when calculating pixels takes (much) long than available time.  
-Reusing pixels from previous frames becomes important to reduce calculations.  
-We perceive motion as zooming for speed and shifting for direction.  
-Zooming/shifting is instantaneous and (usually) enlarges the image which introduces motion blur.  
-Our eye and brain needs to accommodate to the change and will not notice the difference between blur or sharp.  
-As our mind starts to focus on areas of interest it will digest detail and colour aided by the eye's macula (gele vlek).  
-Areas seen outside the macula are monochrome and blurry.  
-The zoomer/splash engine tries to prioritize the pixels our mind and macula desires the most.  
-It is driven by the idea that our brain is most sensitive to contrast changes, so areas with high change (high motion) is what we look at first.  
-Scoring is used to quantify the amount of change and sharpness, the ordering of pixel rendering is based on decreasing scoring.  
-Idealistically we would want to score all the pixels individually, but that requires too much resources to be practically feasible.  
-Second best choice is to average the scoring by row and column.  
-Each row and column receives a scoring based on the difference between the old/previous and new/next frame.  
-The engine basically peeks into the future to indicate which rows and columns are going to change the most.  
-This is done for each dimensional axis and stored in the major component called the ruler.  
-Screens are considered two-dimensional pixel planes using x/row and y/column coordinates.  
-This is different than 3D content which usually gets transformed to 2D before being projected onto the screen.  
-As a side note for advanced modeling, the engine is prepared for upgrading to multi-dimensional pixel planes.
 
-Here is an example with three consecutive frames.  
-The first is the starting landscape followed by two incremental steps depicting a forward angled movement.  
-For simplicity only a single scan-line is illustrated.
+## Table of contents
 
-First step is to zoom and shift the landscape which introduces blur because many pixels are discarded and replaced by neighbouring copies.  
-As we will not be travelling at the speed of light the motion angle and pixel duplication will be minimal.  
-Landscape ranges from `2.0 <= x <= 3.8` and the zoom is changing the range to `24 <= x <= 3.2`
+  - [Welcome to the Wonderful World of (fractal](#welcome-to-the-wonderful-world-of-fractal-zooming)
+  - [Experience the fractal zoomer](#experience-the-fractal-zoomer)
+  - [The fractal `zoomer`](#the-fractal-zoomer)
+    - [Rulers](#rulers)
+    - [Coordinates](#coordinates)
+    - [Directional vector](#directional-vector)
+    - [States](#states)
+    - [Phased Locked Loop](#phased-locked-loop)
+    - [Backing store](#backing-store)
+    - [Rotation](#rotation)
+    - [`memcpy()`](#memcpy)
+      - [Indexed](#indexed)
+      - [Interleaved](#interleaved)
+      - [Angled](#angled)
+    - [Application components](#application-components)
+      - [Sample/skeleton implementation HTML/CSS](#sampleskeleton-implementation-htmlcss)
+      - [Sample/skeleton implementation Javascript](#sampleskeleton-implementation-javascript)
+      - [Function declaration](#function-declaration)
+  - [The `splash` codec](#the-splash-codec)  
+    - [Frame buffer](#frame-buffer)
+    - [Ruler metrics and scoring](#ruler-metrics-and-scoring)
+    - [Interpolation](#interpolation)
+      - [Opaque rectangle fill](#opaque-rectangle-fill)  
+      - [Transparent splash fill](#transparent-splash-fill)  
+    - [Demonstration](#demonstration)
+      - [Demo: Amsterdam Dance Event (contains flashing white lights)](#demo-amsterdam-dance-event-contains-flashing-white-lights)
+      - [Demo: GTA speeding (contains reckless driving)](#demo-gta-speeding-contains-reckless-driving)
+    - [FFmpeg](#ffmpeg)
+  - [History](#history)
+  - [Versioning](#versioning)
+  - [License](#license)
+  - [Acknowledgments](#acknowledgments)
 
-![copy frame 1-2](assets/copyFrame12-900x506.jpg)
+## The fractal `zoomer`
 
-Second step determine the scan-line sequence and calculate pixels which makes the landscape sharp.  
-Note that it is expected by design that not all scan-lines can be processed within the available frame construction duration.  
-As a side note this is lossy behaviour, only when all scan lines have been processed will the new landscape be lossless.
+`zoomer` is a rendering engine that paints pixels on demand.  
+Pixels are repositioned/duplicated until they drift too far away while moving and are recalculated.  
 
-![calc frame 2](assets/calcFrame2-900x506.jpg)
+Two sample implementations are included: an interactive fractal navigator and a non-interactive fractal viewer.  
+It is also used to display transverse Mercator projection with the `ccbc` project.  
 
-The third frame repeats the process as the directional vector stays unchanged.  
-Main difference now is that the landscape contains areas which inherit and increase the level of blurriness.
+`zoomer` utilises a state machine using phase-locked-loops to construct frames.  
+This means that frame construction is split into different steps where timing metrics predict how long each step takes.  
+Timer predictions allows the event queue to maximize computations while the user interface stays responsive.  
+Three coordinate systems are also used throughout construction.  
 
-![calc frame 3](assets/calcFrame3-900x506.jpg)
+### Rulers
 
-A score of 0 implies that the pixel coordinate is exact and has not drifted.  
-With multi-dimensional rulers (used by screens), a pixel is exact if the drift/score in all dimensions is zero.  
-When calculating a frame, scan rows and columns will intersect, the number of intersections will increase as construction advances.  
-The intersections form corners of rectangles that are filled by the calculated pixel value.  
-In the beginning the rectangles are large giving a pixelated effect and get smaller/sharper when additional scanlines start to sub-divide the area.
+Rulers contain pixel metadata and are used to determine "hot"/"cold" regions with lots/less of changes.  
+Hot regions which focus on action are calculated first which cools them down.
+Cooler regions focus on quality.  
+Rulers are created by comparing the last rendered frame with the next desired frame.  
+The goal is to maximize the amount of hot pixels (representing significant scene changes) before the frame construction time limit expires.
 
-![scanlines](assets/scanline-900x506.gif)
+Rulers are used to implement the following:
 
-## The `zoomer` architecture
+  - Metadata for pixel storage.  
+    See below.  
 
-The `zoomer` engine lets you visually navigate through a procedurally generated landscape.  
-It assumes that calculating pixel value is highly expensive.  
-Maximises reuse of data from the previous frame to avoid unnecessary calculations,  
-New pixel values are calculated in order of significance.
+  - Create lookup tables for `memcpy_indexed()`.  
+    Every pixel of a new frame is inherited from the previous frame.  
+    Rulers indicate the source location that are the best choice based on pixel drift.  
+    Scaling/shifting allows dynamic and seamless changing of frame size.
+    This makes it possible to have arbitrary sized key-frames.
 
-###  Navigation
+  - Scan-line scoring and ordering.  
+    Determines the sequence in which scan-rows/columns are processed.
 
-The directional viewing vector consists of three components:
+Rulers contain the following information:
 
-  - The x,y coordinates, extendable to 3D or more
-  - radius
-  - rotational angle
+  - Exact coordinate.  
+    The coordinates used to calculate the pixel value.  
+    
+  - Drifted coordinate.  
+    Original coordinates of pixels in cooler areas that drift without being recalculated. 
+    
+  - Score.  
+    The pixel with the highest score is calculated first.  
+    The default value is the difference between exact/drifted coordinates.  
+    
+  - Source location within the previous frame.  
+    New frames are initially populated with drifted pixels that are closest to their exact coordinates.  
 
-Updating the directional vector is user defined.
+There are rulers for every dimensional axis.  
+Initial frame population performs scaling and shifting which introduces motion-blur.  
+Scan-line calculations determines exact pixel values for coordinates which introduces sharpness.
+
+NOTE: Determining the ordering of scan-lines is determined exclusive by ruler metrics and not pixels values.
+
+### Coordinates
+
+Pixel values use three different types of coordinates:
+
+  - x,y (float) formula coordinate  
+    These coordinates are used to access the data model.
+
+  - i,j (int) backing store location  
+    The index/position with the data arrays.
+
+  - u,v (int) screen position  
+    The position on the screen after backing store extraction and rotation.
+
+Which unit is applicable depends on the position in the data path:
+
+>formula `<-xy->` backingStore `<-ij->` clip/rotation `<-uv->` screen/canvas
+
+### Directional vector
+
+The directional vector is what you see and how you move.  
+Updating the vector is user-defined, the engine considers it read-only. 
+
+The vector consists of three components:
+
+  - The x,y coordinates.  
+    The coordinate of the screen center pixel.
+    The current implementation is 2D and is easy extendable to 3D.
+    
+  - Radius.  
+    The radius resembles the imaginary circle that is fully visible.  
+    For landscape this is the top/bottom height, for portrait the left/right width.
+    
+  - Angle.  
+    The rotation with the screen center pixel as anchor. 
 
 ### States
 
@@ -159,23 +223,23 @@ Frame construction has been split into phases/states.
 The states are:
 
   - `COPY` (New frame)  
-    Construct rulers for scaling/shifting pixels from previous frame.  
+    Construct rulers for copying/scaling/shifting pixels from the previous frame.  
     Copy pixels using an `indexed memcpy()`.  
-    Determine calculate order for rows/columns.
+    Determine calculation order of rows/columns.
 
   - `UPDATE` (Calculate blurry pixels)  
-    Update key pixels along an axis, called a scanline.  
-    Key pixels are pixels that have been scanned along in all directions.  
+    Update key pixels along an axis (row/column) called a scanline.  
+    Key pixels are pixels that have been marked as scanned across all axis.  
     Flood fill neighbours to create motion blur using `interleaved memcpy()`.
 
   - `RENDER` (RGBA frame buffer)
-    Copy pixel values from the backing store to a RGBA storage.  
-    Optional palettes are applied.  
+    Copy pixel values from the backing store to an RGBA storage.  
+    Optional colour palette is applied.  
     Apply rotation where/when necessary using `angled memcpy()`.
 
   - `PAINT` (Forward to display)
     Write RGBA storage to the display.  
-    Most probably being a canvas using `putImageData()`.  
+    Most probably the display is a canvas and written to using `putImageData()`.  
     `putImageData()` can be CPU intensive and has therefore a dedicated state.
 
 State timings:
@@ -194,80 +258,67 @@ Running on an AMD FX-8320E, state durations (mSec) have been grossly averaged in
 |  Chrome 4K      |   38    |  28      |  31      |   12    | 12
 
 The timings were measured with a requested FPS of 20.  
-PLL nicely stabilises taking into account a massive amount of statistical noise.  
-The 4K are clearly too much to handle, the engine will automatically reduce FPS until balance is reached.
+The 4K is too much to handle, the engine will automatically reduce FPS until balance is reached.
 
 The choice to perform `RENDER` as web-worker is because:
 
-  - during initial design timings were longer  because of less optimiations
-  - The requirement for a previous frame complicated the reference implementation too much for parallel implementation.
+  - different timings during initial design because of different optimisations.  
+  - The requirement for needing a previous frame for ruler calculations complicated parallel implementation.  
 
-NOTE: `requestAnimationFrame` is basically unusable because (at least) Firefox has added jitter as anti-fingerprinting feature.
+NOTE: `requestAnimationFrame` is basically unusable because (at least) Firefox has added jitter as anti-fingerprinting feature.  
+It also turns out that a stable interval between frames is more important than the moment they are displayed. 
 
-###  Phased Locked Loop
+### Phased Locked Loop
 
-The time needed for `COPY`, `RENDER` and `PAINT` is constant.  
-The `UPDATE` timings for calculating a pixel is undetermined.  
-Duration and overhead of time measurement functions is considered a factor more than calculating pixel values.
+The computation time needed for `COPY`, `RENDER` and `PAINT` is constant depending on screen resolution.  
+The `UPDATE` timings for calculating a pixel is variable and undetermined.  
+Querying timers is considered a performance hit and should be avoided, especially after calculating each pixel.  
 The stability of framerate depends on the accuracy of timing predictions.
 
 Phased Locked Loop predicts the number of calculations/iterations based on averages from the past.  
 Two time measurements are made, before and after a predetermined number of iterations.  
-The number of iterations for the next round is adjusted heuristically.
+The number of iterations for the next round is adjusted accordingly.
 
-Phase Lock Loop is self adapting to environmental changes like Javascript Engine, CPU and display.
-
-### Coordinates
-
-Pixel values use three different types of coordinates:
-
-  - x,y (float) formula coordinate
-  - u,v (int) screen position
-  - i,j (int) backing store location
-
-Which unit is applicable depends on the position in the data path:
-
-formula `<-xy->` backingStore `<-ij->` clip/rotation `<-uv->` screen/canvas
+Phased Lock Loops are self adapting to environmental changes like Javascript engine, hardware and display resolutions.  
 
 ### Backing store
 
-Backing store has three functions:
+Backing store (data storage) has three functions:
 
-  - Separation of storage/logic
-    Pixel data objects (frames) can easily transfer to web-workers or other distributed agent.
+  - Separation of storage/logic.
+    `zoomer` separates data (frames) and code (views) to simplify (and optimise) data transfer from/to web-workers.  
+    Rulers are part of views and web-workers are part of frames.
+    
+  - Contains the previous frame.  
+    Ruler construction requires scoring based on frame differences.  
+    Scoring is currently the amount of pixel drift. It can be adapted to different models.
 
-  - Contains the previous frame
-    Ruler construction requires scoring based on frame differences.
-    Scoring is currently the amount of pixel drift, and can be adapted to different models.
-
-  - Holds inter-frame
-    Updating scanlines can fill neighbouring pixels.  
-    Encoders/Decoders share temporal synced pixel data
+  - Rotation.  
+    Holds the out-of-sight pixel when rotating with a rectangular viewport.
 
 ### Rotation
 
-<img src="assets/rotate-400x400.webp" width="400" height="400" alt="rotate"/>
+[rotate-400x400.webp](assets/rotate-400x400.webp)
 
 When rotating is enabled the pixel storage (backing store) needs to hold all the pixels for all angles.  
 The size of the storage is the diagonal of the screen/canvas squared.  
 Rotation uses fixed point sin/cos.  
-The sin/cos can be loop unrolled to make clipping/rotating high speed.
-
-Rotation requires square backing store, otherwise it is shrink-to-fit width*height.
+The sin/cos is loop unrolled to make clipping/rotating high speed.
 
 Rotation has two penalties:
- - Needs to calculate about 2.5 times more pixels than displayed
- - Extra loop overhead
+  - Needs to calculate about 2.5 times more pixels than displayed  
+  - Extra loop overhead  
 
-`Zoomer` can easily enable/disable rotational mode on demand.
+`Zoomer` is designed to easily enable/disable rotational mode on demand.  
+However, disabling will delete the out-of-sight pixels and enabling needs to recalculate them.  
 
 ### `memcpy()`
 
 Javascript as a language does not support acceleration of array copy.  
 In languages like `C`/`C++`, it is advertised as library function `memcpy()`.  
-With Javascript, the only access to `memcpy()` is through `Array.subarray`
+With Javascript, the only access to `memcpy()` is through `Array.subarray()`.
 
-```
+```javascript
     /**
      * zoomerMemcpy Accelerated array copy.
      *
@@ -289,10 +340,11 @@ Within `zoomer`, three variations of `memcpy()` are used:
 
 Indexed `memcpy` transforms the contents using a lookup table.  
 Palettes are lookup tables translating from pixel value to RGBA.  
-Copying/scaling/shifting pixel values from previous frame to next after ruler creation.
+Copying/scaling/shifting pixel values from the previous frame to next after ruler creation.
 
 A conceptual implementation:
-```
+
+```javascript
     function memcpyIndexed(dst, src, cnt) {
       for (let i=0; i<cnt; i++)
         dst[i] = SomeLookupTable[src[i]];
@@ -303,12 +355,13 @@ A conceptual implementation:
 
 There are two kinds of scan-lines: scan-rows and scan-columns.  
 Only scan-rows can profit from hardware acceleration.  
-CPU instruction-set lacks multi dimensional support.  
+CPU instruction-set lacks multi dimensional/interleave instruction support.  
 Auto-increment is always word based.  
 Acceleration support for arbitrary offset is missing.
 
 A conceptual implementation:
-```
+
+```javascript
     // increment can be negative
     // an option could be to have separate increments for source/destination
     function memcpyInterleave(dst, src, cnt, offset) {
@@ -319,10 +372,12 @@ A conceptual implementation:
 
 #### Angled
 
-Clip and rotate when copying pixels from the backing store to RGBA
+Clip and rotate when copying pixels from the backing store to RGBA.
+Fixed point/integer and loop unrolling are major optimisation techniques. 
 
 A conceptual implementation:
-```
+
+```javascript
     /**
      * memcpy with clip and rotate. (partially optimised)
      *
@@ -354,82 +409,42 @@ A conceptual implementation:
     }
 ```
 
-### Rulers
-
-Rulers are the main component of the zoomer engine and are used for the following:
-
-  - Metadata for pixel storage
-    Attaches coordinates to pixel locations.  
-    The engine separates data from logic, metadata is considered part of the logic and is not passed to web-workers.
-
-  - Create lookup tables for `memcpy_indexed()`
-    Every pixel of a new frame is inherited from the previous frame.  
-    Rulers indicate the source location that are the best choice based on pixel drift.  
-    Scaling/shifting allows seamless changing of frame size, which can be used to set the quality/size of key-frames.
-
-  - Scan-line scoring and ordering.
-    Determines the sequence in which scan-lines are processed.
-
-There are rulers for every dimensional axis.  
-Scaling and shifting introduces motion-blur, scan-line calculations introduces sharpness.  
-Scan-line calculations update ruler scoring. which in turn dynamically changes the order of scan-lines.  
-Ordering of scan-lines is independent of their dimensional-axis.
-
-For the fractal zoomer, rulers contain the following information:
-
-  - exact coordinate
-  - drifted coordinate
-  - score
-  - source location in previous frame
-
-## The `zoomer` API
-
-Zoomer is full-screen canvas orientated.  
-All interaction with the physical environment (DOM) is done through callbacks.  
-Coordinates are floating point, pixel locations are integer.  
-Scaling those two is a design fundamental.  
-Rotation is also fully integrated with a minimal performance penalty.  
-`devicePixelDensity` is a natural environment and integrates seamlessly.
-
-Being full-screen oriented, HTML positioning is absolute.  
-CSS for centering and padding the canvas.  
-Javascript to glue resources.
-
 ### Application components
 
-A main design principle is to separate pixel data, UI resources and render logic.  
-An application consists of five areas:
+A main design principle is to separate pixel data (frame), render logic (view) and UI resources (callbacks).  
+
+An application implementing `zoomer` consists of five areas:
 
   - HTML/CSS
 
-    Zoomer is primarily full-screen canvas orientated.  
-    Being full-screen oriented, HTML positioning is absolute.
+    `zoomer` is primarily full-screen canvas orientated.  
+    Being full-screen oriented, HTML positioning is absolute.  
     CSS for centering and padding the canvas.
 
   - Callbacks
 
     User supplied callbacks to glue canvas, resources and events to the engine
 
-  - Function object `ZoomerFrame`
+  - Function-object `ZoomerFrame`
 
-    Pixel data, rotation,data transfer to workers
-    deliberately does not contain metadata describing the location of the pixel values.
-    object inaccessable when transferred to web workers
+    Pixel data, rotation anf data transfer to workers.  
+    Deliberately does not contain metadata describing the location of the pixel values (rulers).  
+    Object is inaccessible when transferred to web workers.  
 
-  - Function object `ZoomerView`
+  - Function-object `ZoomerView`
 
-    Rulers, rotation
-    deliberately does not contain pixel values.
+    Rulers and rotation logic.  
+    Deliberately does not contain pixel values.
 
-  - Function object `Zoomer`
+  - Function-object `Zoomer`
 
-    Scheduling+timing, worker communication
+    Scheduling+timing and web-worker communication.
 
-### Sample/skeleton implementation HTML/CSS
+#### Sample/skeleton implementation HTML/CSS
 
-The following template is a bare minimum:
+The following is a minimalistic template:
 
-```
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -461,11 +476,11 @@ The following template is a bare minimum:
             left: 0;
         }
     </style>
-    <script type="text/javascript" src="zoomer.js"></script>
+    <script src="zoomer.js"></script>
 </head>
 <body>
 <canvas id="idZoomer"> </canvas>
-<script type="text/javascript">
+<script>
     "use strict";
 
     window.addEventListener("load", function () {
@@ -516,16 +531,19 @@ The following template is a bare minimum:
 </html>
 ```
 
-### Sample/skeleton implementation Javascript
+#### Sample/skeleton implementation Javascript
 
-The only mandatory addition is the contents of `OPTIONS` which are initial values for any or all `zoomer` properties.
+`zoomer` accesses `DOM` through callbacks.  
+This also allows accessing user-defined data such as palettes.  
+All callbacks have the `zoomer` instance as first argument for easy engine access.
 
-All callbacks have the zoomer instance as first argument for easy engine access.  
-In combination with arrow functions, `this` is caller/DOM namespace and `zoomer` is engine/webworker namespace.
+Invoking `zoomer` requires the presence of an option object.  
+The option object presets `zoomer` properties.  
+All properties are public, callbacks can change any value whenever they like.  
 
-Most important properties are:
+Most important properties/callbacks are:
 
-```
+```javascript
 const OPTIONS = {
     /**
      * Frames per second.
@@ -636,17 +654,18 @@ const OPTIONS = {
 
         // draw frame onto canvas. `ctx` is namespace of caller.
         ctx.putImageData(imagedata, 0, 0);
-    },
+    }
 
 }
 ```
 
-## Function declaration
+#### Function declaration
 
-There are two styles of function declaration, traditional and arrow notation.
-Both are identical in functionality and performance.
-Difference is the binding of `this`.
-With `function()` the bind is the web-worker event queue, with `() => { }` the bind is the DOM event queue.
+There are two styles of function declaration, traditional and arrow notation.  
+Both are identical in functionality and performance.  
+The difference is the binding of `this`.
+
+With `function()` the bind is the web-worker event queue, with `() => { }` the bind is the `DOM` event queue.
 
 ```
   (a,b,c) => { }       - Strongly advised
@@ -655,51 +674,205 @@ With `function()` the bind is the web-worker event queue, with `() => { }` the b
 
 To aid in scope de-referencing all callbacks have as first parameter a reference to the engine internals.
 
-```
-    this.domStatus = document.getElementById("idStatus");
+```javascript
+    let domStatus = document.getElementById("idStatus");
 
-    this.zoomer = new Zoomer(width, height, enableAngle, {
-       onEndFrame: (zoomer, frame) => {
+    let zoomer = new Zoomer(width, height, enableAngle, {
+        onEndFrame: (zoomer, frame) => {
             /*
              * `this` references the caller scope
              * `zoomer` references engine scope
              * `frame` references web-worker pixel data
              */
-			this.domStatusLoad.innerText = "FPS:" + zoomer.frameRate;
+            domStatusLoad.innerText = "FPS:" + zoomer.frameRate;
         }
     });
 ```
 
-### Demos
+\[click on the image to watch the HD version with lower framerate\]  
+[![ade-border-840x472.webp](https://rockingship.github.io/jsFractalZoom/assets/ade-border-840x472.webp)](https://rockingship.github.io/jsFractalZoom-media/assets/ade-border.mp4)  
+\[illustrates the incremental change between two frames\]
 
-There are 3 demos. All are work-in-progress and may not work in any/all situations.
+## The `splash` codec
 
-[jsFractalZoom-formula.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom-formula.html)
-The original with most of the formula's working.
+*imagining the fractal being the real world*
 
-[jsFractalZoom-navigation.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom-navigation.html)
-The original with most of the navigation working.
+`splash` uses the `zoomer` scan-order as basis for encoding.  
+The most important pixels go first which aims at what our brain and eyes do best:  
+Detects colour and contrast change (movement) giving that priority.  
+With a scene change our brain needs to accommodate, the area with most movement will attract the most attention.  
+Our eyes will target that region, and our macular will register that as sharpest.  
+The `zoomer`/`splash` engine tries to prioritize the pixels our mind and macular desires the most.  
 
-[jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html)
-The current unification and completion.
+>alt text:  
+>Our eye and brain needs to accommodate to the change and will not notice the difference between blur or sharp. 
+>As our mind starts to focus on areas of interest it will digest detail and colour aided by the eye's macula (gele vlek).  
+>Areas seen outside the macula are monochrome and blurry.  
+>The zoomer/splash engine tries to prioritize the pixels our mind and macula desires the most.  
+>It is driven by the idea that our brain is most sensitive to contrast changes, so areas with high change (high motion) is what we look at first.  
+>Scoring is used to quantify the amount of change and sharpness, the ordering of pixel rendering is based on decreasing scoring.
 
+A lossy compression can be achieved by truncating the sequence.  
+Point of interest is how much can you truncate while keeping the essence of the imagery.  
+Focus is therefore on low-bandwidth.  
+The examples mentioned below explore the extremes. 
 
-There are two sample implementations of the `zoomer` engine.
+`splash` only reorders the scanning sequence of pixels.  
+Colour reduction and pixel compression are not part of this project.  
 
-  - `jsFractalZoom` is a full featured UI/UX frontend
-  - `viewer` a minimalistic reference implementation
+The animated image above displays how a single `splash` frame is constructed.  
+The border marks processed scan-lines (rows+columns), the number in the lower-left is progress.
 
-Both illustrate how to integrate the engine with your application.
+Upgrading the data model to process video frames needs some enhancements:
 
+### Frame buffer
 
-# Background
+The frame buffer is incrementally updated with pixel values from a data model.  
+With `zoomer` the frame buffer is additionally shifted/scaled based on the [directional vector](#directional-vector).  
+For video, a typical implementation of the vector would be a VR headset.  
+Using a fixed camera position makes the vector static and largely unnecessary.  
+For fast-panning scenes, a vector could be introduced to pre-process frames.  
 
-`jsFractalZoom` is an fractal generator/zoomer written in javascript. It was inspired by XaoS, [https://xaos.sourceforge.net/black/index.php](https://xaos.sourceforge.net/black/index.php).
+`splash` utilizes a single frame buffer and updates it with pixel values from the current video frame.  
 
-The project was originally created in May 2011, resurrected in 2018 and extended in 2020.
+### Ruler metrics and scoring
 
-The 2020 version is canvas based. The 2018 engine created GIF images using an ultra fast GIF encoder [https://github.com/xyzzy/jsGifEncoder](https://github.com/xyzzy/jsGifEncoder).
- 
+`zoomer` rulers are based on pixel drift, `splash` rulers are based on colour drift.
+
+The horizontal and vertical rulers are metadata for rows and columns as a whole.  
+Quantifying colour drift is the sum of colour differences for every pixel on a scan-line (row+column).  
+Colours in real-world imagery usually change gradually.  
+The greater the colour difference, the greater the movement, the higher the score to render the scan-line first.  
+
+### Pixels-Per-Frame
+
+`splash` re-orders the scanning sequence of pixels in a frame.  
+A fully rendered frame (all scan-lines processed) is equivalent to an uncompressed frame.  
+Compression is achieved by truncating the scanning sequence (dropping the lesser significant pixels).  
+Quality/compression is expressed as the ratio of rendered pixels against the total number of pixels per frame.  
+The ratio is normalised, and the notation is "1/N", where N may be a fraction.  
+
+Setting PPF is equivalent to telling the codec: "from an input image you may sample only N pixels, choose wisely".
+A PPF of "1/600" means that 0.166% of the pixels may be sampled, the remaining 99.934% are interpolated.  
+With a 900x500 image (used in the samples below), setting a PPF of "1/100" (1%) would be equivalent to down-scaling it to a 90x50 thumbnail.
+
+### Interpolation
+
+The pixels where scan-lines cross are considered exact.  
+The value of "exact" pixels are part of the data stream and uncompressed/verbatim.  
+Neighbouring pixels are updated using an interpolation method as explained below.  
+
+#### Opaque rectangle fill
+
+`zoomer` is speed optimised and will flood-fill the rectangle bounded by neighbouring scan-lines.  
+
+Example taken from [gallery/demo-36](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.7791809354769728&y=-0.13452268920699467&r=1.308069346746607e-13&a=0&density=1&iter=1276&theme=6&seed=166517427)  
+Left image is during frame construction and clearly shows different rectangle sizes.  
+Right image is after completion.  
+
+![fill-zoomerA-30-400.png](assets/fill-zoomerA-30-400.png) ![fill-zoomerB-400x400.png](assets/fill-zoomerB-400x400.png)
+
+#### Transparent splash fill
+
+`splash` will perform a 2D alpha-channel flood-fill.  
+
+The splash epicentre is where the scan-lines cross, the radius is set to 5 based on being the best visual experience.  
+Splash transparency is linear, based on distance to the epicenter.  
+The effect is gradually clipped as pixels get closer to neighboring scan-lines.
+
+Example taken from the section illustration above.  
+Left is scan-line #174 (a column) which is the first update on the top-left laser beam.  
+Here you see the 5x5 splash effect as it erases the background with a darker colour and paints the new beam with a lighter colour.  
+Right is scan-line #500 which illustrates the clipping of the splash effect.  
+
+![fill-splashA-60-400.png](assets/fill-splashA-60-400.png) ![fill-splashB-60-400.png](assets/fill-splashB-60-400.png)
+
+### Demonstration
+
+There are two side-by-side comparisons that both focus on displaying the differences in Pixel-Per-Frame settings.  
+Each demonstration has a preview that, when clicked, shows left a Pixels-Per-Frame setting of 1/100.  
+The clips are 900x506 pixels and selecting 1% is equivalent to a clip of 90x50 pixels which is displayed right.  
+Alternatively, there is a user configurable selector presenting 15 different PPF settings.  
+After selecting a setting, the load delay might cause the clips to become out of sync, indicated by an orange button.  
+Once clips are in sync, their buttons turn green, this might require multiple presses.  
+
+#### Demo: Amsterdam Dance Event (contains flashing white lights)
+
+[click on image to show Side-By-Side comparison\]  
+[![ade-sbs-1800x506.webp](https://rockingship.github.io/jsFractalZoom-media/videos/ade-sbs-820x236.jpg)](https://rockingship.github.io/jsFractalZoom-media/videos/ade-sbs-1800x506.webp)  
+[left PPF=100, right upscaled 90x50]
+
+Areas of interest:
+
+ - Laser top right corner  
+   Splash effect erasing old painting new laser pixels.
+   
+ - Big center mirror  
+   Sudden brightness change over large area.
+   
+ - LED panel in front of stage  
+   High frequency moiré patterns.
+   
+ - ADE letters on stage light  
+   Splash effect and delicate (text) lines.
+
+Configurable ADE selector: [https://rockingship.github.io/jsFractalZoom-media/videos/select-ade.html](https://rockingship.github.io/jsFractalZoom-media/videos/select-ade.html)
+
+#### Demo: GTA speeding (contains reckless driving)
+
+[click on image to show Side-By-Side comparison\]  
+[![gta-sbs-1800x506.webp](https://rockingship.github.io/jsFractalZoom-media/videos/gta-sbs-820x236.jpg)](https://rockingship.github.io/jsFractalZoom-media/videos/gta-sbs-1800x506.webp)  
+[left PPF=100, right upscaled 90x50]
+
+Areas of interest:
+
+ - Dashboard  
+   The pixel splash is taking advantage of the gradient colouring.
+   
+ - Yellow dial lights  
+   The brightness punches the scanline scoring causing it to be rendered first and sharp.
+   
+ - Lights in rear mirror  
+   Balance between less abrupt movements and different sizes of head lights stress blurring of splash effect.
+   
+ - Roof  
+   Extreme low amount of changes prolong updates which stresses ghosting, dithering and colour shading.
+   
+ - Front hood/bonnet  
+   The reflections of passing vehicle on the front hood/bonnet.
+
+Configurable GTA selector: [https://rockingship.github.io/jsFractalZoom-media/videos/select-gta.html](https://rockingship.github.io/jsFractalZoom-media/videos/select-gta.html)
+
+### FFmpeg
+
+An implementation of the `splash` codec has been made available for `FFmpeg`.  
+The patch file is named [0001-Splash-codec.patch](0001-Splash-codec.patch).
+
+The encoder is activated with `-c:v splash`, and supports the following options:
+
+  - ppf N  
+    Pixels per frame (float). Default 1.
+    
+  - ppk N  
+    Pixels per key-frame (float), currently being the first frame. Default 1.  
+    
+  - radius r  
+    Pixel splash radius (int). Default 5.
+
+## History
+
+`jsFractalZoom` was originally created in May 2011.
+
+The original engine created GIF images using an ultra-fast GIF encoder which is available separately: [https://github.com/xyzzy/jsGifEncoder](https://github.com/xyzzy/jsGifEncoder).
+
+Included are two legacy (and unmaintained) implementations:
+
+  - [jsFractalZoom-formula.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom-formula.html)
+    The original with most of the formula's working.
+
+  - [jsFractalZoom-navigation.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom-navigation.html)
+    The original with most of the navigation working.
+
 ## Versioning
 
 This project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
@@ -711,4 +884,4 @@ This project is licensed under Affero GPLv3 - see the [LICENSE](LICENSE) file fo
 
 ## Acknowledgments
 
-* All the inspiration from the XaoS project.
+  - Inspiration from the XaoS project. [https://github.com/xaos-project](https://github.com/xaos-project)

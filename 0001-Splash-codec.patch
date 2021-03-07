@@ -1,0 +1,845 @@
+From 98a06495332346044c3ecbc9ec01257199e3e865 Mon Sep 17 00:00:00 2001
+From: Xyzzy <xyzzy@rockingship.org>
+Date: Fri, 12 Mar 2021 23:49:25 +0059
+Subject: [PATCH] Splash codec.
+
+---
+ Changelog               |   1 +
+ libavcodec/Makefile     |   2 +
+ libavcodec/allcodecs.c  |   2 +
+ libavcodec/codec_desc.c |   7 +
+ libavcodec/codec_id.h   |   1 +
+ libavcodec/splash.h     | 394 ++++++++++++++++++++++++++++++++++++++++++++++++
+ libavcodec/splashdec.c  | 129 ++++++++++++++++
+ libavcodec/splashenc.c  | 201 ++++++++++++++++++++++++
+ libavformat/riff.c      |   1 +
+ 9 files changed, 738 insertions(+)
+ create mode 100644 libavcodec/splash.h
+ create mode 100644 libavcodec/splashdec.c
+ create mode 100644 libavcodec/splashenc.c
+
+diff --git a/Changelog b/Changelog
+index 73deaf6..6d20db9 100644
+--- a/Changelog
++++ b/Changelog
+@@ -54,6 +54,7 @@ version <next>:
+ - AV1 monochrome encoding support via libaom >= 2.0.1
+ - asuperpass and asuperstop filter
+ - shufflepixels filter
++- Splash encoder/decoder
+ - tmidequalizer filter
+ - estdif filter
+ - epx filter
+diff --git a/libavcodec/Makefile b/libavcodec/Makefile
+index 81cc164..24e1381 100644
+--- a/libavcodec/Makefile
++++ b/libavcodec/Makefile
+@@ -634,6 +634,8 @@ OBJS-$(CONFIG_SONIC_LS_ENCODER)        += sonic.o
+ OBJS-$(CONFIG_SPEEDHQ_DECODER)         += speedhq.o mpeg12.o mpeg12data.o simple_idct.o
+ OBJS-$(CONFIG_SPEEDHQ_ENCODER)         += speedhq.o mpeg12data.o mpeg12enc.o speedhqenc.o
+ OBJS-$(CONFIG_SP5X_DECODER)            += sp5xdec.o
++OBJS-$(CONFIG_SPLASH_DECODER)          += splashdec.o
++OBJS-$(CONFIG_SPLASH_ENCODER)          += splashenc.o
+ OBJS-$(CONFIG_SRGC_DECODER)            += mscc.o
+ OBJS-$(CONFIG_SRT_DECODER)             += srtdec.o ass.o htmlsubtitles.o
+ OBJS-$(CONFIG_SRT_ENCODER)             += srtenc.o ass_split.o
+diff --git a/libavcodec/allcodecs.c b/libavcodec/allcodecs.c
+index 2e9a358..665170b 100644
+--- a/libavcodec/allcodecs.c
++++ b/libavcodec/allcodecs.c
+@@ -303,6 +303,8 @@ extern AVCodec ff_snow_decoder;
+ extern AVCodec ff_sp5x_decoder;
+ extern AVCodec ff_speedhq_decoder;
+ extern AVCodec ff_speedhq_encoder;
++extern AVCodec ff_splash_encoder;
++extern AVCodec ff_splash_decoder;
+ extern AVCodec ff_srgc_decoder;
+ extern AVCodec ff_sunrast_encoder;
+ extern AVCodec ff_sunrast_decoder;
+diff --git a/libavcodec/codec_desc.c b/libavcodec/codec_desc.c
+index 17f8a14..8321ebb 100644
+--- a/libavcodec/codec_desc.c
++++ b/libavcodec/codec_desc.c
+@@ -1420,6 +1420,13 @@ static const AVCodecDescriptor codec_descriptors[] = {
+         .props     = AV_CODEC_PROP_LOSSY,
+     },
+     {
++        .id        = AV_CODEC_ID_SPLASH,
++        .type      = AVMEDIA_TYPE_VIDEO,
++        .name      = "splash",
++        .long_name = NULL_IF_CONFIG_SMALL("Splash"),
++        .props     = AV_CODEC_PROP_LOSSY,
++    },
++    {
+         .id        = AV_CODEC_ID_MSP2,
+         .type      = AVMEDIA_TYPE_VIDEO,
+         .name      = "msp2",
+diff --git a/libavcodec/codec_id.h b/libavcodec/codec_id.h
+index ab7bc68..1805229 100644
+--- a/libavcodec/codec_id.h
++++ b/libavcodec/codec_id.h
+@@ -243,6 +243,7 @@ enum AVCodecID {
+     AV_CODEC_ID_AVS2,
+     AV_CODEC_ID_PGX,
+     AV_CODEC_ID_AVS3,
++    AV_CODEC_ID_SPLASH,
+     AV_CODEC_ID_MSP2,
+     AV_CODEC_ID_VVC,
+ #define AV_CODEC_ID_H266 AV_CODEC_ID_VVC
+diff --git a/libavcodec/splash.h b/libavcodec/splash.h
+new file mode 100644
+index 0000000..f41472b
+--- /dev/null
++++ b/libavcodec/splash.h
+@@ -0,0 +1,394 @@
++/*
++ * Splash codec
++ * Copyright (c) 2020 xyzzy@rockingship.org
++ *
++ * This file is part of FFmpeg.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ */
++
++/**
++ * @file
++ * jsFractalZoom based codec.
++ *
++ * Project page and background:
++ * https://github.com/RockingShip/jsFractalZoom
++ */
++
++
++#include "libavutil/common.h"
++#include "libavutil/opt.h"
++#include "libavutil/avassert.h"
++
++/*
++ * Frame header
++ */
++#define HEADER_LENGTH 12
++#define HEADER_OFS_VERSION 9
++#define HEADER_OFS_RADIUS 10
++#define HEADER_OFS_COMPRESS 11
++
++/**
++ * Encoder context
++ */
++typedef struct SplashContext {
++        AVClass class;
++
++        int radius;        // pixel/brush radius
++        float ppf;         // pixels per frame (width*height/ppf)
++        float ppk;         // pixels per key frame (width*height*ppk)
++
++        uint32_t *xError;  // total error along the x-axis
++        uint32_t *yError;  // total error along the y-axis
++        uint8_t *pixels;   // pixel data
++
++        uint8_t *data;     // data buffer
++        int pos;           // position within data buffer
++        int size;          // size data buffer
++
++        int numPixels;
++} SplashContext;
++
++static av_cold int splash_init(AVCodecContext *avctx) {
++    SplashContext *const ctx = avctx->priv_data;
++    int width = avctx->width, height = avctx->height;
++
++    avctx->pix_fmt = AV_PIX_FMT_RGB0;
++
++    // allocate
++    ctx->xError = av_malloc(width * 4);
++    ctx->yError = av_malloc(height * 4);
++    ctx->pixels = av_malloc(width * height * 4);
++
++    // test if all successful
++    if (!ctx->xError || !ctx->yError || !ctx->pixels)
++        return AVERROR(ENOMEM);
++
++    // initial image, solid gray50
++    {
++        uint8_t *pixels = ctx->pixels;
++        for (int ji = 0; ji < width * height; ji++) {
++            *pixels++ = 0x7f;
++            *pixels++ = 0x7f;
++            *pixels++ = 0x7f;
++        }
++    }
++
++    return 0;
++}
++
++static av_cold int splash_end(AVCodecContext *avctx) {
++    SplashContext *const ctx = avctx->priv_data;
++
++    av_freep(&ctx->pixels);
++    av_freep(&ctx->yError);
++    av_freep(&ctx->xError);
++
++    return 0;
++}
++
++static int update_lines(AVCodecContext *avctx, const AVFrame *pic, int radius, int encodeDecode) {
++
++    SplashContext *const ctx = avctx->priv_data;
++    int logLevel = av_log_get_level();
++
++    int width = avctx->width;
++    int height = avctx->height;
++    uint32_t *xError = ctx->xError;
++    uint32_t *yError = ctx->yError;
++    uint8_t *pixels = ctx->pixels;
++    int maxError;
++
++    uint8_t *pData = ctx->data + ctx->pos;
++
++    // which tabstops have the worst error
++    int worstXerr = xError[0];
++    int worstXi = 0;
++    int worstYerr = yError[0];
++    int worstYj = 0;
++
++    for (int i = 1; i < width; i++) {
++        if (xError[i] > worstXerr) {
++            worstXi = i;
++            worstXerr = xError[i];
++        }
++    }
++    for (int j = 1; j < height; j++) {
++        if (yError[j] > worstYerr) {
++            worstYj = j;
++            worstYerr = yError[j];
++        }
++    }
++
++
++    if (worstXerr + worstYerr == 0)
++        return 0; // nothing to do
++
++    if (worstXerr > worstYerr) {
++        int i = worstXi;
++
++        /*
++         * range of splash
++         */
++        int minI = i, maxI = i;
++        for (int r = 1; r < radius; r++) {
++            if (minI == 0 || xError[minI - 1] == 0)
++                break;
++            --minI;
++        }
++        for (int r = 1; r < radius; r++) {
++            if (maxI >= width - 1 || xError[maxI + 1] == 0)
++                break;
++            ++maxI;
++        }
++
++        if (logLevel >= AV_LOG_TRACE)
++            av_log(NULL, AV_LOG_TRACE, "%d %d X-%d %d\n", worstXerr, worstYerr, worstXi, worstYj);
++
++        maxError = xError[i];
++
++        /*
++         * Apply changes to the ruler so X and Y are now balanced
++         */
++        for (int ii = minI; ii <= maxI; ii++) {
++            float alpha = (float) FFABS(ii - i) / radius;
++
++            xError[ii] = round(xError[ii] * alpha);
++            if (i != ii && xError[ii] == 0)
++                xError[ii] = 1;
++        }
++        xError[i] = 0;
++
++        /*
++         * Scan line for cross points
++         */
++        for (int j = 0; j < height; j++) {
++            // only calculate cross points of exact lines, fill the others
++            if (yError[j] == 0) {
++
++                int minJ = j, maxJ = j;
++
++                /*
++                 * Read pixel
++                 */
++                int srcR, srcG, srcB;
++                if (encodeDecode) {
++                    // encode
++                    uint8_t *src = &pic->data[0][j * pic->linesize[0]] + i * 4;
++                    srcR = *src++;
++                    srcG = *src++;
++                    srcB = *src;
++
++                    // emit pixel
++                    *pData++ = srcR;
++                    *pData++ = srcG;
++                    *pData++ = srcB;
++                    ctx->numPixels++;
++                } else {
++                    //decode
++                    srcR = *pData++;
++                    srcG = *pData++;
++                    srcB = *pData++;
++                }
++
++                /*
++                 * range of splash
++                 */
++                for (int r = 1; r < radius; r++) {
++                    if (minJ == 0 || yError[minJ - 1] == 0)
++                        break;
++                    --minJ;
++                }
++                for (int r = 1; r < radius; r++) {
++                    if (maxJ >= height - 1 || yError[maxJ + 1] == 0)
++                        break;
++                    ++maxJ;
++                }
++
++                /*
++                 * Weighted flood-fill cross point
++                 */
++                for (int jj = minJ; jj <= maxJ; jj++) {
++                    for (int ii = minI; ii <= maxI; ii++) {
++                        // get fill alpha
++                        // the further the fill from the center, the less effect it has
++                        float fillAlpha = 1 - sqrt((ii - i) * (ii - i) + (jj - j) * (jj - j)) / radius;
++
++                        if (fillAlpha > 0) {
++
++                            // get pixel alpha
++                            // the more accurate the pixel (lower error) the lower the effect of the fill
++                            // normally neighbouring pixels have neighbouring errors
++                            // this should avoid filling delicate pixels like lines and letters
++                            float xerr = (float) ctx->xError[ii] / maxError;
++                            float yerr = (float) ctx->yError[jj] / maxError;
++                            float xyerr = (xerr + yerr) / 2;
++
++                            int alpha = 256 - round(256 * xyerr);
++
++                            int k = (jj * width + ii) * 4;
++                            int oldR = pixels[k + 0];
++                            int oldG = pixels[k + 1];
++                            int oldB = pixels[k + 2];
++
++                            int newR = ((srcR * alpha) + (oldR * (256 - alpha))) >> 8;
++                            int newG = ((srcG * alpha) + (oldG * (256 - alpha))) >> 8;
++                            int newB = ((srcB * alpha) + (oldB * (256 - alpha))) >> 8;
++
++                            // save new pixel value
++                            pixels[k + 0] = newR;
++                            pixels[k + 1] = newG;
++                            pixels[k + 2] = newB;
++                        }
++                    }
++                }
++            }
++        }
++    } else {
++        int j = worstYj;
++
++        /*
++         * range of splash
++         */
++        int minJ = j, maxJ = j;
++        for (int r = 1; r < radius; r++) {
++            if (minJ == 0 || yError[minJ - 1] == 0)
++                break;
++            --minJ;
++        }
++        for (int r = 1; r < radius; r++) {
++            if (maxJ >= height - 1 || yError[maxJ + 1] == 0)
++                break;
++            ++maxJ;
++        }
++
++        if (logLevel >= AV_LOG_TRACE)
++            av_log(NULL, AV_LOG_TRACE, "%d %d %d Y-%d\n", worstXerr, worstYerr, worstXi, worstYj);
++
++        maxError = yError[j];
++
++        /*
++         * Apply changes to the ruler so X and Y are now balanced
++         */
++        for (int jj = minJ; jj <= maxJ; jj++) {
++            float alpha = (float) FFABS(jj - j) / radius;
++
++            yError[jj] = round(yError[jj] * alpha);
++            if (j != jj && yError[jj] == 0)
++                yError[jj] = 1;
++        }
++        yError[j] = 0;
++
++        /*
++         * Scan line for cross points
++         */
++        for (int i = 0; i < width; i++) {
++            // only calculate cross points of exact lines, fill the others
++            if (xError[i] == 0) {
++
++                int minI = i, maxI = i;
++
++                /*
++                 * Read pixel
++                 */
++                int srcR, srcG, srcB;
++                if (encodeDecode) {
++                    // encode
++                    uint8_t *src = &pic->data[0][j * pic->linesize[0]] + i * 4;
++                    srcR = *src++;
++                    srcG = *src++;
++                    srcB = *src;
++
++                    // emit pixel
++                    *pData++ = srcR;
++                    *pData++ = srcG;
++                    *pData++ = srcB;
++                    ctx->numPixels++;
++                } else {
++                    // decode
++                    srcR = *pData++;
++                    srcG = *pData++;
++                    srcB = *pData++;
++                }
++
++                /*
++                 * range of splash
++                 */
++                for (int r = 1; r < radius; r++) {
++                    if (minI == 0 || xError[minI - 1] == 0)
++                        break;
++                    --minI;
++                }
++                for (int r = 1; r < radius; r++) {
++                    if (maxI >= width - 1 || xError[maxI + 1] == 0)
++                        break;
++                    ++maxI;
++                }
++
++                /*
++                 * Weighted flood-fill cross point
++                 */
++                for (int ii = minI; ii <= maxI; ii++) {
++                    for (int jj = minJ; jj <= maxJ; jj++) {
++                        float fillAlpha = 1 - sqrt((ii - i) * (ii - i) + (jj - j) * (jj - j)) / radius;
++
++                        if (fillAlpha > 0) {
++                            /*
++                             * fillAlpha is also the distance to the splash center
++                             * Dividing it between x and y in an attempt to prolong being selected to being the next scanline
++                             *
++                             * low `error[]` implies low chance, so change at least as possible
++                             * high `error[]` implies already likely. Changing as much as possible might be the only escape.
++                             */
++                            float xerr = (float) ctx->xError[ii] / maxError;
++                            float yerr = (float) ctx->yError[jj] / maxError;
++                            float xyerr = (xerr + yerr) / 2;
++
++                            int alpha = 256 - round(256 * xyerr);
++
++                            int k = (jj * width + ii) * 4;
++                            int oldR = pixels[k + 0];
++                            int oldG = pixels[k + 1];
++                            int oldB = pixels[k + 2];
++
++                            int newR = ((srcR * alpha) + (oldR * (256 - alpha))) >> 8;
++                            int newG = ((srcG * alpha) + (oldG * (256 - alpha))) >> 8;
++                            int newB = ((srcB * alpha) + (oldB * (256 - alpha))) >> 8;
++
++                            /*
++                            totalError -= Math.abs(srcR - oldR);
++                            totalError -= Math.abs(srcG - oldG);
++                            totalError -= Math.abs(srcB - oldB);
++                            totalError += Math.abs(srcR - newR);
++                            totalError += Math.abs(srcG - newG);
++                            totalError += Math.abs(srcB - newB);
++                            */
++
++                            // save new pixel value
++                            pixels[k + 0] = newR;
++                            pixels[k + 1] = newG;
++                            pixels[k + 2] = newB;
++                        }
++                    }
++                }
++            }
++        }
++    }
++
++    ctx->pos = pData - ctx->data;
++
++    return 1;
++}
++
+diff --git a/libavcodec/splashdec.c b/libavcodec/splashdec.c
+new file mode 100644
+index 0000000..edafdc0
+--- /dev/null
++++ b/libavcodec/splashdec.c
+@@ -0,0 +1,129 @@
++/*
++ * Splash Decoder
++ * Copyright (c) 2020 xyzzy@rockingship.org
++ *
++ * This file is part of FFmpeg.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ */
++
++/**
++ * @file
++ * jsFractalZoom based codec.
++ *
++ * Project page and background:
++ * https://github.com/RockingShip/jsFractalZoom
++ */
++
++#include "avcodec.h"
++#include "internal.h"
++#include "splash.h"
++
++static int splash_decode(AVCodecContext *avctx, void *data, int *got_frame, AVPacket *avpkt) {
++    SplashContext *const ctx = avctx->priv_data;
++    int width = avctx->width, height = avctx->height;
++
++    AVFrame *pic = data;
++    const uint8_t *pData = avpkt->data;
++    int ret;
++    int hdrLength, radius;
++
++    avctx->pix_fmt = AV_PIX_FMT_RGB0;
++
++    if ((ret = ff_get_buffer(avctx, pic, 0)) < 0)
++        return ret;
++
++    /*
++     * Load header
++     */
++
++    hdrLength = pData[0];
++    hdrLength |= pData[1] << 8;
++    hdrLength |= pData[2] << 16;
++    radius = pData[HEADER_OFS_RADIUS];
++
++    ctx->data = avpkt->data + hdrLength;
++    ctx->pos = 0;
++    ctx->size = avpkt->size - HEADER_LENGTH;
++    pData = ctx->data;
++
++    /*
++     * Load initial `xError[]`
++     */
++    for (int i = 0; i < width; i++) {
++        int err = *pData++;
++        err |= *pData++ << 8;
++        err |= *pData++ << 16;
++
++        ctx->xError[i] = err;
++    }
++
++    /*
++     * Load initial `yError[]`
++     */
++    for (int j = 0; j < height; j++) {
++        int err = *pData++;
++        err |= *pData++ << 8;
++        err |= *pData++ << 16;
++
++        ctx->yError[j] = err;
++    }
++
++    ctx->pos = pData - ctx->data;
++
++    do {
++        if (!update_lines(avctx, pic, radius, 0))
++            break; // short frame
++    } while (ctx->pos < ctx->size);
++
++    if (ctx->pos != ctx->size)
++        av_log(avctx, AV_LOG_WARNING, "Incomplete scan line.\n");
++
++    /*
++     * Copy decoded pixels to frame
++     */
++    pData = ctx->pixels;
++    for (int j = 0; j < avctx->height; ++j) {
++        uint8_t *rgb = &pic->data[0][j * pic->linesize[0]];
++        for (int i = 0; i < avctx->width; ++i) {
++            *rgb++ = *pData++;
++            *rgb++ = *pData++;
++            *rgb++ = *pData++;
++            *rgb++ = 255;
++            pData++;
++        }
++    }
++
++    pic->key_frame = 1;
++    pic->pict_type = AV_PICTURE_TYPE_I;
++
++    *got_frame = 1;
++
++    return avpkt->size;
++}
++
++
++AVCodec ff_splash_decoder = {
++        .name           = "splash",
++        .long_name      = NULL_IF_CONFIG_SMALL("Splash"),
++        .type           = AVMEDIA_TYPE_VIDEO,
++        .id             = AV_CODEC_ID_SPLASH,
++        .priv_data_size = sizeof(SplashContext),
++        .init           = splash_init,
++        .decode         = splash_decode,
++        .close          = splash_end,
++        .capabilities   = AV_CODEC_CAP_DR1,
++        .pix_fmts = (const enum AVPixelFormat[]) {AV_PIX_FMT_RGB0, AV_PIX_FMT_NONE},
++};
+diff --git a/libavcodec/splashenc.c b/libavcodec/splashenc.c
+new file mode 100644
+index 0000000..98ce5ec
+--- /dev/null
++++ b/libavcodec/splashenc.c
+@@ -0,0 +1,201 @@
++/*
++ * Splash Encoder
++ * Copyright (c) 2020 xyzzy@rockingship.org
++ *
++ * This file is part of FFmpeg.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ */
++
++/**
++ * @file
++ * jsFractalZoom based codec.
++ *
++ * Project page and background:
++ * https://github.com/RockingShip/jsFractalZoom
++ */
++
++#include "avcodec.h"
++#include "internal.h"
++#include "splash.h"
++
++static int splash_encode(AVCodecContext *avctx, AVPacket *pkt, const AVFrame *pic, int *got_packet) {
++    SplashContext *const ctx = avctx->priv_data;
++    int width = avctx->width, height = avctx->height;
++    int ret;
++    uint8_t *pixels = ctx->pixels;
++    uint8_t *pData;
++
++    // allocate worst-case frame
++    if ((ret = ff_alloc_packet2(avctx, pkt, (HEADER_LENGTH + width + height + width * height) * 3, 0)) < 0)
++        return ret;
++
++    /*
++     * Write header
++     * +0 length (lsb)
++     * +3 "spl"
++     * +6 "ash"
++     * +9 version
++     * +10 radius
++     * +11 zero
++     * +12 start of data
++     */
++    pData = pkt->data;
++    *pData++ = 12; // 3 bytes header length (lsb)
++    *pData++ = 0;
++    *pData++ = 0;
++    *pData++ = 's'; // magic
++    *pData++ = 'p';
++    *pData++ = 'l';
++    *pData++ = 'a';
++    *pData++ = 's';
++    *pData++ = 'h';
++    *pData++ = 1; // version 1
++    *pData++ = ctx->radius; // radius
++    *pData++ = 0; // reserved for compression
++
++    ctx->data = pkt->data + HEADER_LENGTH;
++    ctx->pos = 0;
++    ctx->size = pkt->size - HEADER_LENGTH;
++    pData = ctx->data;
++
++    /*
++     * Create and output initial `xError[]`
++     */
++    for (int i = 0; i < width; i++) {
++        int err = 0;
++        for (int j = 0; j < height; j++) {
++            int k = (j * width + i) * 4;
++            uint8_t *rgb = &pic->data[0][j * pic->linesize[0]] + i * 4;
++
++            err += FFABS(pixels[k + 0] - rgb[0]);
++            err += FFABS(pixels[k + 1] - rgb[1]);
++            err += FFABS(pixels[k + 2] - rgb[2]);
++        }
++
++        // keep within limits
++        if (err > 0xffffff)
++            err = 0xffffff;
++
++        ctx->xError[i] = err;
++
++        // output xError
++        *pData++ = err;
++        *pData++ = err >> 8;
++        *pData++ = err >> 16;
++    }
++
++    /*
++     * Create and output initial `yError[]`
++     */
++    for (int j = 0; j < height; j++) {
++        int err = 0;
++        for (int i = 0; i < width; i++) {
++            int k = (j * width + i) * 4;
++            uint8_t *rgb = &pic->data[0][j * pic->linesize[0]] + i * 4;
++
++            err += FFABS(pixels[k + 0] - rgb[0]);
++            err += FFABS(pixels[k + 1] - rgb[1]);
++            err += FFABS(pixels[k + 2] - rgb[2]);
++        }
++
++        // keep within limits
++        if (err > 0xffffff)
++            err = 0xffffff;
++
++        ctx->yError[j] = err;
++
++        // output yError
++        *pData++ = err;
++        *pData++ = err >> 8;
++        *pData++ = err >> 16;
++    }
++
++    /*
++     * Start scanning lines
++     */
++    ctx->numPixels = 0;
++    ctx->pos = pData - ctx->data;
++
++    {
++        // number of pixels for this frame
++        int maxPixels;
++        if (avctx->frame_number == 0)
++            maxPixels = round(width * height / ctx->ppk);
++        else
++            maxPixels = round(width * height / ctx->ppf);
++
++        do {
++            if (!update_lines(avctx, pic, ctx->radius, 1))
++                break;  // short frame
++        } while (ctx->numPixels < maxPixels);
++    }
++
++    /*
++     * Test if end frame matches
++     */
++    if (ctx->ppf == 1) {
++        int cntMiss = 0;
++        uint8_t *src = ctx->pixels;
++        for (int j = 0; j < avctx->height; ++j) {
++            uint8_t *rgb = &pic->data[0][j * pic->linesize[0]];
++            for (int i = 0; i < avctx->width; ++i) {
++                if (*rgb++ != *src++)
++                    cntMiss++;
++                if (*rgb++ != *src++)
++                    cntMiss++;
++                if (*rgb++ != *src++)
++                    cntMiss++;
++                rgb++; // skip alpha
++                src++;
++            }
++        }
++        if (cntMiss)
++            av_log(NULL, AV_LOG_WARNING, "Inaccurate %d final pixels\n", cntMiss);
++    }
++
++    pkt->size = HEADER_LENGTH + ctx->pos;
++    pkt->flags |= AV_PKT_FLAG_KEY;
++    *got_packet = 1;
++    return 0;
++}
++
++static const AVOption options[] = {
++        {"ppf",    "pixels per frame (width*height/ppf)",     offsetof(SplashContext, ppf),    AV_OPT_TYPE_FLOAT, {.dbl = 1}, 1, INT_MAX, AV_OPT_FLAG_ENCODING_PARAM | AV_OPT_FLAG_VIDEO_PARAM},
++        {"ppk",    "pixels per key frame (width*height/ppk)", offsetof(SplashContext, ppk),    AV_OPT_TYPE_FLOAT, {.dbl = 2}, 1, INT_MAX, AV_OPT_FLAG_ENCODING_PARAM | AV_OPT_FLAG_VIDEO_PARAM},
++        {"radius", "brush radius",                            offsetof(SplashContext, radius), AV_OPT_TYPE_INT,   {.i64 = 5}, 1, INT_MAX, AV_OPT_FLAG_ENCODING_PARAM | AV_OPT_FLAG_VIDEO_PARAM},
++        {NULL},
++};
++
++static const AVClass splash_encoder_class = {
++        .class_name = "rasc decoder",
++        .item_name  = av_default_item_name,
++        .option     = options,
++        .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_splash_encoder = {
++        .name           = "splash",
++        .long_name      = NULL_IF_CONFIG_SMALL("Splash"),
++        .type           = AVMEDIA_TYPE_VIDEO,
++        .id             = AV_CODEC_ID_SPLASH,
++        .priv_data_size = sizeof(SplashContext),
++        .init           = splash_init,
++        .encode2        = splash_encode,
++        .close          = splash_end,
++        .pix_fmts       = (const enum AVPixelFormat[]) {AV_PIX_FMT_RGB0, AV_PIX_FMT_NONE},
++        .priv_class     = &splash_encoder_class,
++};
++
+diff --git a/libavformat/riff.c b/libavformat/riff.c
+index 270ff7c..06c58c5 100644
+--- a/libavformat/riff.c
++++ b/libavformat/riff.c
+@@ -496,6 +496,7 @@ const AVCodecTag ff_codec_bmp_tags[] = {
+     { AV_CODEC_ID_MVHA,         MKTAG('M', 'V', 'H', 'A') },
+     { AV_CODEC_ID_MV30,         MKTAG('M', 'V', '3', '0') },
+     { AV_CODEC_ID_NOTCHLC,      MKTAG('n', 'l', 'c', '1') },
++    { AV_CODEC_ID_SPLASH,       MKTAG('S', 'P', 'L', 'S') },
+     { AV_CODEC_ID_NONE,         0 }
+ };
+ 
+-- 
+2.6.0
+

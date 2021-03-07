@@ -1988,9 +1988,13 @@ function GUI() {
 			this.domZoomer.focus();
 			break;
 		case "T":
+			Config.theme = (Config.theme + 1) % 8;
+			// fallthrough
 		case "t":
-			this.theme.buttonDown();
-			this.domZoomer.focus();
+			Config.seed = Math.round(Math.random() * 2147483647);
+			palette.loadTheme();
+			// this.theme.buttonDown();
+			// this.domZoomer.focus();
 			break;
 		case "U":
 		case "u":

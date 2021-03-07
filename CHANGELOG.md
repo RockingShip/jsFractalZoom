@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2021-03-12 22:57:56 Changed: `README.md`.
 2021-03-07 12:38:19 Changed: `<meta charset="">` closer to beginning.
 2021-03-02 20:22:15 Changed: Relocated media files to `jsFractalZoom-media`.
 2020-12-15 23:19:00 Changed: Updated assets.
