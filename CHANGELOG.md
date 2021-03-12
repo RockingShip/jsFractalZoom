@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+```
+2021-03-12 23:46:07 Changed: `README.md`.
+```
+
 ## 2021-03-12 23:07:13 [Version 0.11.0]
 
 ```

@@ -690,7 +690,7 @@ To aid in scope de-referencing all callbacks have as first parameter a reference
 ```
 
 \[click on the image to watch the HD version with lower framerate\]  
-[![ade-border-840x472.webp](https://rockingship.github.io/jsFractalZoom/assets/ade-border-840x472.webp)](https://rockingship.github.io/jsFractalZoom-media/assets/ade-border.mp4)  
+[![ade-border-840x472.webp](https://rockingship.github.io/jsFractalZoom/assets/ade-border-840x472.webp)](https://rockingship.github.io/jsFractalZoom-media/assets/ade-border-1920x1080.mp4)  
 \[illustrates the incremental change between two frames\]
 
 ## The `splash` codec
@@ -798,9 +798,9 @@ Once clips are in sync, their buttons turn green, this might require multiple pr
 
 #### Demo: Amsterdam Dance Event (contains flashing white lights)
 
-[click on image to show Side-By-Side comparison\]  
-[![ade-sbs-1800x506.webp](https://rockingship.github.io/jsFractalZoom-media/videos/ade-sbs-820x236.jpg)](https://rockingship.github.io/jsFractalZoom-media/videos/ade-sbs-1800x506.webp)  
-[left PPF=100, right upscaled 90x50]
+\[click on image to show Side-By-Side comparison\]  
+[![ade-sbs-1800x506.webp](https://rockingship.github.io/jsFractalZoom-media/videos/ade-sbs-820x236.jpg)](https://rockingship.github.io/jsFractalZoom-media/videos/ade-sbs-1800x506.mp4)  
+\[left PPF=100, right upscaled 90x50\]
 
 Areas of interest:
 
@@ -820,9 +820,9 @@ Configurable ADE selector: [https://rockingship.github.io/jsFractalZoom-media/vi
 
 #### Demo: GTA speeding (contains reckless driving)
 
-[click on image to show Side-By-Side comparison\]  
-[![gta-sbs-1800x506.webp](https://rockingship.github.io/jsFractalZoom-media/videos/gta-sbs-820x236.jpg)](https://rockingship.github.io/jsFractalZoom-media/videos/gta-sbs-1800x506.webp)  
-[left PPF=100, right upscaled 90x50]
+\[click on image to show Side-By-Side comparison\]  
+[![gta-sbs-1800x506.webp](https://rockingship.github.io/jsFractalZoom-media/videos/gta-sbs-820x236.jpg)](https://rockingship.github.io/jsFractalZoom-media/videos/gta-sbs-1800x506.mp4)  
+\[left PPF=100, right upscaled 90x50\]
 
 Areas of interest:
 
