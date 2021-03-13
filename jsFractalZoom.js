@@ -500,12 +500,19 @@ function Palette() {
 		}
 	};
 
-	this.mkrandom = function () {
+	/**
+	 * Set a new palette theme/colour
+	 *
+	 * @param {boolean} themeColour - false=new theme+colour, true=new colour
+	 */
+	this.mkrandom = function (themeColour) {
+		if (!themeColour) {
+			// rotate though palette themes
+			Config.theme = (Config.theme + 1) % 8;
+		}
+
 		// get a new random number
 		Config.seed = Math.round(Math.random() * 2147483647);
-
-		// rotate though palette themes
-		Config.theme = (Config.theme + 1) % 8;
 
 		this.loadTheme();
 	};
@@ -611,6 +618,7 @@ function GUI() {
 	this.domPaletteSpeedRail = gebi("idPaletteSpeedRail");
 	this.domPaletteSpeedThumb = gebi("idPaletteSpeedThumb");
 	this.domThemeButton = gebi("idThemeButton");
+	this.domColourButton = gebi("idColourButton");
 	this.domDensityLeft = gebi("idDensityLeft");
 	this.domDensityRail = gebi("idDensityRail");
 	this.domDensityThumb = gebi("idDensityThumb");
@@ -701,6 +709,7 @@ function GUI() {
 	this.url = new Aria.Button(this.domUrlButton, true);
 	this.rotate = new Aria.Button(this.domRotateButton, false);
 	this.theme = new Aria.Button(this.domThemeButton, true);
+	this.colour = new Aria.Button(this.domColourButton, true);
 	this.hiRes = new Aria.Button(this.domHiResButton, false);
 
 	/*
@@ -1390,7 +1399,18 @@ function GUI() {
 
 	});
 	this.theme.setCallbackValueChange(() => {
-		palette.mkrandom();
+		palette.mkrandom(false);
+
+		/*
+		 * @date 2020-10-15 13:02:00
+		 * call `setPosition` to force a new frame to avoid colour glitching.
+		 * This shouldn't happen because of event queue isolation.
+		 * However, this handler is UI event context and `renderFrame()` is `postMessage()` context.
+		 */
+		this.zoomer.setPosition(Config.centerX, Config.centerY, Config.radius, Config.angle);
+	});
+	this.colour.setCallbackValueChange(() => {
+		palette.mkrandom(true);
 
 		/*
 		 * @date 2020-10-15 13:02:00
@@ -1871,6 +1891,7 @@ function GUI() {
 			this.domDensityThumb,
 			this.domPaletteSpeedThumb,
 			this.domThemeButton,
+			this.domColourButton,
 			this.domFramerateThumb];
 
 		// get rectangle within page
@@ -1999,13 +2020,12 @@ function GUI() {
 			this.domZoomer.focus();
 			break;
 		case "T":
-			Config.theme = (Config.theme + 1) % 8;
-			// fallthrough
+			this.theme.buttonDown();
+			this.domZoomer.focus();
+			break;
 		case "t":
-			Config.seed = Math.round(Math.random() * 2147483647);
-			palette.loadTheme();
-			// this.theme.buttonDown();
-			// this.domZoomer.focus();
+			this.colour.buttonDown();
+			this.domZoomer.focus();
 			break;
 		case "U":
 		case "u":
@@ -2078,8 +2098,11 @@ function GUI() {
 			this.domZoomer.focus();
 			break;
 		case "T":
-		case "t":
 			this.theme.buttonUp();
+			this.domZoomer.focus();
+			break;
+		case "t":
+			this.colour.buttonUp();
 			this.domZoomer.focus();
 			break;
 		case "U":
