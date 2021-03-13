@@ -3,7 +3,7 @@
 
 # `jsFractalZoom`
 
-## Welcome to the Wonderful World of (fractal) zooming
+## Welcome to the Wonderful World of (fractal) zooming and splash codec
 
 *when insufficient resources force you to prioritize which pixels to render first*
 
@@ -91,7 +91,7 @@ For touchscreen use:
 
 ## Table of contents
 
-  - [Welcome to the Wonderful World of (fractal](#welcome-to-the-wonderful-world-of-fractal-zooming)
+  - [Welcome to the Wonderful World of (fractal](#welcome-to-the-wonderful-world-of-fractal-zooming-and-splash-codec)
   - [Experience the fractal zoomer](#experience-the-fractal-zoomer)
   - [The fractal `zoomer`](#the-fractal-zoomer)
     - [Rulers](#rulers)
@@ -120,6 +120,7 @@ For touchscreen use:
       - [Demo: GTA speeding (contains reckless driving)](#demo-gta-speeding-contains-reckless-driving)
     - [FFmpeg](#ffmpeg)
   - [History](#history)
+  - [Manifest](#manifest)
   - [Versioning](#versioning)
   - [License](#license)
   - [Acknowledgments](#acknowledgments)
@@ -200,7 +201,8 @@ Which unit is applicable depends on the position in the data path:
 ### Directional vector
 
 The directional vector is what you see and how you move.  
-Updating the vector is user-defined, the engine considers it read-only. 
+This is a different concept than the notion vector used for macro blocks.
+Updating the vector is user-defined, the engine considers it read-only.  
 
 The vector consists of three components:
 
@@ -698,20 +700,15 @@ To aid in scope de-referencing all callbacks have as first parameter a reference
 *imagining the fractal being the real world*
 
 `splash` uses the `zoomer` scan-order as basis for encoding.  
-The most important pixels go first which aims at what our brain and eyes do best:  
-Detects colour and contrast change (movement) giving that priority.  
-With a scene change our brain needs to accommodate, the area with most movement will attract the most attention.  
-Our eyes will target that region, and our macular will register that as sharpest.  
-The `zoomer`/`splash` engine tries to prioritize the pixels our mind and macular desires the most.  
+The most important pixels go first which aims at what our brain and eyes do best:  detecting colour and contrast change (movement).  
+With a scene change our brain needs to accommodate, at first we will not notice the difference between blur or sharp.  
+Areas with high change (high motion) attracts the most attention and is what we look at first.  
+Our eyes will target that region, and our macula will register that as sharpest.  
+Areas seen outside the macula are monochrome and blurry.  
+The `zoomer`/`splash` engine tries to prioritize the pixels our mind and macula desires the most.  
 
->alt text:  
->Our eye and brain needs to accommodate to the change and will not notice the difference between blur or sharp. 
->As our mind starts to focus on areas of interest it will digest detail and colour aided by the eye's macula (gele vlek).  
->Areas seen outside the macula are monochrome and blurry.  
->The zoomer/splash engine tries to prioritize the pixels our mind and macula desires the most.  
->It is driven by the idea that our brain is most sensitive to contrast changes, so areas with high change (high motion) is what we look at first.  
->Scoring is used to quantify the amount of change and sharpness, the ordering of pixel rendering is based on decreasing scoring.
-
+A full/complete frame consists of a sequence pixel values in order of reducing significance.  
+Rulers determine scan-line scoring and pixel ordering.  
 A lossy compression can be achieved by truncating the sequence.  
 Point of interest is how much can you truncate while keeping the essence of the imagery.  
 Focus is therefore on low-bandwidth.  
@@ -722,6 +719,11 @@ Colour reduction and pixel compression are not part of this project.
 
 The animated image above displays how a single `splash` frame is constructed.  
 The border marks processed scan-lines (rows+columns), the number in the lower-left is progress.
+
+`splash` can be a revolutionary new way of frame rendering and gaming:  
+Why render 4K worth of pixels with reduced FPS if it's too much for your brain to handle.  
+Better would be to render the pixels that matter at a higher FPS and let the lesser pixels catch up later.  
+For AI it could be used to reduce visual stimuli while retaining the essence of movement.
 
 Upgrading the data model to process video frames needs some enhancements:
 
@@ -873,10 +875,42 @@ Included are two legacy (and unmaintained) implementations:
   - [jsFractalZoom-navigation.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom-navigation.html)
     The original with most of the navigation working.
 
+## Manifest
+
+ - [0001-Splash-codec.patch](0001-Splash-codec.patch)  
+   Patch file for FFmpeg containing the spash encoder/decoder.
+
+ - [codec.js](codec.js)  
+   Javascript reference implementation of `splash` codec.
+
+ - [extractJson.js](extractJson.js)  
+   Reference implementation to extract embedded JSON navigation data from `PNG` images.
+
+ - [jsFractalZoom-formula.html](jsFractalZoom-formula.html)  
+   [jsFractalZoom-navigation.html](jsFractalZoom-navigation.html)  
+   Legacy implementation of `zoomer` for posterity.
+
+ - [zoomer.js](zoomer.js)  
+   `zoomer` engine core.
+
+ - [viewer.html](viewer.html)  
+   `zoomer` implementation for non-interactive viewing.
+
+ - [jsFractalZoom.css](jsFractalZoom.css)  
+   [jsFractalZoom.js](jsFractalZoom.js)  
+   [jsFractalZoom.html](jsFractalZoom.html)  
+   Full `zoomer` implementation.
+
+ - [aria.js](aria.js)  
+   `ARIA` accessibility for `jsFractalZoom`.
+
+ - [formula.js](formula.js)  
+   `Xaos` formulas for additional fractals and colouring for `jsFractalZoom`.
+
 ## Versioning
 
 This project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
-For the versions available, see the [tags on this repository](https://github.com/xyzzy/jsFractalZoom/tags).
+For the versions available, see the [tags on this repository](https://github.com/RockingShip/jsFractalZoom/tags).
 
 ## License
 
