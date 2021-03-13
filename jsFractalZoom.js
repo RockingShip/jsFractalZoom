@@ -208,10 +208,14 @@ Config.home = function () {
 	Config.autopilotU = 0;
 	Config.autopilotV = 0;
 
-	if (0) {
+	if (1) {
 		/*
 		 * @date 2020-12-02 23:34:08
 		 * Keep density when zooming out to home. It part of palette the palette.
+		 *
+		 * @date 2021-03-13 22:08:53
+		 * Enable again, Disadvantage is that when density is very low when deep into the fractal,
+		 * a HOME would need to reset the density or the full fractal will seem mangled.
 		 */
 		// reset palette density
 		Config.density = 1;
@@ -1292,6 +1296,13 @@ function GUI() {
 	this.home.setCallbackValueChange((newValue) => {
 		Config.home();
 		this.reload();
+
+		/*
+		 * @date 2021-03-13 22:29:12
+		 * update density slider/label
+		 */
+		this.density.moveSliderTo(Config.densityNow);
+		this.density.updateLabels();
 	});
 	this.save.setCallbackValueChange((newValue) => {
 		/*
