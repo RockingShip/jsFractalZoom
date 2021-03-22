@@ -5,7 +5,7 @@ image: assets/favimage-840x472.jpg
 ---
 
 \[click on image to start `zoomer` at shown location\]  
-[![favimage](assets/favimage-840x472.jpg)](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823)
+[![favimage](assets/favimage-840x472.jpg)](https://rockingship.github.io/jsFractalZoom?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823)
 
 # `jsFractalZoom`
 
@@ -19,7 +19,7 @@ This project has 3 main Components:
     Or skip to the location [120 lines below](#the-fractal-zoomer).
 
   - [XaoS](https://github.com/xaos-project) inspired fractals as sample content.  
-    Or jump on the engine [https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html).
+    Or jump on the engine [https://rockingship.github.io/jsFractalZoom](https://rockingship.github.io/jsFractalZoom).
     
   - The `splash` video codec.  
     Or skip to the location [760 lines below](#the-splash-codec). 
@@ -47,7 +47,7 @@ Implementation wise, the only requirement is to supply:
 
 ## Experience the fractal zoomer
 
-Jump to [https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html)
+Jump to [https://rockingship.github.io/jsFractalZoom](https://rockingship.github.io/jsFractalZoom)
 
 How to use:
   - press the enlarge button in the top right (or F11) to enable full-screen.
@@ -775,7 +775,7 @@ Neighbouring pixels are updated using an interpolation method as explained below
 
 `zoomer` is speed optimised and will flood-fill the rectangle bounded by neighbouring scan-lines.  
 
-Example taken from [gallery/demo-36](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.7791809354769728&y=-0.13452268920699467&r=1.308069346746607e-13&a=0&density=1&iter=1276&theme=6&seed=166517427)  
+Example taken from [gallery/demo-36](https://rockingship.github.io/jsFractalZoom?x=-0.7791809354769728&y=-0.13452268920699467&r=1.308069346746607e-13&a=0&density=1&iter=1276&theme=6&seed=166517427)  
 Left image is during frame construction and clearly shows different rectangle sizes.  
 Right image is after completion.  
 
@@ -905,7 +905,7 @@ Included are two legacy (and unmaintained) implementations:
 
  - [jsFractalZoom.css](jsFractalZoom.css)  
    [jsFractalZoom.js](jsFractalZoom.js)  
-   [jsFractalZoom.html](jsFractalZoom.html)  
+   [index.html](index.html)  
    Full `zoomer` implementation.
 
  - [aria.js](aria.js)  

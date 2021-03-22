@@ -95,5 +95,5 @@ loadImage(process.argv[2]).catch(e => {
 	}
 	let qstr = qarr.join("&");
 
-	console.log("https://www.rockingship.org/jsFractalZoom.html?" + qstr);
+	console.log("https://rockingship.github.io/jsFractalZoom?" + qstr);
 });
