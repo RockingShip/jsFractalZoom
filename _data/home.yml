@@ -2,24 +2,12 @@ navbar_entries:
   - title: "showcase"
     url: https://rockingship.github.io
 
-  - title: "RockingShip@github"
-    url: https://github.com/RockingShip
-
   - title: "jsFractalZoom@github"
     url: https://github.com/RockingShip/jsFractalZoom
-
-  - title: "README@jsFractalZoom-media"
-    url: https://rockingship.github.io/jsFractalZoom-media/README.html
 
 footer_entries:
   - title: "showcase"
     url: https://rockingship.github.io
 
-  - title: "RockingShip@github"
-    url: https://github.com/RockingShip
-
   - title: "jsFractalZoom@github"
     url: https://github.com/RockingShip/jsFractalZoom
-
-  - title: "README@jsFractalZoom-media"
-    url: https://rockingship.github.io/jsFractalZoom-media/README.html
