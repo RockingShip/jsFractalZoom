@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2021-03-22 13:15:10 Changed: Modernized SEO headers.
 2021-03-22 13:04:15 Changed: renamed `jsFractalZoom.html` to `index.html`.
 2021-03-22 12:00:42 Added: `moonwalk` theme.
 2021-03-13 22:34:06 Changed: Split palette button into theme/colours. 

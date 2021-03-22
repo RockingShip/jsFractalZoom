@@ -16,13 +16,13 @@ image: assets/favimage-840x472.jpg
 This project has 3 main Components:
 
   - The `zoomer` engine.  
-    Or skip to the location [120 lines below](#the-fractal-zoomer).
+    Or skip to the location [120 lines below](#the-fractal-zoomer)
 
   - [XaoS](https://github.com/xaos-project) inspired fractals as sample content.  
-    Or jump on the engine [https://rockingship.github.io/jsFractalZoom](https://rockingship.github.io/jsFractalZoom).
+    Visit the gallery [gallery](https://rockingship.github.io/jsFractalZoom-media/gallery) or jump on the [engine](https://rockingship.github.io/jsFractalZoom)
     
   - The `splash` video codec.  
-    Or skip to the location [760 lines below](#the-splash-codec). 
+    Or skip to the location [760 lines below](#the-splash-codec)
 
 Implementation wise, the only requirement is to supply:
 
