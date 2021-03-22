@@ -9,7 +9,9 @@ image: assets/favimage-840x472.jpg
 
 # `jsFractalZoom`
 
-### Welcome to the Wonderful World of (fractal) zooming and splash codec
+Fractal zoomer and splash codec written in JavaScript
+
+### Welcome to the Wonderful World of rendering on demand
 
 *when insufficient resources force you to prioritize which pixels to render first*
 
