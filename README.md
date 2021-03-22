@@ -19,7 +19,7 @@ This project has 3 main Components:
     Or skip to the location [120 lines below](#the-fractal-zoomer)
 
   - [XaoS](https://github.com/xaos-project) inspired fractals as sample content.  
-    Visit the gallery [gallery](https://rockingship.github.io/jsFractalZoom-media/gallery) or jump on the [engine](https://rockingship.github.io/jsFractalZoom)
+    Visit the [gallery](https://rockingship.github.io/jsFractalZoom-media/gallery) or jump on the [engine](https://rockingship.github.io/jsFractalZoom)
     
   - The `splash` video codec.  
     Or skip to the location [760 lines below](#the-splash-codec)
