@@ -1,9 +1,15 @@
+---
+layout: home
+title: "jsFractalZoom - Fractal zoomer and splash codec written in JavaScript"
+image: assets/favimage-840x472.jpg
+---
+
 \[click on image to start `zoomer` at shown location\]  
 [![favimage](assets/favimage-840x472.jpg)](https://rockingship.github.io/jsFractalZoom/jsFractalZoom.html?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823)
 
 # `jsFractalZoom`
 
-## Welcome to the Wonderful World of (fractal) zooming and splash codec
+### Welcome to the Wonderful World of (fractal) zooming and splash codec
 
 *when insufficient resources force you to prioritize which pixels to render first*
 
@@ -121,6 +127,7 @@ For touchscreen use:
     - [FFmpeg](#ffmpeg)
   - [History](#history)
   - [Manifest](#manifest)
+  - [Source code](#source-code)
   - [Versioning](#versioning)
   - [License](#license)
   - [Acknowledgments](#acknowledgments)
@@ -201,7 +208,7 @@ Which unit is applicable depends on the position in the data path:
 ### Directional vector
 
 The directional vector is what you see and how you move.  
-This is a different concept than the notion vector used for macro blocks.
+This is a different concept than the motion vector used for macro blocks.
 Updating the vector is user-defined, the engine considers it read-only.  
 
 The vector consists of three components:
@@ -906,6 +913,14 @@ Included are two legacy (and unmaintained) implementations:
 
  - [formula.js](formula.js)  
    `Xaos` formulas for additional fractals and colouring for `jsFractalZoom`.
+
+## Source code
+
+Grab one of the tarballs at [https://github.com/RockingShip/jsFractalZoom/releases](https://github.com/RockingShip/jsFractalZoom/releases) or checkout the latest code:
+
+```sh
+  git clone https://github.com/RockingShip/jsFractalZoom.git
+```
 
 ## Versioning
 

@@ -1,4 +1,5 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
@@ -7,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2021-03-22 12:00:42 Added: `moonwalk` theme.
 2021-03-13 22:34:06 Changed: Split palette button into theme/colours. 
 2021-03-13 22:31:35 Changed: Reset density slider when going HOME.
 2021-03-12 23:46:07 Changed: `README.md`.
