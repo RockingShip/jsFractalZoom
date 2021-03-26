@@ -4,12 +4,15 @@ title: "jsFractalZoom - Fractal zoomer and splash codec written in JavaScript"
 image: assets/favimage-840x472.jpg
 ---
 
-\[click on image to start `zoomer` at shown location\]  
-[![favimage](assets/favimage-840x472.jpg)](https://rockingship.github.io/jsFractalZoom?x=-0.8665722560433728&y=0.2308933773688535&r=3.021785750590329e-7&a=0&density=0.0362&iter=10080&theme=6&seed=2140484823)
+\[click on image to start `zoomer`\]  
+[![favimage](assets/favimage-840x472.jpg)](https://rockingship.github.io)
 
 # `jsFractalZoom`
 
 Fractal zoomer and splash codec written in JavaScript
+
+Instead of an ad with tracking...  
+Like to [donate ![opencollective](assets/opencollective-icon.svg)](https://opencollective.com/RockingShip) some appreciation for the use or inspiration this gives you?
 
 ### Welcome to the Wonderful World of rendering on demand
 

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2021-03-26 19:00:42 Added: Donate button.
 2021-03-26 15:46:25 Added: Extra favicons.
 2021-03-23 01:42:25 Fixed: `favimage-840x472.jpg`.
 2021-03-22 23:18:22 Changed: Subtitle.
