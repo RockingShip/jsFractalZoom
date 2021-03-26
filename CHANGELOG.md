@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2021-03-26 20:44:28 Fixed: favicons.
 2021-03-26 20:07:34 Added: `index.md`.
 ```
 
