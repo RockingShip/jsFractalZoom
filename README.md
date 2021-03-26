@@ -5,7 +5,7 @@ image: assets/favimage-840x472.jpg
 ---
 
 \[click on image to start `zoomer`\]  
-[![favimage](assets/favimage-840x472.jpg)](https://rockingship.github.io)
+[![favimage](assets/favimage-840x472.jpg)](https://rockingship.github.io/jsFractalZoom)
 
 # `jsFractalZoom`
 

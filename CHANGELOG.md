@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+```
+2021-03-26 20:07:34 Added: `index.md`.
+```
+
 ## 2021-03-26 19:19:05 Version [Version 1.0.0]
 
 ```
