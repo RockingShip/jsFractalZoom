@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 2021-03-26 19:19:05 Version [Version 1.0.0]
+
 ```
 2021-03-26 19:00:42 Added: Donate button.
 2021-03-26 15:46:25 Added: Extra favicons.
@@ -257,7 +259,8 @@ Changed: Initial commit
 Initial creation
 ```
 
-[Unreleased]: https://github.com/RockingShip/jsFractalZoom/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/RockingShip/jsFractalZoom/compare/v1.0.0...HEAD
+[Version 1.0.0]: https://github.com/RockingShip/jsFractalZoom/compare/v0.11.0...v1.0.0
 [Version 0.11.0]: https://github.com/RockingShip/jsFractalZoom/compare/v0.10.0...v0.11.0
 [Version 0.10.0]: https://github.com/RockingShip/jsFractalZoom/compare/v0.9.0...v0.10.0
 [Version 0.9.0]: https://github.com/RockingShip/jsFractalZoom/compare/v0.8.0...v0.9.0
