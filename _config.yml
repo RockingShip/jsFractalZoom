@@ -4,7 +4,9 @@ url: https://rockingship.github.io # root address of the site
 description: "Fractal zoomer and splash codec written in JavaScript"
 favicon: assets/favicon-32.png
 favicon152: assets/favicon-152.png
+favicon160: assets/favicon-160.png
 favicon192: assets/favicon-192.png
+favicon196: assets/favicon-196.png
 
 # jekyll settings
 remote_theme: RockingShip/moonwalk
