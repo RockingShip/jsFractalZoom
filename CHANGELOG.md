@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ```
+2021-05-03 14:32:56 Changed: Moved `splash` to its own project.
 2021-03-26 20:44:28 Fixed: favicons.
 2021-03-26 20:07:34 Added: `index.md`.
 ```
